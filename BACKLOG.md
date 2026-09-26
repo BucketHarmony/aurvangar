@@ -16,7 +16,7 @@ Milestone order is by risk: world and water before anything that depends on them
 
 ## M0 — Bootstrap
 
-- [ ] **M0-T1** Verify toolchain and repo · deps: –
+- [x] **M0-T1** Verify toolchain and repo · deps: –
   - The repo is already initialized with the scaffold commit. Confirm `git status` is clean.
   - `./scripts/check.sh` runs green (foundation tests pass, acceptance tests reported as skipped).
   - `dotnet build src/Aurvangar.Godot` succeeds (Godot.NET.Sdk restores from NuGet; no Godot binary needed).

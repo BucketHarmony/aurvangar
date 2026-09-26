@@ -26,3 +26,19 @@ Entry template:
   the test sources compile and the non-skipped tests pass under a local xUnit stand-in. NOT verified there (NuGet
   was unreachable): the real xUnit run and the Godot.NET.Sdk build. M0-T1 verifies both.
 - Next: M0-T1.
+
+## M0-T1 — Verify toolchain and repo (2026-09-26)
+- Done: Confirmed `git status` clean on `main` before starting. `./scripts/check.sh` green: sim-guard OK, solution
+  builds with 0 warnings, Godot csproj (`Godot.NET.Sdk/4.6.2`, restored from NuGet) builds. No code changes.
+- Tool versions: Windows 11 (Git Bash), git 2.50.1.windows.1; .NET SDKs 6.0.428, 8.0.425, 9.0.312, 10.0.201
+  (default `dotnet` 10.0.201, all projects target net8.0); xunit 2.9.2, xunit.runner.visualstudio 2.8.2,
+  Microsoft.NET.Test.Sdk 17.11.1. Godot: winget `GodotEngine.GodotEngine` 4.6.1.stable.official — the standard
+  (non-.NET) edition, so it cannot build/run C# projects. `GODOT_BIN` is unset; the
+  `--headless --build-solutions` step was skipped per CLAUDE.md.
+- Tests: 35 passed, 118 skipped, 0 failed (non-Perf). Plus 6 skipped Perf tests = 124 acceptance skips, matching
+  the scaffold count.
+- Decisions: none
+- Golden: unchanged
+- Perf: n/a
+- Next: M0-T2 (CI). Screenshot/editor tasks (M3-T6 onward) need a Godot 4.6 .NET (mono) binary in `GODOT_BIN`;
+  the installed winget build is not the .NET edition.
