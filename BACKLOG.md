@@ -127,7 +127,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - Un-skip `Scenarios/FloodScenarioTests.AgentFleesRisingWater`.
 - [x] **M4-T10** Save/load v1 · specs: SAV-01..06 · deps: M4-T8
   - Un-skip `SaveLoadTests.*`. Every system added later must extend save + hash in the same task.
-- [ ] **M4-T11** Godot: agents, piles, designations rendering; dig/chop/cancel tools; colonist panel; F5/F9 · specs: VIEW-08, 10..13, 16, 19 · deps: M4-T10, M3-T5
+- [x] **M4-T11** Godot: agents, piles, designations rendering; dig/chop/cancel tools; colonist panel; F5/F9 · specs: VIEW-08, 10..13, 16, 19 · deps: M4-T10, M3-T5
 - [ ] **M4-T12** Path and region perf · specs: PTH-P1, PTH-P2 · deps: M4-T3
 - [ ] **M4-T13** Screenshots render with Forward+ · specs: VIEW-20 · deps: M3-T9
   - Human decision (G2 early answer, 2026-09-26): gate screenshots must use the renderer the game plays in.

@@ -2,7 +2,8 @@
 # Renders preset camera shots to artifacts/screens/<preset>.png (VIEW-20, docs/testing.md "Screenshot presets").
 # Needs GODOT_BIN = the Godot 4.6 .NET (mono) editor binary. Works on Linux (uses xvfb-run when there is no DISPLAY)
 # and on Windows Git Bash (runs Godot directly; prefer the *_console.exe binary to see its output).
-# Env overrides: SEED (1), TICKS (1200), SHOTS (overview,river,hub,slice), OUT (artifacts/screens).
+# Env overrides: SEED (1), TICKS (1200), SHOTS (overview,river,hub,slice), OUT (artifacts/screens),
+# SCRIPT (none; digchop = dig a pit and chop trees near the hub so colonists are at work in the shots).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -37,7 +38,7 @@ echo "== building C# solution (Godot $VERSION)"
 "$GODOT_BIN" --headless --path "$ROOT/src/Aurvangar.Godot" --build-solutions --quit
 
 ARGS=(--path "$ROOT/src/Aurvangar.Godot" --rendering-driver opengl3 res://scenes/Screenshot.tscn
-      -- --seed "${SEED:-1}" --ticks "${TICKS:-1200}" --shots "$SHOTS" --out "$OUT")
+      -- --seed "${SEED:-1}" --ticks "${TICKS:-1200}" --shots "$SHOTS" --out "$OUT" --script "${SCRIPT:-none}")
 echo "== rendering $SHOTS"
 if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
   command -v xvfb-run >/dev/null || die "no DISPLAY and xvfb-run is not installed (Godot needs a window to render)."

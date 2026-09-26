@@ -5,11 +5,13 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// <summary>Command-line user args of the screenshot harness (VIEW-20), i.e. what follows <c>--</c> on the Godot
 /// command line: <c>--seed 1 --ticks 1200 --shots overview,river,hub,slice --out artifacts/screens</c>.
 /// Every key is optional; bad input throws <see cref="ArgumentException"/> naming the key.</summary>
-public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string> Shots, string OutDir)
+public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string> Shots, string OutDir,
+    string Script = ScreenshotArgs.DefaultScript)
 {
     public const ulong DefaultSeed = 1;
     public const int DefaultTicks = 1200;
     public const string DefaultOutDir = "artifacts/screens";
+    public const string DefaultScript = "none";
 
     public static ScreenshotArgs Parse(IReadOnlyList<string> args)
     {
@@ -17,6 +19,7 @@ public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string>
         int ticks = DefaultTicks;
         IReadOnlyList<string> shots = ScreenshotPresets.Names;
         string outDir = DefaultOutDir;
+        string script = DefaultScript;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -40,11 +43,17 @@ public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string>
                     if (value.Length == 0) throw new ArgumentException("screenshot args: --out is empty");
                     outDir = value;
                     break;
+                case "--script":
+                    if (!ScreenshotScripts.Names.Contains(value))
+                        throw new ArgumentException(
+                            $"screenshot args: unknown script '{value}' (known: {string.Join(",", ScreenshotScripts.Names)})");
+                    script = value;
+                    break;
                 default:
                     throw new ArgumentException($"screenshot args: unknown key '{key}'");
             }
         }
-        return new ScreenshotArgs(seed, ticks, shots, outDir);
+        return new ScreenshotArgs(seed, ticks, shots, outDir, script);
     }
 
     /// <summary>PNG path for a preset: <c>&lt;out&gt;/&lt;preset&gt;.png</c>.</summary>

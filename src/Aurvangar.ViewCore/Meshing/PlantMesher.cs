@@ -68,16 +68,7 @@ public static class PlantMesher
         return mesh;
     }
 
-    private static void AddBox(MeshData m, Vector3 lo, Vector3 hi, Vector4 color)
-    {
-        Vector3 C(float x, float y, float z) => new(x, y, z);
-        AddFacing(m, C(hi.X, lo.Y, lo.Z), C(hi.X, hi.Y, lo.Z), C(hi.X, hi.Y, hi.Z), C(hi.X, lo.Y, hi.Z), Vector3.UnitX, color);
-        AddFacing(m, C(lo.X, lo.Y, lo.Z), C(lo.X, lo.Y, hi.Z), C(lo.X, hi.Y, hi.Z), C(lo.X, hi.Y, lo.Z), -Vector3.UnitX, color);
-        AddFacing(m, C(lo.X, hi.Y, lo.Z), C(lo.X, hi.Y, hi.Z), C(hi.X, hi.Y, hi.Z), C(hi.X, hi.Y, lo.Z), Vector3.UnitY, color);
-        AddFacing(m, C(lo.X, lo.Y, lo.Z), C(hi.X, lo.Y, lo.Z), C(hi.X, lo.Y, hi.Z), C(lo.X, lo.Y, hi.Z), -Vector3.UnitY, color);
-        AddFacing(m, C(lo.X, lo.Y, hi.Z), C(hi.X, lo.Y, hi.Z), C(hi.X, hi.Y, hi.Z), C(lo.X, hi.Y, hi.Z), Vector3.UnitZ, color);
-        AddFacing(m, C(lo.X, lo.Y, lo.Z), C(lo.X, hi.Y, lo.Z), C(hi.X, hi.Y, lo.Z), C(hi.X, lo.Y, lo.Z), -Vector3.UnitZ, color);
-    }
+    private static void AddBox(MeshData m, Vector3 lo, Vector3 hi, Vector4 color) => MeshShapes.AddBox(m, lo, hi, color);
 
     /// <summary>Square-based cone (pyramid): base centered at <paramref name="baseCenter"/>, apex straight above.</summary>
     private static void AddCone(MeshData m, Vector3 baseCenter, float halfWidth, float height, Vector4 color)

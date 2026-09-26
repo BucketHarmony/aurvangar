@@ -6,10 +6,12 @@ using Aurvangar.Sim.Events;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Camera;
 using Aurvangar.ViewCore.Diagnostics;
+using Aurvangar.ViewCore.Entities;
 using Aurvangar.ViewCore.Frame;
+using Aurvangar.ViewCore.Hud;
 using Aurvangar.ViewCore.Meshing;
 using Aurvangar.ViewCore.Picking;
-using Aurvangar.ViewCore.Screenshots;
+using Aurvangar.ViewCore.Tools;
 using Godot;
 
 namespace Aurvangar.Client;
@@ -17,7 +19,9 @@ namespace Aurvangar.Client;
 /// <summary>Root node. Owns the Simulation and runs the fixed-tick loop (VIEW-01): ticks come from a
 /// <see cref="TickAccumulator"/>, events drained after each tick are routed by a <see cref="RemeshRouter"/> into the
 /// terrain and water remesh queues, and up to 4 + 4 chunks are remeshed per frame (VIEW-02). Also drives the slice
-/// level (VIEW-04), mouse picking (VIEW-05), the orbit camera (VIEW-06) and the F3 overlay (VIEW-17).</summary>
+/// level (VIEW-04), picking (VIEW-05), the camera (VIEW-06), agents, piles and designations (VIEW-08, 10, 11), the
+/// HUD (VIEW-12, 16) and the F3 overlay (VIEW-17). Input and tools live in GameRoot.Input.cs; F5/F9 and the
+/// renderer rebuild on load in GameRoot.Save.cs.</summary>
 public partial class GameRoot : Node3D
 {
     public Simulation Sim { get; private set; } = null!;
@@ -25,6 +29,9 @@ public partial class GameRoot : Node3D
     public ChunkRenderer Terrain { get; private set; } = null!;
     public WaterRenderer WaterView { get; private set; } = null!;
     public PlantRenderer PlantView { get; private set; } = null!;
+    public AgentRenderer AgentView { get; private set; } = null!;
+    public PileRenderer PileView { get; private set; } = null!;
+    public DesignationRenderer DesignationView { get; private set; } = null!;
     public RemeshRouter Remesh { get; private set; } = null!;
     public SliceController Slice { get; private set; } = null!;
 
@@ -46,36 +53,36 @@ public partial class GameRoot : Node3D
     private readonly RollingAverage _tickMs = new(PhaseTimer.Window);
     private readonly PhaseTimer _phases = new();
     private readonly RateMeter _pathRate = new();
+    private readonly ToolController _tool = new();
+    private EntityColors _entityColors = null!;
     private DebugOverlay _overlay = null!;
     private HoverMarker _hoverMarker = null!;
+    private ToolPreview _toolPreview = null!;
+    private Hud _hud = null!;
+    private bool _pilesDirty = true;
+    private int _pilesBuiltSlice = int.MinValue;
 
     public override void _Ready()
     {
         Content = ContentDb.LoadEmbedded();
+        _entityColors = new EntityColors(Content);
         ulong seed = ReadSeedFromCmdline() ?? 1UL;
-        Sim = WorldFactory.Create(seed, Content);
-        Sim.Profiler = _phases;
-        var w = Sim.World;
+        var sim = WorldFactory.Create(seed, Content);
+        var w = sim.World;
         GD.Print($"Aurvangar: seed {seed}, world {w.SizeX}x{w.SizeY}x{w.SizeZ}");
 
-        Terrain = new ChunkRenderer { Name = "Terrain" };
-        Terrain.Init(Sim, new BlockColors(Content));
-        AddChild(Terrain);
-        WaterView = new WaterRenderer { Name = "Water" };
-        WaterView.Init(Sim, new WaterColors(Content));
-        AddChild(WaterView);
-        PlantView = new PlantRenderer { Name = "Plants" };
-        PlantView.Init(Sim, new PlantColors(Content));
-        AddChild(PlantView);
         _hoverMarker = new HoverMarker { Name = "HoverMarker" };
         AddChild(_hoverMarker);
+        _toolPreview = new ToolPreview { Name = "ToolPreview" };
+        AddChild(_toolPreview);
         _overlay = new DebugOverlay { Name = "DebugOverlay" };
         AddChild(_overlay);
+        _hud = new Hud { Name = "Hud" };
+        AddChild(_hud);
+        _hud.ToolChosen += SetTool;
+        _hud.Colonists.Clicked += CenterOnAgent;
 
-        Remesh = new RemeshRouter(w.ChunksX, w.ChunksY, w.ChunksZ);
-        Slice = new SliceController(w.SizeY);
-        Remesh.EnqueueAll();
-        Sim.Events.Drain(); // everything is queued; world-creation events carry nothing new
+        AttachSimulation(sim);
 
         var hub = Sim.Buildings.All.FirstOrDefault();
         var focus = hub != null
@@ -94,18 +101,14 @@ public partial class GameRoot : Node3D
             _tickMs.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
             _frameEvents.AddRange(Sim.Events.Drain());
         }
-
-        if (_frameEvents.Count > 0)
-        {
-            Remesh.Route(_frameEvents);
-            _frameEvents.Clear();
-        }
+        RouteEvents();
 
         Remesh.Terrain.TakeBatch(RemeshRouter.TerrainBudget, _batch);
         foreach (int ci in _batch) Terrain.Remesh(ci, SliceY);
         Remesh.Water.TakeBatch(RemeshRouter.WaterBudget, _batch);
         foreach (int ci in _batch) WaterView.Remesh(ci, SliceY);
-        PlantView.Refresh(SliceY);
+        RefreshEntities((float)(_clock.Accumulator / TickAccumulator.TickSeconds));
+        UpdateHud();
 
         _pathRate.Sample(Time.GetTicksMsec() / 1000.0, Sim.Counters.PathSearches);
         if (_overlay.Visible) _overlay.SetText(DebugOverlayText.Build(Snapshot()));
@@ -114,29 +117,11 @@ public partial class GameRoot : Node3D
     public override void _PhysicsProcess(double delta)
     {
         Hover = PickingEnabled ? PickUnderMouse() : null;
-        _hoverMarker.SetHit(Hover);
-    }
-
-    public override void _UnhandledInput(InputEvent e)
-    {
-        if (e is InputEventKey { Pressed: true } key)
-        {
-            switch (key.Keycode)
-            {
-                // VIEW-04: slice keys repeat while held.
-                case Key.Pageup or Key.Bracketright: Slice.Step(+1, Remesh); return;
-                case Key.Pagedown or Key.Bracketleft: Slice.Step(-1, Remesh); return;
-            }
-            if (key.Echo) return;
-            switch (key.Keycode)
-            {
-                case Key.Space: SpeedIndex = SpeedIndex == 0 ? 1 : 0; break;
-                case Key.Key1: SpeedIndex = 1; break;
-                case Key.Key2: SpeedIndex = 2; break;
-                case Key.Key3: SpeedIndex = 3; break;
-                case Key.F3: _overlay.Toggle(); break;
-            }
-        }
+        _hoverMarker.SetHit(_tool.Tool == ToolKind.Select || !_tool.Dragging ? Hover : null);
+        _tool.Move(Hover);
+        if (_tool.PreviewBox(SliceY) is var (min, max))
+            _toolPreview.Show(min, max, _tool.Tool == ToolKind.Cancel ? new Color(1f, 0.25f, 0.2f, 0.3f) : new Color(1f, 0.6f, 0.24f, 0.3f));
+        else _toolPreview.Visible = false;
     }
 
     /// <summary>Runs ticks immediately (no real-time pacing) and routes their events (screenshot harness, VIEW-20).</summary>
@@ -147,22 +132,23 @@ public partial class GameRoot : Node3D
             Sim.Tick();
             _frameEvents.AddRange(Sim.Events.Drain());
         }
-        Remesh.Route(_frameEvents);
-        _frameEvents.Clear();
+        RouteEvents();
     }
 
-    /// <summary>Remeshes every queued terrain and water chunk now, ignoring the per-frame budget, and refreshes plants.</summary>
+    /// <summary>Remeshes every queued terrain and water chunk now, ignoring the per-frame budget, and refreshes
+    /// plants, agents, piles, designations and the colonist panel.</summary>
     public void FlushRemesh()
     {
         Remesh.Terrain.TakeBatch(int.MaxValue, _batch);
         foreach (int ci in _batch) Terrain.Remesh(ci, SliceY);
         Remesh.Water.TakeBatch(int.MaxValue, _batch);
         foreach (int ci in _batch) WaterView.Remesh(ci, SliceY);
-        PlantView.Refresh(SliceY);
+        RefreshEntities(0f);
+        UpdateHud();
     }
 
     /// <summary>Screenshot preset (VIEW-20): slice level, full remesh, camera view.</summary>
-    public void ApplyShot(CameraShot shot)
+    public void ApplyShot(Aurvangar.ViewCore.Screenshots.CameraShot shot)
     {
         Slice.Set(shot.SliceY, Remesh);
         FlushRemesh();
@@ -173,6 +159,39 @@ public partial class GameRoot : Node3D
             camera.Rig.Update(0f, SliceY);
             camera.ApplyNow();
         }
+    }
+
+    private void RouteEvents()
+    {
+        if (_frameEvents.Count == 0) return;
+        Remesh.Route(_frameEvents);
+        foreach (var e in _frameEvents)
+            if (e is ItemPileChanged) { _pilesDirty = true; break; }
+        _frameEvents.Clear();
+    }
+
+    /// <summary>Agents every frame (they move); piles on a pile event or a slice change; designations and plants
+    /// when their own change checks say so.</summary>
+    private void RefreshEntities(float tickFraction)
+    {
+        PlantView.Refresh(SliceY);
+        AgentView.Refresh(AgentVisuals.Build(Sim, SliceY, _entityColors, tickFraction));
+        if (_pilesDirty || _pilesBuiltSlice != SliceY)
+        {
+            PileView.Rebuild(SliceY);
+            _pilesDirty = false;
+            _pilesBuiltSlice = SliceY;
+        }
+        DesignationView.Refresh(SliceY);
+    }
+
+    private void UpdateHud()
+    {
+        _hud.Colonists.SetRows(ColonistPanelModel.Build(Sim));
+        string? label = null;
+        if (Hover is { } h && PileMesher.AtPick(Sim.Piles, h, SliceY) is { } pile)
+            label = PileMesher.Label(Content, pile.Stack);
+        _hud.SetHoverLabel(label, GetViewport().GetMousePosition());
     }
 
     /// <summary>VIEW-05: ray from the camera through the mouse against terrain collision (physics layer 1).</summary>

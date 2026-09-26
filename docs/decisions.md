@@ -561,3 +561,26 @@ outside `Tick` after its regions were built (stale regions, test setup only) loa
 Block bytes, item ids (1-based), enums, counts and indices are range-checked on load. `SimCounters` and `BuildingSystem.Totals` are
 diagnostics/derived and restart after a load (Totals fills at the next buildings step). Seed-1 save at day 5 is
 29,376 bytes (SAV-05 budget 3 MB; save ~20 ms, load ~52 ms in a Debug test run).
+
+## ADR-033: Godot tools, entity views, quick save and screenshot scripts (2026-09-26, M4-T11)
+Context: VIEW-08..13, 16 and 19 leave several details open. They do not say how a 2D drag becomes a 3D box for each
+tool, whether agents and piles obey the slice, how the view notices designation changes (there is no event), how
+trapped agents look, what the Farm/Build/Deconstruct buttons do before their systems exist, or how the screenshot
+harness can show colonists at work.
+Decision: The drag logic is `ToolController` (ViewCore, tested). Dig uses the first corner cell and the second corner
+cell, with the second corner's Y clamped to `SliceY` (`DesignateDig`). Chop is the X/Z rectangle of the two corners
+(`DesignateChop`). Cancel sends the sorted box raised one cell, so dragging over ground also cancels the trees
+standing on it. A right click or a tool change drops the drag. Agents and piles follow the plant slice rule: they are
+hidden when their cell Y > `SliceY`. Agent positions are lerped along the current move step, including the sub-tick
+accumulator fraction. Agent colors come from `palette.json` `agents`, which gains a `trapped` color. Dead agents lie
+on their side. Designation marks emit no events, so `DesignationRenderer` rebuilds when an FNV signature over the marks
+and marked trees changes. Unreachable dig cells and trees are drawn red. Piles rebuild on `ItemPileChanged` or a slice
+change. A pile is 1 cube per 5 items, at most 8 cubes. Farm, Build and Deconstruct are shown as disabled buttons.
+F5 writes `user://quick.save` through a `.tmp` file and then a rename, so a failed save keeps the old file. F9 swaps in
+the loaded `Simulation` and rebuilds every sim-bound renderer, keeping the camera, slice and speed. Errors show as a
+toast. The screenshot harness gains `--script <none|digchop>` (the `SCRIPT` env in screenshot.sh). `digchop` digs a
+14x9x2 pit 3 cells east of the hub and chops trees within 24 cells of it; the commands are computed from the world
+(ADR-020).
+Consequences: A drag can only target cells at or below the slice. The designation signature costs one pass over the
+marks per frame; this is fine at POC sizes and can become an event later if needed. `digchop` uses a 2-deep pit
+because a deeper one strands every dwarf in it (see PROGRESS M4-T11).

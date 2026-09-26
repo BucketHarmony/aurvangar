@@ -811,3 +811,36 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   `CommandCodec` entry, or saving throws. Farm tiles (M6-T2), moisture (recomputed, M6-T1) and weather (M6-T4) must add
   sections and bump `FormatVersion`. M5-T2 construction-site blocking: if it is derived, rebuild it in `AfterLoad`.
   Test-only `SetBlockCommand` has no codec.
+
+## M4-T11 — Godot: agents, piles, designations rendering; dig/chop/cancel tools; colonist panel; F5/F9 (2026-09-26)
+- Done: View logic lives in ViewCore, with no Godot types.
+  - `Entities/` has `AgentVisuals` (look, lerped position, slice), `PileMesher` (cubes, hover label), `DesignationMesher` (dig cubes, chop rings, red when unreachable, change signature) and `EntityColors`.
+  - `Tools/ToolController` covers Dig (G), Chop (C) and Cancel (Z) drags turned into commands.
+  - `Hud/ColonistPanelModel` builds the panel rows and activity text.
+  - `Persistence/QuickSave` does F5/F9 with a temp file and error messages.
+  - `MeshShapes.AddBox`, and `OrbitRig.CenterOn`.
+  - The Godot side is thin: `AgentRenderer`, `PileRenderer`, `DesignationRenderer`, `ToolPreview`, `Hud` (toolbar, toast, pile hover label), `ColonistPanel` ("Dwarves"; clicking a row centers the camera), and `GameRoot` split into `.Input.cs` and `.Save.cs`.
+  - `AttachSimulation` rebuilds every renderer when F9 loads a save. The F3 overlay moved to the top right.
+  - The screenshot harness has `--script none|digchop` (`SCRIPT=digchop ./scripts/screenshot.sh`).
+- Tests: 35 new view tests (`EntityViewTests`, `ToolAndPanelTests` with tool/panel/quick-save tests, `ScreenshotScriptTests`).
+  They first failed on the missing namespaces. check.sh: 357 passed, 37 skipped, 0 failed. Godot csproj: 0 warnings.
+- Screenshots (Godot 4.6.2, opengl3, `SCRIPT=digchop`, looked at):
+  - `artifacts/screens/t400/hub.png` shows translucent dig marks on the half-dug pit, dwarves (white capsules) inside it, and orange chop rings around about 25 trees. All panel rows say "Digging".
+  - `artifacts/screens/hub.png` (tick 1200) shows the finished pit, most trees felled, and log piles scattered. The panel reads "Hauling log" or "Felling a tree".
+- Probe (seed 1, digchop):
+
+  | Tick | Dig marks | Marked trees | Piles | Jobs done | Jobs failed | Logs in hall |
+  |---|---|---|---|---|---|---|
+  | 300 | 53 | 23 | – | 37 | – | – |
+  | 1200 | 0 | 3 | 18 | 110 | 1 | – |
+  | 2400 | 0 | 0 | 0 | 136 | 1 | 92 |
+
+- **Finding (sim, not fixed here):** a 10x7x5 pit dug top-down (DSG-04) leaves no ramp. All 5 dwarves ended on the pit floor (y=19, region 2), cut off from the Great Hall (region 1). Chop jobs were then never taken: 23 trees stayed marked and jobs done stayed at 279. Dig jobs never check that the digger can still get out. Raise this at G2, or give a later task a rule (for example, keep a stair or ramp cell, or refuse a dig that would strand the worker).
+- Decisions: ADR-033
+- Golden: unchanged (no Aurvangar.Sim code changed).
+- Perf: perf.sh 4 passed, 4 skipped. Headless seed 1, 24,000 ticks: median 0.031 ms, p95 0.034 ms, 26,838 ticks/s, hash `d8a1e43aeeb5d540` (unchanged).
+- Next:
+  - M4-T13 switches screenshot.sh to Forward+ and must keep `--script` / `SCRIPT`.
+  - The G2 gate can use `SCRIPT=digchop` (`TICKS=400` shows the marks; the default 1200 shows the piles).
+  - The headless runner has no dig+chop script: `ScreenshotScripts` is in ViewCore, and Headless references only Sim.
+  - New sim-visible states (for example, construction sites in M5) need a look in `AgentVisuals` and `ColonistPanelModel.Activity`.

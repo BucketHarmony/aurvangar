@@ -55,6 +55,15 @@ public sealed class OrbitRig
         Distance = Math.Clamp(distance, MinDistance, MaxDistance);
     }
 
+    /// <summary>VIEW-16: centers the view on a point (a colonist) without changing yaw, pitch or zoom. The point's
+    /// height becomes <see cref="BaseFocusY"/>; <see cref="Update"/> eases the focus height toward it.</summary>
+    public void CenterOn(Vector3 point)
+    {
+        _focus.X = Math.Clamp(point.X, 0f, _sizeX);
+        _focus.Z = Math.Clamp(point.Z, 0f, _sizeZ);
+        BaseFocusY = point.Y;
+    }
+
     /// <summary>Pans the focus. <paramref name="right"/> and <paramref name="forward"/> are input axes in -1..1.</summary>
     public void Pan(float right, float forward, float dt)
     {
