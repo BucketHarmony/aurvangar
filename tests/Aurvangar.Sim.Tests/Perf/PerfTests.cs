@@ -70,12 +70,6 @@ public class WaterPerfTests
 [Trait("Category", "Perf")]
 public class OtherPerfTests
 {
-    [Fact(Skip = "M4-T12")]
-    public void AStar_P95_100CellPaths() => Placeholder.Write("PTH-P1: 200 random ~100-cell queries on seed 1, p95 <= 1.5 ms * PERF_SCALE");
-
-    [Fact(Skip = "M4-T12")]
-    public void RegionRebuild_Seed1() => Placeholder.Write("PTH-P2: Regions full rebuild on seed 1 median <= 25 ms * PERF_SCALE");
-
     [Fact(Skip = "M6-T1")]
     public void Moisture_Recompute() => Placeholder.Write("ECO-16: MoistureMap recompute on seed 1 median <= 3 ms * PERF_SCALE");
 

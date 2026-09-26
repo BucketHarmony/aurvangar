@@ -51,35 +51,37 @@ public sealed class Regions
     {
         _forced = false;
         Array.Clear(_region);
-        int layer = _world.SizeX * _world.SizeZ;
+        int sizeX = _world.SizeX, layer = _world.SizeX * _world.SizeZ;
         int next = 0;
-        Span<PathMove> moves = stackalloc PathMove[PathMoves.MaxMoves];
+        Span<PathStep> steps = stackalloc PathStep[PathMoves.MaxMoves];
         // y = 0 has no floor below, so nothing there is standable.
         for (int i = layer; i < _region.Length; i++)
         {
             // Cheap PTH-01 prefilter (not solid, solid below) before touching the flag cache.
             if (_region[i] != None || _world.IsSolidAt(i) || !_world.IsSolidAt(i - layer)) continue;
-            var c = _world.CellOf(i);
-            if (!_grid.IsWalkable(c)) continue;
-            Fill(i, ++next, moves);
+            int y = i / layer, rem = i - y * layer, z = rem / sizeX, x = rem - z * sizeX;
+            if ((_grid.FlagsAt(x, y, z) & PathGrid.WalkableFlag) == 0) continue;
+            Fill(i, ++next, steps, sizeX, layer);
         }
         Count = next;
         _builtVersion = _grid.WalkabilityVersion;
     }
 
-    /// <summary>Breadth-first flood fill from a walkable seed with the A* move rules.</summary>
-    private void Fill(int seedIndex, int id, Span<PathMove> moves)
+    /// <summary>Breadth-first flood fill from a walkable seed with the A* move rules (<see cref="PathMoves.Steps"/>;
+    /// <see cref="RebuildIfDirty"/> synced the change log first).</summary>
+    private void Fill(int seedIndex, int id, Span<PathStep> steps, int sizeX, int layer)
     {
         int head = 0, tail = 0;
         _region[seedIndex] = id;
         Push(ref tail, seedIndex);
         while (head < tail)
         {
-            var a = _world.CellOf(_queue[head++]);
-            int n = PathMoves.From(_grid, a, moves);
+            int ai = _queue[head++];
+            int ay = ai / layer, rem = ai - ay * layer, az = rem / sizeX, ax = rem - az * sizeX;
+            int n = PathMoves.Steps(_grid, ax, ay, az, steps);
             for (int k = 0; k < n; k++)
             {
-                int bi = _world.Index(moves[k].To);
+                int bi = steps[k].X + steps[k].Z * sizeX + steps[k].Y * layer;
                 if (_region[bi] != None) continue;
                 _region[bi] = id;
                 Push(ref tail, bi);

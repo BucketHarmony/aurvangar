@@ -844,3 +844,24 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   - The G2 gate can use `SCRIPT=digchop` (`TICKS=400` shows the marks; the default 1200 shows the piles).
   - The headless runner has no dig+chop script: `ScreenshotScripts` is in ViewCore, and Headless references only Sim.
   - New sim-visible states (for example, construction sites in M5) need a look in `AgentVisuals` and `ColonistPanelModel.Activity`.
+
+## M4-T12 — Path and region perf (2026-09-26)
+- Done: A* and region fill now use `PathMoves.Steps`, which applies the PTH-04..08 rules to raw coordinates, with
+  the same moves in the same order. It reads the new `PathGrid.FlagsAt(x, y, z)`, which checks bounds inline and
+  does not sync. A search or rebuild syncs the world change log once instead of on every flag read.
+  `PathMoves.From` wraps `Steps`, so every caller still shares one rule implementation.
+- Tests: `Perf/PathPerfTests` covers `AStar_P95_100CellPaths` and `RegionRebuild_Seed1`. Both placeholders were
+  moved out of `OtherPerfTests` and given bodies. Pair sampling is deterministic (ADR-034): Rng(1234), paths of
+  90..110 cells in the largest region. Before the change, A* failed for the right reason: p95 1.681 ms against the
+  1.5 ms budget. The region test checks both warm and cold rebuilds. check.sh: 357 passed, 37 skipped, 0 failed;
+  Godot csproj 0 warnings. perf.sh: 6 passed, 2 skipped.
+- Decisions: ADR-034
+- Golden: unchanged (no behavior change).
+- Perf (Release, 3 runs):
+  - PTH-P1: A* median ~0.31 ms, p95 0.75-0.81 ms (budget 1.5), max ~1.05 ms, max expanded 5,153.
+  - PTH-P2: region rebuild warm median ~2.1-2.2 ms, cold ~3.4-3.6 ms (budget 25).
+  - Headless seed 1, 24,000 ticks: median 0.032 ms, 24,440 ticks/s, hash `d8a1e43aeeb5d540` (unchanged).
+  - No Godot code was touched, so no screenshots were taken.
+- Next: M4-T13 (screenshot.sh to Forward+). Hot search loops should call `PathMoves.Steps` or `PathGrid.FlagsAt`,
+  and must call `PathGrid.SyncWorldChanges()` once first. M5-T2 construction-site blocking belongs in
+  `PathGrid.Compute`, so both paths see it. The pit-trap issue from M4-T11 is still open for G2.

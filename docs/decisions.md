@@ -584,3 +584,22 @@ toast. The screenshot harness gains `--script <none|digchop>` (the `SCRIPT` env 
 Consequences: A drag can only target cells at or below the slice. The designation signature costs one pass over the
 marks per frame; this is fine at POC sizes and can become an event later if needed. `digchop` uses a 2-deep pit
 because a deeper one strands every dwarf in it (see PROGRESS M4-T11).
+
+## ADR-034: PTH-P1/P2 measurement and the coordinate-based search loop (2026-09-26, M4-T12)
+Context: PTH-P1 says "p95 A* for 100-cell paths on seed 1" without saying how pairs are chosen or what "100-cell"
+means; PTH-P2 does not say whether the flag cache is warm. The first measurement (defined below) gave p95 1.68 ms,
+over the 1.5 ms budget. Each A* expansion went through `PathMoves.From` with `Int3` arithmetic, and every flag
+read re-synced the world change log, checked bounds on an `Int3`, and recomputed the flat index.
+Decision: `PathPerfTests` measures seed 1 after one tick. Pairs are drawn from the largest region's walkable cells
+(ascending flat index) with `Rng(1234)`. Each pair's goal is 60..100 cells from the start on the larger horizontal
+axis, and a pair is kept when A* finds a path of 90..110 cells (start and end included). The first 200 kept pairs
+are timed once each after the selection pass, which also warms the cache. The p95 of the 200 times must be ≤ 1.5 ms ×
+PERF_SCALE. PTH-P2 asserts the median of 30 full rebuilds ≤ 25 ms for both a warm cache (`MarkDirty`) and a cold one
+(`PathGrid.InvalidateAll`, as after a load). Speedup: `PathMoves.Steps` (internal) holds the PTH-04..08 rules on raw
+coordinates, with the same moves in the same order, and reads the new `PathGrid.FlagsAt(x, y, z)`. That method
+checks bounds and computes the index inline and does not sync. A* and `Regions` sync the change log once per search
+or rebuild, which is equivalent because a search never changes blocks. The public `PathMoves.From` now syncs and
+wraps `Steps`, so every caller still shares one rule implementation. Flee BFS keeps using `From`.
+Consequences: Release, this machine: A* median ~0.31 ms, p95 ~0.75-0.81 ms (max expanded 5,153); region rebuild
+warm ~2.1 ms, cold ~3.5 ms. Behavior is unchanged: the golden hash is the same and headless seed 1 still gives
+`d8a1e43aeeb5d540`.

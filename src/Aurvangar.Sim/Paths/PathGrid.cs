@@ -22,6 +22,7 @@ public sealed class PathGrid
     private readonly WaterGrid _water;
     private readonly PlantSystem _plants;
     private readonly byte[] _flags;
+    private readonly int _sizeX, _sizeY, _sizeZ, _layer;
 
     /// <summary>Total world changes (<c>ChangeLogBase + ChangedCells.Count</c>) already applied to the cache.</summary>
     private long _worldSeen;
@@ -30,6 +31,7 @@ public sealed class PathGrid
     {
         _world = world; _water = water; _plants = plants;
         _flags = new byte[world.CellCount];
+        _sizeX = world.SizeX; _sizeY = world.SizeY; _sizeZ = world.SizeZ; _layer = world.SizeX * world.SizeZ;
         _worldSeen = world.ChangeLogBase + world.ChangedCells.Count;
         water.WalkClassChanged = OnWaterClassChanged;
         plants.OccupancyChanged = OnOccupancyChanged;
@@ -87,10 +89,22 @@ public sealed class PathGrid
     {
         if (!_world.InBounds(c)) return 0;
         SyncWorldChanges();
-        int i = _world.Index(c);
+        return FlagsAt(c.X, c.Y, c.Z);
+    }
+
+    internal const byte StandableFlag = Standable, WalkableFlag = Walkable, WetFlag = Wet;
+
+    /// <summary>Hot path for search loops (M4-T12): flag byte of a cell given by coordinates, 0 out of bounds.
+    /// Does not sync the world change log: the caller calls <see cref="SyncWorldChanges"/> once before a search,
+    /// which is equivalent because a search never changes blocks.</summary>
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    internal byte FlagsAt(int x, int y, int z)
+    {
+        if ((uint)x >= (uint)_sizeX || (uint)y >= (uint)_sizeY || (uint)z >= (uint)_sizeZ) return 0;
+        int i = x + z * _sizeX + y * _layer;
         byte f = _flags[i];
         if ((f & Valid) != 0) return f;
-        f = Compute(c, i);
+        f = Compute(new Int3(x, y, z), i);
         _flags[i] = f;
         return f;
     }

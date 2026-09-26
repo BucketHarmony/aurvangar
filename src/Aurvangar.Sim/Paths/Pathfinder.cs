@@ -30,6 +30,7 @@ public sealed class Pathfinder
     private readonly PathHeap _open = new();
     private readonly List<Int3> _goals = new();
     private readonly List<int> _queue = new();
+    private readonly PathStep[] _steps = new PathStep[PathMoves.MaxMoves];
     private readonly PathMove[] _moves = new PathMove[PathMoves.MaxMoves];
 
     // Pooled per-cell search state (PTH-09). _seen[i] == _gen: _g and _cameFrom are valid; _closed[i] == _gen: expanded.
@@ -75,9 +76,11 @@ public sealed class Pathfinder
         if (_goals.Count == 0) return PathResult.None;
 
         _open.Clear();
+        _grid.SyncWorldChanges();                   // once per search; the fast flag reads below do not sync
+        int sizeX = world.SizeX, layer = world.SizeX * world.SizeZ;
         int si = world.Index(start);
         _seen[si] = _gen; _g[si] = 0; _cameFrom[si] = -1;
-        int h0 = Heuristic(start);
+        int h0 = Heuristic(start.X, start.Y, start.Z);
         _open.Push(h0, h0, si);
 
         int expanded = 0;
@@ -94,18 +97,18 @@ public sealed class Pathfinder
             _closed[ci] = _gen;
             expanded++;
 
-            var c = world.CellOf(ci);
+            int cy = ci / layer, rem = ci - cy * layer, cz = rem / sizeX, cx = rem - cz * sizeX;
             int gc = _g[ci];
-            int n = PathMoves.From(_grid, c, _moves);
+            int n = PathMoves.Steps(_grid, cx, cy, cz, _steps);
             for (int m = 0; m < n; m++)
             {
-                var mv = _moves[m];
-                int ni = world.Index(mv.To);
+                ref readonly var st = ref _steps[m];
+                int ni = st.X + st.Z * sizeX + st.Y * layer;
                 if (_closed[ni] == _gen) continue;
-                int ng = gc + mv.Cost;
+                int ng = gc + st.Cost;
                 if (_seen[ni] == _gen && ng >= _g[ni]) continue;
                 _seen[ni] = _gen; _g[ni] = ng; _cameFrom[ni] = ci;
-                int h = Heuristic(mv.To);
+                int h = Heuristic(st.X, st.Y, st.Z);
                 _open.Push(ng + h, h, ni);
             }
         }
@@ -152,12 +155,12 @@ public sealed class Pathfinder
     }
 
     /// <summary>Minimum heuristic over the goals (consistent, since each term is).</summary>
-    private int Heuristic(Int3 c)
+    private int Heuristic(int x, int y, int z)
     {
         int best = int.MaxValue;
         for (int k = 0; k < _goals.Count; k++)
         {
-            int h = PathMoves.Heuristic(c, _goals[k]);
+            int h = PathMoves.Heuristic(x, y, z, _goals[k]);
             if (h < best) best = h;
         }
         return best;
