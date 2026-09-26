@@ -72,7 +72,8 @@ Shots render with Forward+ (`--rendering-method forward_plus` on the default Vul
 plays in, so they show the same lighting and colors as play (ADR-035). There is no separate Compatibility render.
 On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env options: `SEED`, `TICKS` (1200),
 `SHOTS`, `OUT`, and `SCRIPT=digchop` (dig a pit and chop trees near the hub, so colonists are at work;
-`TICKS=400` shows the marks, 1200 shows the piles).
+`TICKS=400` shows the marks, 1200 shows the piles) or `SCRIPT=build` (chop plus a warehouse, a pump and a levee line
+near the hub; `TICKS=500` catches them mid-build, 1200 shows them complete).
 
 ## Scripted play
 
@@ -81,7 +82,7 @@ pump, farm 6×6 field, chop area, place warehouse, dig into the hill, breach the
 tick N+300. It is used by the golden test, the survival scenario, and `run-headless.sh --script survival`.
 Build it incrementally: each milestone that adds a command type extends the script.
 
-`run-headless.sh --script digchop` (also `none`) runs the screenshot harness's `ScreenshotScripts` command list
+`run-headless.sh --script digchop` (also `none` and `build`) runs the screenshot harness's `ScreenshotScripts` command list
 (ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a
 `work:` line per report (marks left, piles, stored items, path searches, trapped agents) and a final `summary:`
 (jobs completed/failed, cells dug, trees felled, items hauled into storage).

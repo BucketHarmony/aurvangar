@@ -19,9 +19,10 @@ namespace Aurvangar.Client;
 /// <summary>Root node. Owns the Simulation and runs the fixed-tick loop (VIEW-01): ticks come from a
 /// <see cref="TickAccumulator"/>, events drained after each tick are routed by a <see cref="RemeshRouter"/> into the
 /// terrain and water remesh queues, and up to 4 + 4 chunks are remeshed per frame (VIEW-02). Also drives the slice
-/// level (VIEW-04), picking (VIEW-05), the camera (VIEW-06), agents, piles and designations (VIEW-08, 10, 11), the
-/// HUD (VIEW-12, 16) and the F3 overlay (VIEW-17). Input and tools live in GameRoot.Input.cs; F5/F9 and the
-/// renderer rebuild on load in GameRoot.Save.cs.</summary>
+/// level (VIEW-04), picking (VIEW-05), the camera (VIEW-06), agents, buildings, piles and designations (VIEW-08..11),
+/// the HUD (VIEW-12, 15, 16) and the F3 overlay (VIEW-17). Input and drag tools live in GameRoot.Input.cs; the build
+/// and deconstruct tools and the colony-lost modal (VIEW-14, 18) in GameRoot.Build.cs; F5/F9 and the renderer
+/// rebuild on load in GameRoot.Save.cs.</summary>
 public partial class GameRoot : Node3D
 {
     public Simulation Sim { get; private set; } = null!;
@@ -32,6 +33,7 @@ public partial class GameRoot : Node3D
     public AgentRenderer AgentView { get; private set; } = null!;
     public PileRenderer PileView { get; private set; } = null!;
     public DesignationRenderer DesignationView { get; private set; } = null!;
+    public BuildingRenderer BuildingView { get; private set; } = null!;
     public RemeshRouter Remesh { get; private set; } = null!;
     public SliceController Slice { get; private set; } = null!;
 
@@ -46,6 +48,10 @@ public partial class GameRoot : Node3D
 
     /// <summary>Mouse picking and the hover marker; the screenshot harness turns it off.</summary>
     public bool PickingEnabled { get; set; } = true;
+
+    /// <summary>With picking off, a fixed pick used as <see cref="Hover"/> (the screenshot harness shows the build
+    /// ghost with it); the mouse label then sits at that cell on screen.</summary>
+    public PickHit? PickOverride { get; set; }
 
     private readonly TickAccumulator _clock = new();
     private readonly List<SimEvent> _frameEvents = new();
@@ -77,9 +83,11 @@ public partial class GameRoot : Node3D
         AddChild(_toolPreview);
         _overlay = new DebugOverlay { Name = "DebugOverlay" };
         AddChild(_overlay);
-        _hud = new Hud { Name = "Hud" };
+        ReadyBuildTools();
+        _hud = new Hud { Name = "Hud", Buildable = _build.Buildable.Select(d => (d.Id, d.Name)).ToList() };
         AddChild(_hud);
         _hud.ToolChosen += SetTool;
+        _hud.BuildChosen += ChooseBuilding;
         _hud.Colonists.Clicked += CenterOnAgent;
 
         AttachSimulation(sim);
@@ -116,10 +124,11 @@ public partial class GameRoot : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
-        Hover = PickingEnabled ? PickUnderMouse() : null;
+        Hover = PickingEnabled ? PickUnderMouse() : PickOverride;
         _hoverMarker.SetHit(_tool.Tool == ToolKind.Select || !_tool.Dragging ? Hover : null);
         _tool.Move(Hover);
-        if (_tool.PreviewBox(SliceY) is var (min, max))
+        if (!ToolController.IsDragTool(_tool.Tool) && _tool.Tool != ToolKind.Select) UpdateClickToolPreview();
+        else if (_tool.PreviewBox(SliceY) is var (min, max))
             _toolPreview.Show(min, max, _tool.Tool == ToolKind.Cancel ? new Color(1f, 0.25f, 0.2f, 0.3f) : new Color(1f, 0.6f, 0.24f, 0.3f));
         else _toolPreview.Visible = false;
     }
@@ -167,7 +176,10 @@ public partial class GameRoot : Node3D
         if (_frameEvents.Count == 0) return;
         Remesh.Route(_frameEvents);
         foreach (var e in _frameEvents)
-            if (e is ItemPileChanged) { _pilesDirty = true; break; }
+        {
+            if (e is ItemPileChanged) _pilesDirty = true;
+            else HandleHudEvent(e);
+        }
         _frameEvents.Clear();
     }
 
@@ -184,6 +196,7 @@ public partial class GameRoot : Node3D
             _pilesBuiltSlice = SliceY;
         }
         DesignationView.Refresh(SliceY);
+        BuildingView.Refresh(BuildingVisuals.Build(Sim, SliceY, _entityColors));
         UpdatePileLabels();
     }
 
@@ -196,10 +209,19 @@ public partial class GameRoot : Node3D
     private void UpdateHud()
     {
         _hud.Colonists.SetRows(ColonistPanelModel.Build(Sim));
-        string? label = null;
-        if (Hover is { } h && PileMesher.AtPick(Sim, h, SliceY) is { } pile)
+        _hud.TopBar.Show(TopBarModel.Build(Sim, TickAccumulator.Speeds[SpeedIndex]));
+        string? label = ClickToolTooltip();
+        if (label == null && Hover is { } h && PileMesher.AtPick(Sim, h, SliceY) is { } pile)
             label = PileMesher.Label(Content, pile.Stack);
-        _hud.SetHoverLabel(label, GetViewport().GetMousePosition());
+        _hud.SetHoverLabel(label, LabelPoint());
+    }
+
+    /// <summary>Where the mouse label goes: the mouse, or the override pick's cell on screen.</summary>
+    private Vector2 LabelPoint()
+    {
+        var viewport = GetViewport();
+        if (PickingEnabled || PickOverride is not { } p || viewport.GetCamera3D() is not { } camera) return viewport.GetMousePosition();
+        return camera.UnprojectPosition(new Vector3(p.Cell.X + 0.5f, p.Cell.Y + 1f, p.Cell.Z + 0.5f));
     }
 
     /// <summary>VIEW-05: ray from the camera through the mouse against terrain collision (physics layer 1).</summary>

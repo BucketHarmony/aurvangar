@@ -1281,3 +1281,49 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
     the `ColonyLost` event (or reads `sim.Agents.ColonyLost` after a load).
   - `ColonistPanelModel` already labels Drinking/Eating and Starved/Died of thirst.
   - Saves from before this task (v1) no longer load (SAV-04).
+
+## M5-T6 — Godot: build tool with ghost + reasons, building renderer, deconstruct tool, HUD top bar, Colony-lost modal (2026-09-26)
+- Done: VIEW-09, 12, 14, 15, 18. No sim code changed; the view reads sim state and sends the existing
+  `PlaceBuilding` / `Deconstruct` commands.
+  - ViewCore (unit-tested): `Tools/BuildTool.cs` (ghost from `CanPlace`, reason text, tooltip, R rotate, B cycle,
+    click / Shift-drag levee lines), `Tools/DeconstructTool.cs` (target, BLD-09 refusals, command),
+    `Entities/BuildingVisuals.cs` (box, color, label, progress, NoWater), `Hud/TopBarModel.cs` (day, speed, totals,
+    alerts, colony lost). `ToolKind` gains Build (B) and Deconstruct (X); only Dig/Chop/Cancel drag.
+    `EntityColors` reads `buildings.*`.
+  - Godot: `BuildingRenderer` (pooled boxes, labels, camera-facing progress bars, "NO WATER" billboard),
+    `TopBarView` (top right), `ColonyLostModal` (Load quick save / Close), `GameRoot.Build.cs` (ghost + entrance
+    tile, tooltips, clicks, Shift-drag, R/B keys, rejected-command toasts, modal on `ColonyLost` and after a load).
+    The toolbar Build button is a Warehouse / Pump / Levee menu; Deconstruct is enabled.
+  - Screenshot harness: `--script build` (chop + warehouse + pump + 3-levee line at the nearest valid sites) and
+    `GameRoot.PickOverride`, which shows a red warehouse ghost with its tooltip on the hub roof in `build` shots.
+    Also available as `run-headless.sh --script build`.
+- Tests: new `View/BuildingViewTests.cs` (17 methods, 21 cases: BuildTool 8, DeconstructTool 3, BuildingVisuals 4,
+  TopBar 2) and `ScreenshotScriptTests.Build_Seed1_...` (all 5 placements accepted, several states at tick 500, all
+  complete by 1200). No skipped tests existed for M5-T6. Mutation check: with the ghost origin set to the picked
+  cell instead of the cell in front, and red ghosts allowed to send, 4 BuildTool tests fail.
+  - check.sh: 436 passed, 13 skipped, 0 failed; Godot csproj 0 warnings.
+- Screenshots (Godot 4.6.2 .NET, Forward+), looked at:
+  - `artifacts/screens/build500/hub.png` (`SCRIPT=build TICKS=500`): orange Great Hall box; warehouse site
+    (semi-opaque, "Warehouse: log 14/20" with a green bar); levee blueprints (translucent light blue, "Levee: log 0/2");
+    complete pump with a red "NO WATER" billboard; red warehouse ghost with a white entrance tile on the hub roof
+    and the tooltip "Warehouse (20 log) / Needs solid ground under it"; top bar "Day 1  Paused  Log 0 ... Water 30
+    Pump has no water"; toolbar shows "Build: Warehouse (B)".
+  - `artifacts/screens/build1200/{hub,overview}.png`: all five buildings complete in palette colors (warehouse brown,
+    pump blue, levee line grey), no labels.
+  - `artifacts/screens/lost/hub.png` (`TICKS=15100`, no script): dimmed screen with the "Colony lost" modal
+    ("All dwarves have died. Day 7.", Load quick save (F9), Close); colonist rows read "Died of thirst".
+  - Default `artifacts/screens/{overview,river,hub,slice}.png`: unchanged apart from the hub box in its palette color
+    and the top bar.
+  - Known look issues: labels of neighbouring levees overlap; the hover tooltip can overlap a 3D billboard.
+- Decisions: ADR-044.
+- Golden: unchanged. Headless seed 1, 24,000 ticks: hash `854a3b12a197b9a6` (unchanged), ~18,700 ticks/s, colony
+  lost at tick 15,012. `--script build`, 2400 ticks: hash `853ea280a7367456`, 62 jobs done, 1 failed, 84 logs stored.
+- Perf: perf.sh 6 passed, 2 skipped (no sim code touched).
+- Next: M5-T7 (SurvivalScript through pump + warehouse + levee).
+  - **On seed 1 no valid pump site has water at its intake** (1,921 valid sites, 0 wet): the banks rise one level
+    per cell, so a pump whose front overhangs the river has its entrance inside the next bank step
+    (`EntranceBlocked`). Digging that one entrance cell fixes it. Checked at x=39: after `(39,18,79)` is dug, a pump at
+    `(39,18,80)` rotation 0 is Ok with its intake at 1024. The script must dig that notch first, then place the pump
+    after the dig is done. Without a working pump the colony dies of thirst on day 6.
+  - The ghost check uses `CanPlace` on current state, so a Shift-drag across cells whose blueprints are not applied
+    yet can still be rejected by the sim; the rejection is toasted.

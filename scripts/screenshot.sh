@@ -3,7 +3,8 @@
 # Needs GODOT_BIN = the Godot 4.6 .NET (mono) editor binary. Works on Linux (uses xvfb-run when there is no DISPLAY)
 # and on Windows Git Bash (runs Godot directly; prefer the *_console.exe binary to see its output).
 # Env overrides: SEED (1), TICKS (1200), SHOTS (overview,river,hub,slice), OUT (artifacts/screens),
-# SCRIPT (none; digchop = dig a pit and chop trees near the hub so colonists are at work in the shots).
+# SCRIPT (none; digchop = dig a pit and chop trees near the hub so colonists are at work in the shots;
+# build = chop plus a warehouse, a pump and a levee line near the hub, use TICKS=500 to catch them mid-build).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

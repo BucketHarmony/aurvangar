@@ -854,3 +854,45 @@ A trapped agent whose need is also at 0 dies of that need (step 6 runs before th
 Consequences: golden regenerated. With no commands seed 1 loses the colony at tick 15,012 (day 6): 30 water covers
 three drink rounds. Long M4 scenario tests (8,000-20,000 ticks) now stock their hub with water and berries, and the
 WAT-14 "water recedes" test allows the ECO-06 regeneration that resumes after the water drops (still no damage).
+
+## ADR-044: Build and deconstruct tools, building look, top bar, colony-lost modal (2026-09-26, M5-T6)
+Context: VIEW-09, 12, 14, 15 and 18 leave open where a ghost stands relative to the pick, what a click on a red
+ghost does, how Build ▸ Warehouse / Pump / Levee is chosen from the keyboard, how a complete building is drawn when
+its cells are already BuildingSolid terrain, and what the top bar shows before the weather system (ECO-17/18) exists.
+Decision:
+- All tool rules are in ViewCore (`Tools/BuildTool.cs`, `Tools/DeconstructTool.cs`), unit-tested; the Godot layer only
+  forwards input, draws, and enqueues `PlaceBuilding` / `Deconstruct` (both existed since M5-T2).
+- Build ghost origin = the empty cell in front of the picked face (`PickHit.Adjacent`), so on flat ground it stands on
+  the picked block. Green/red and the reason come from the sim's read-only `BuildingSystem.CanPlace`; reasons are
+  player text (`BuildTool.ReasonText`). The entrance cell is shown as a white floor tile.
+- A click on a green ghost sends `PlaceBuilding`; on a red ghost it sends nothing and toasts the reason (no rejected
+  commands in the log). Without Shift the tool then returns to Select; with Shift it stays, and dragging with Shift
+  held places one more building at each new green origin (levee lines). Origins sent in one drag are remembered, so
+  a cell is never sent twice before the tick applies it.
+- B enters the build tool; B again cycles warehouse → pump → levee (buildable = not `prebuiltOnly`, content order).
+  R rotates by 90°. The toolbar Build button is a menu of the same buildings.
+- Deconstruct (X): the target is the building covering the picked cell (complete buildings are solid blocks), else
+  the one covering the cell in front of the face (blueprints and sites stand on the ground). The view mirrors the
+  BLD-09 refusals (hub, already deconstructing, building on top) to show a reason instead of sending a command that
+  would be rejected. The tool stays active after a click, like the drag tools.
+- Buildings (VIEW-09): one footprint box per building, inflated 0.02 per side so a complete building's box hides its
+  own BuildingSolid faces and shows the palette color (`buildings.<id>`). Blueprint = unshaded `buildings.blueprint`
+  at alpha 0.35; site = building color at alpha 0.6; complete and deconstructing = solid. Label + camera-facing
+  progress bar: materials delivered/needed while any are missing, else build percent; "Tearing down n%". A complete
+  pump with `NoWater` gets a red "NO WATER" billboard. Boxes are cut at the slice level and hidden when their bottom
+  is above it.
+- Top bar (VIEW-15): "Day n" (1-based for the player), speed ("Paused", "1x", "3x", "6x"), totals per item in content
+  order summed from complete storage buildings (not `BuildingSystem.Totals`, which is empty after a load until the
+  next tick), and red alerts "No food" / "No water" (`NeedsSystem`) and "Pump has no water" (any complete pump
+  flagged). Season and days until it changes are left out until the weather system (M6-T4, shown in M6-T5).
+- Colony lost (VIEW-18): modal on the `ColonyLost` event, and after any attach/load whose colony is already lost;
+  a load that brings living dwarves back hides it. Buttons: Load quick save (F9 path) and Close (keep watching).
+  `CommandRejected` events are toasted.
+- Screenshot harness: new `--script build` (chop + warehouse + pump + levee line at the nearest valid sites around
+  the hub) and a fixed pick override (`GameRoot.PickOverride`) that shows a red warehouse ghost on the hub roof with
+  its tooltip, since picking is off in shots.
+Consequences: no sim code or state changed; golden hashes unchanged. Found while writing the `build` script: on
+seed 1 no valid pump site has water at its intake anywhere on the map (1,921 valid sites, 0 wet). The river banks
+rise one level per cell, so a pump whose front overhangs the water has its entrance inside the next bank step
+(`EntranceBlocked`). A player must first dig that step (one cell). M5-T7 (SurvivalScript through the pump) has to
+dig the entrance notch before placing the pump.

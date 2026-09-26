@@ -36,12 +36,12 @@ public partial class GameRoot
         _hud.Toast($"Loaded (tick {Sim.Clock.Tick}).");
     }
 
-    /// <summary>Makes <paramref name="sim"/> the running simulation: frees the old terrain, water, plant, agent, pile
-    /// and designation renderers, creates new ones, queues every chunk, and drops pending events and any tool drag.
-    /// The slice level carries over.</summary>
+    /// <summary>Makes <paramref name="sim"/> the running simulation: frees the old terrain, water, plant, agent, pile,
+    /// designation and building renderers, creates new ones, queues every chunk, and drops pending events and any tool
+    /// drag. The slice level carries over; the colony-lost modal follows the new colony.</summary>
     public void AttachSimulation(Simulation sim)
     {
-        foreach (Node? old in new Node?[] { Terrain, WaterView, PlantView, AgentView, PileView, DesignationView })
+        foreach (Node? old in new Node?[] { Terrain, WaterView, PlantView, AgentView, PileView, DesignationView, BuildingView })
         {
             if (old == null) continue;
             RemoveChild(old);
@@ -61,6 +61,7 @@ public partial class GameRoot
         PileView.Init(Sim, _entityColors);
         DesignationView = Add(new DesignationRenderer { Name = "Designations" });
         DesignationView.Init(Sim, _entityColors);
+        BuildingView = Add(new BuildingRenderer { Name = "Buildings" });
 
         var w = Sim.World;
         int slice = Slice?.SliceY ?? w.SizeY - 1;
@@ -72,6 +73,8 @@ public partial class GameRoot
         _frameEvents.Clear();
         _pilesDirty = true;
         _tool.AbortDrag();
+        _build.Release();
+        SyncLostModal();
     }
 
     private T Add<T>(T node) where T : Node

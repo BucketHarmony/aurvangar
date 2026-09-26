@@ -3,18 +3,27 @@ using Godot;
 
 namespace Aurvangar.Client;
 
-/// <summary>Player HUD (M4 part): the tool bar (VIEW-12), the colonist panel (VIEW-16), a short-lived message line
-/// (quick save / load results, VIEW-19) and the pile count label that follows the mouse (VIEW-10). Farm, Build and
-/// Deconstruct buttons are shown disabled until their systems exist (M5-T6, M6-T5).</summary>
+/// <summary>Player HUD: the tool bar (VIEW-12) with the Build menu (Warehouse / Pump / Levee), the top bar (VIEW-15),
+/// the colonist panel (VIEW-16), a short-lived message line (quick save / load results, refused commands) and the
+/// label that follows the mouse (pile counts VIEW-10, build and deconstruct tooltips VIEW-14). The Farm button is
+/// shown disabled until farming exists (M6-T5).</summary>
 public partial class Hud : CanvasLayer
 {
     public const double ToastSeconds = 3.0;
 
     public event System.Action<ToolKind>? ToolChosen;
 
+    /// <summary>A building picked in the Build menu (its definition id).</summary>
+    public event System.Action<string>? BuildChosen;
+
     public ColonistPanel Colonists { get; private set; } = null!;
+    public TopBarView TopBar { get; private set; } = null!;
+
+    /// <summary>Buildable (id, name) pairs for the Build menu; set by GameRoot before the node enters the tree.</summary>
+    public IReadOnlyList<(string Id, string Name)> Buildable { get; set; } = System.Array.Empty<(string, string)>();
 
     private readonly Dictionary<ToolKind, Button> _toolButtons = new();
+    private MenuButton _buildButton = null!;
     private Label _toast = null!;
     private Label _hoverLabel = null!;
     private double _toastLeft;
@@ -28,10 +37,13 @@ public partial class Hud : CanvasLayer
         AddTool(bar, ToolKind.Dig, "Dig (G)");
         AddTool(bar, ToolKind.Chop, "Chop (C)");
         AddDisabled(bar, "Farm (F)");
-        AddDisabled(bar, "Build (B)");
-        AddDisabled(bar, "Deconstruct (X)");
+        AddBuildMenu(bar);
+        AddTool(bar, ToolKind.Deconstruct, "Deconstruct (X)");
         AddTool(bar, ToolKind.Cancel, "Cancel (Z)");
         AddChild(bar);
+
+        TopBar = new TopBarView();
+        AddChild(TopBar);
 
         Colonists = new ColonistPanel();
         AddChild(Colonists);
@@ -57,10 +69,11 @@ public partial class Hud : CanvasLayer
         if (_toastLeft <= 0) _toast.Visible = false;
     }
 
-    /// <summary>Highlights the active tool button.</summary>
-    public void SetTool(ToolKind tool)
+    /// <summary>Highlights the active tool button; the Build button names the building being placed.</summary>
+    public void SetTool(ToolKind tool, string? buildName = null)
     {
         foreach (var (kind, button) in _toolButtons) button.SetPressedNoSignal(kind == tool);
+        _buildButton.Text = tool == ToolKind.Build && buildName != null ? $"Build: {buildName} (B)" : "Build (B)";
     }
 
     /// <summary>Shows a message at the bottom left for a few seconds.</summary>
@@ -87,6 +100,17 @@ public partial class Hud : CanvasLayer
         b.Pressed += () => ToolChosen?.Invoke(kind);
         bar.AddChild(b);
         _toolButtons[kind] = b;
+    }
+
+    /// <summary>VIEW-12 "Build ▸ Warehouse / Pump / Levee": a menu button whose items choose the building.</summary>
+    private void AddBuildMenu(HBoxContainer bar)
+    {
+        _buildButton = new MenuButton { Text = "Build (B)", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, Flat = false };
+        var popup = _buildButton.GetPopup();
+        for (int i = 0; i < Buildable.Count; i++) popup.AddItem(Buildable[i].Name, i);
+        popup.IdPressed += id => BuildChosen?.Invoke(Buildable[(int)id].Id);
+        bar.AddChild(_buildButton);
+        _toolButtons[ToolKind.Build] = _buildButton;
     }
 
     private static void AddDisabled(HBoxContainer bar, string text) =>

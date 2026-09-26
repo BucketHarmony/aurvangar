@@ -5,8 +5,8 @@ using Aurvangar.ViewCore.Meshing;
 
 namespace Aurvangar.ViewCore.Entities;
 
-/// <summary>Colors for agents, item piles and designations, from palette.json (`agents.*`, `items.*`,
-/// `designations.*`). A missing key shows magenta so it is obvious on screen.</summary>
+/// <summary>Colors for agents, item piles, designations and buildings, from palette.json (`agents.*`, `items.*`,
+/// `designations.*`, `buildings.*`). A missing key shows magenta so it is obvious on screen.</summary>
 public sealed class EntityColors
 {
     /// <summary>Alpha of the translucent dig-mark cubes (VIEW-11).</summary>
@@ -14,6 +14,7 @@ public sealed class EntityColors
 
     private static readonly Vector4 Missing = new(1, 0, 1, 1);
     private readonly Vector4[] _items;
+    private readonly Dictionary<string, string> _buildings;
 
     public Vector4 Idle { get; }
     public Vector4 Working { get; }
@@ -23,6 +24,8 @@ public sealed class EntityColors
     public Vector4 Dig { get; }
     public Vector4 Chop { get; }
     public Vector4 Unreachable { get; }
+    /// <summary>Blueprint color of any building (VIEW-09, `buildings.blueprint`).</summary>
+    public Vector4 Blueprint { get; }
 
     public EntityColors(ContentDb content)
     {
@@ -34,6 +37,8 @@ public sealed class EntityColors
         Dig = Get(p.Designations, "dig");
         Chop = Get(p.Designations, "chop");
         Unreachable = Get(p.Designations, "unreachable");
+        _buildings = p.Buildings;
+        Blueprint = Get(p.Buildings, "blueprint");
         _items = new Vector4[content.Items.Count];
         _items[0] = Missing;
         for (int i = 1; i < content.Items.Count; i++) _items[i] = Get(p.Items, content.Items[i].Id);
@@ -46,6 +51,9 @@ public sealed class EntityColors
         AgentLook.Dead => Dead,
         _ => Idle,
     };
+
+    /// <summary>Solid color of a building definition (VIEW-09, `buildings.&lt;id&gt;`).</summary>
+    public Vector4 Building(string defId) => Get(_buildings, defId);
 
     public Vector4 Item(ItemId id) => id.Value > 0 && id.Value < _items.Length ? _items[id.Value] : Missing;
 

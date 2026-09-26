@@ -45,4 +45,6 @@ public static class MeshConvert
     }
 
     public static Vector3 ToGodot(System.Numerics.Vector3 v) => new(v.X, v.Y, v.Z);
+
+    public static Color ToColor(System.Numerics.Vector4 c) => new(c.X, c.Y, c.Z, c.W);
 }

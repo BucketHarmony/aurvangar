@@ -38,6 +38,11 @@ public partial class ScreenshotRunner : Node
         foreach (var command in ScreenshotScripts.For(args.Script, root.Sim)) root.Sim.Enqueue(command);
         GD.Print($"screenshot: seed {args.Seed}, script {args.Script}, running {args.Ticks} ticks");
         root.RunTicksNow(args.Ticks);
+        if (ScreenshotScripts.GhostPick(args.Script, root.Sim) is { } ghost)
+        {
+            root.PickOverride = ghost;          // M5-T6: show the build ghost and its tooltip in the shots
+            root.SetTool(Aurvangar.ViewCore.Tools.ToolKind.Build);
+        }
 
         int failures = 0;
         foreach (var name in args.Shots)

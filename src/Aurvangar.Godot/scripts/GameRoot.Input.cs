@@ -6,7 +6,7 @@ using Godot;
 namespace Aurvangar.Client;
 
 /// <summary>Keyboard and mouse input of <see cref="GameRoot"/>: slice keys (VIEW-04), speed keys (VIEW-01), F3
-/// (VIEW-17), F5/F9 (VIEW-19), tool hotkeys and tool drags (VIEW-12, VIEW-13). The drag logic is
+/// (VIEW-17), F5/F9 (VIEW-19), tool hotkeys and tool drags (VIEW-12, VIEW-13), B and R for the build tool (VIEW-14). The drag logic is
 /// <see cref="ToolController"/> (ViewCore); this file only forwards events and enqueues the resulting command.</summary>
 public partial class GameRoot
 {
@@ -20,8 +20,12 @@ public partial class GameRoot
                 HandleKey(key);
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
-                if (mb.Pressed) _tool.Press(Hover);
-                else if (_tool.Release(Hover, SliceY) is { } command) Sim.Enqueue(command);
+                if (mb.Pressed) { if (!ClickToolPress()) _tool.Press(Hover); }
+                else
+                {
+                    _build.Release();
+                    if (_tool.Release(Hover, SliceY) is { } command) Sim.Enqueue(command);
+                }
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }:
                 _tool.AbortDrag();
@@ -48,6 +52,8 @@ public partial class GameRoot
             case Key.F5: QuickSaveNow(); return;
             case Key.F9: QuickLoadNow(); return;
             case Key.Escape: SetTool(ToolKind.Select); return;
+            case Key.B: BuildHotkey(); return;
+            case Key.R: RotateBuild(); return;
         }
         if (key.Keycode is >= Key.A and <= Key.Z && ToolController.ForHotkey((char)key.Keycode) is { } tool)
             SetTool(tool);
@@ -57,7 +63,8 @@ public partial class GameRoot
     public void SetTool(ToolKind tool)
     {
         _tool.SetTool(tool);
-        _hud.SetTool(tool);
+        _build.Release();
+        _hud.SetTool(tool, _build.Def.Name);
     }
 
     /// <summary>VIEW-16: a click on a colonist row centers the camera on that dwarf.</summary>

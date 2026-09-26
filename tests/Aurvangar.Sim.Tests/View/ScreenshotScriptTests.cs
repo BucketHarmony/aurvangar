@@ -1,4 +1,6 @@
+using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Commands;
+using Aurvangar.Sim.Events;
 using Aurvangar.Sim.Designations;
 using Aurvangar.Sim.Tests.Support;
 using Aurvangar.Sim.World;
@@ -41,5 +43,34 @@ public class ScreenshotScriptTests
         Assert.True(sim.Counters.JobsCompleted > 10, $"jobs completed: {sim.Counters.JobsCompleted}");
         Assert.True(sim.Designations.Count > 0 || sim.Plants.All.Any(p => p.MarkedForChop),
             "some work is still left at tick 1200, so the shots show colonists busy");
+    }
+
+    /// <summary>M5-T6: the build script places a warehouse, a pump on a river bank and a levee line near the hub, all
+    /// accepted.</summary>
+    [Fact]
+    public void Build_Seed1_PlacesWarehousePumpAndLevees_AllAccepted()
+    {
+        var sim = WorldFactory.Create(1, TestContent.Db);
+        var commands = ScreenshotScripts.For("build", sim);
+        Assert.IsType<DesignateChop>(commands[0]);
+        var places = commands.OfType<PlaceBuilding>().ToList();
+        Assert.Equal(new[] { "warehouse", "pump" }, places.Take(2).Select(p => p.DefId));
+        Assert.Equal(ScreenshotScripts.LeveeCount, places.Count(p => p.DefId == "levee"));
+        foreach (var c in commands) sim.Enqueue(c);
+        sim.Tick();
+        Assert.DoesNotContain(sim.Events.Drain(), e => e is CommandRejected);
+        Assert.Equal(1 + places.Count, sim.Buildings.All.Count());
+
+        // The harness shows a red warehouse ghost on the hub roof.
+        var pick = ScreenshotScripts.GhostPick("build", sim)!.Value;
+        Assert.Equal(PlacementResult.NotOnGround, new Aurvangar.ViewCore.Tools.BuildTool(TestContent.Db).Ghost(sim, pick)!.Value.Result);
+        Assert.Null(ScreenshotScripts.GhostPick("digchop", sim));
+
+        // Part way (TICKS=500) the shots show several building states; by tick 1200 everything is built.
+        sim.RunTicks(499);
+        var states = sim.Buildings.All.Where(b => b.Def.Id != "hub").Select(b => b.State).Distinct().ToList();
+        Assert.True(states.Count >= 2, $"states at tick 500: {string.Join(",", states)}");
+        sim.RunTicks(700);
+        Assert.All(sim.Buildings.All, b => Assert.Equal(BuildingState.Complete, b.State));
     }
 }

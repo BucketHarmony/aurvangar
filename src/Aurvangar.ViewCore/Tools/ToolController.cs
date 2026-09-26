@@ -4,12 +4,14 @@ using Aurvangar.ViewCore.Picking;
 
 namespace Aurvangar.ViewCore.Tools;
 
-/// <summary>Player tools of M4 (VIEW-12). Farm, Build and Deconstruct arrive with their systems (M5-T6, M6-T5).</summary>
-public enum ToolKind : byte { Select, Dig, Chop, Cancel }
+/// <summary>Player tools (VIEW-12). Dig, Chop and Cancel are drag tools (this class); Build and Deconstruct are
+/// click tools (<see cref="BuildTool"/>, <see cref="DeconstructTool"/>, M5-T6). Farm arrives with M6-T5.</summary>
+public enum ToolKind : byte { Select, Dig, Chop, Cancel, Build, Deconstruct }
 
 /// <summary>Tool state and drag boxes (VIEW-12, VIEW-13, ADR-033). Engine-neutral: the Godot layer feeds it mouse
 /// presses, picks and key presses, draws <see cref="PreviewBox"/>, and enqueues the command a release returns.
-/// A tool stays active after a drag; Esc (<see cref="ToolKind.Select"/>) returns to Select.</summary>
+/// A tool stays active after a drag; Esc (<see cref="ToolKind.Select"/>) returns to Select. The click tools (Build,
+/// Deconstruct) never start a drag here.</summary>
 public sealed class ToolController
 {
     public ToolKind Tool { get; private set; } = ToolKind.Select;
@@ -18,14 +20,19 @@ public sealed class ToolController
     private PickHit? _start;
     private PickHit? _end;
 
-    /// <summary>VIEW-12 hotkeys: G dig, C chop, Z cancel. Null for any other key.</summary>
+    /// <summary>VIEW-12 hotkeys: G dig, C chop, Z cancel, B build, X deconstruct. Null for any other key.</summary>
     public static ToolKind? ForHotkey(char key) => char.ToUpperInvariant(key) switch
     {
         'G' => ToolKind.Dig,
         'C' => ToolKind.Chop,
         'Z' => ToolKind.Cancel,
+        'B' => ToolKind.Build,
+        'X' => ToolKind.Deconstruct,
         _ => null,
     };
+
+    /// <summary>Dig, Chop and Cancel define a box by dragging.</summary>
+    public static bool IsDragTool(ToolKind tool) => tool is ToolKind.Dig or ToolKind.Chop or ToolKind.Cancel;
 
     /// <summary>Switches tool; any drag in progress is dropped without a command.</summary>
     public void SetTool(ToolKind tool)
@@ -39,7 +46,7 @@ public sealed class ToolController
     /// <summary>Left button down. Starts a drag when a tool is active and the mouse is over a pickable cell.</summary>
     public void Press(PickHit? hit)
     {
-        if (Tool == ToolKind.Select || hit is null) return;
+        if (!IsDragTool(Tool) || hit is null) return;
         _start = hit;
         _end = hit;
     }
