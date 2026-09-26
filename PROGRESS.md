@@ -106,3 +106,22 @@ Entry template:
 - Perf: n/a
 - Next: M1 complete. Next is M2-T1 (WaterGrid storage, active set, fall). `--script` still returns exit 2 until
   M5-T7/M6-T6.
+
+## M2-T1 — WaterGrid storage, active set, fall (2026-09-26)
+- Done: `WaterGrid` is now a partial class. `WaterActiveSet` (flag array + index list, sorted before each step)
+  implements WAT-02; `SetLevel` activates the cell and its neighbors when the level changes. `WaterGrid.Step.cs`:
+  double-buffered step (WAT-03) with fall (WAT-04) into an `int[]` delta, applied in ascending index order with
+  WAT-16 overfill resolution (excess pushed up, or counted as `Evaporated` under a solid/world ceiling); changed
+  cells plus their neighbors form the next active set. Spread, sources/drains, world-change consumption and
+  `WaterDirty` events are not done yet (M2-T2..T4).
+- Tests: un-skipped `WaterGridTests.Fall_MovesOneCellPerStep`, `Fall_TopsUpPartialCellBelow`,
+  `Fall_ActiveSetEmptiesWhenSettled`, `Conservation_SingleColumn` (the three Fall tests failed against the no-op
+  Tick first). Added `ActiveSet_SetLevelActivatesWetCellsOnly`, `Fall_ThroughOpenAirLandsOnFloor`.
+  check.sh: 68 passed, 104 skipped, 0 failed. sim-reviewer: no required fixes.
+- Decisions: ADR-010 (active set admits only wet cells; it is sim state and is hashed as sorted indices).
+- Golden: regenerated with `UPDATE_GOLDEN=1 dotnet test ... --filter Category=Golden` (golden files cannot be
+  hand-edited here): the hash now includes the water active set (empty on seed 1, which has no water until M2-T5).
+- Perf: n/a (headless seed 1, 1000 ticks: hash `951258ed499b8b08`, still ~0 ms/tick).
+- Next: M2-T2 (spread, minimum flow, evaporation) goes in `ComputeFlows` in `WaterGrid.Step.cs`. The WAT-16
+  overfill path cannot run under fall alone; once spread exists, add tests for overfill under open air and
+  under a solid ceiling (conservation must hold). M4-T10 must save/load the active set (ADR-010).

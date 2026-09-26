@@ -28,7 +28,7 @@ public class WaterGridTests
         Assert.Equal(0, sim.Water.GetLevel(new Int3(1, 4, 1)));
     }
 
-    [Fact(Skip = "M2-T1")]
+    [Fact]
     public void Fall_MovesOneCellPerStep() // WAT-04
     {
         var sim = new ScenarioBuilder().Ground(4).Water(new Int3(5, 10, 5), Full).Build();
@@ -37,7 +37,7 @@ public class WaterGridTests
         Assert.Equal(0, sim.Water.GetLevel(new Int3(5, 10, 5)));
     }
 
-    [Fact(Skip = "M2-T1")]
+    [Fact]
     public void Fall_TopsUpPartialCellBelow() // WAT-04
     {
         var sim = Shaft().Water(new Int3(5, 5, 5), 1000).Water(new Int3(5, 6, 5), 100).Build();
@@ -46,7 +46,7 @@ public class WaterGridTests
         Assert.Equal(76, sim.Water.GetLevel(new Int3(5, 6, 5)));
     }
 
-    [Fact(Skip = "M2-T1")]
+    [Fact]
     public void Fall_ActiveSetEmptiesWhenSettled() // WAT-02
     {
         var sim = Shaft().Water(new Int3(5, 9, 5), Full).Build();
@@ -55,12 +55,33 @@ public class WaterGridTests
         Assert.Equal(0, sim.Water.ActiveCount);
     }
 
-    [Fact(Skip = "M2-T1")]
+    [Fact]
     public void Conservation_SingleColumn() // WAT-11
     {
         var sim = Shaft().Water(new Int3(5, 9, 5), Full).Water(new Int3(5, 8, 5), 300).Build();
         long before = sim.Water.TotalVolume();
         for (int i = 0; i < 30; i++) { sim.Tick(); Assert.Equal(before, Accounted(sim)); }
+    }
+
+    [Fact]
+    public void ActiveSet_SetLevelActivatesWetCellsOnly() // WAT-02, ADR-010
+    {
+        var sim = new ScenarioBuilder().Ground(4).Water(new Int3(5, 5, 5), Full).Build();
+        Assert.Equal(1, sim.Water.ActiveCount);      // dry air neighbors and the solid floor do not join
+        sim.Water.SetLevel(new Int3(7, 5, 5), 10);
+        Assert.Equal(2, sim.Water.ActiveCount);
+        sim.Water.SetLevel(new Int3(5, 5, 5), Full); // unchanged level: nothing new
+        Assert.Equal(2, sim.Water.ActiveCount);
+    }
+
+    [Fact]
+    public void Fall_ThroughOpenAirLandsOnFloor() // WAT-04, WAT-02
+    {
+        var sim = new ScenarioBuilder().Ground(4).Water(new Int3(5, 20, 5), 700).Build();
+        sim.RunTicks(15);
+        Assert.Equal(700, sim.Water.GetLevel(new Int3(5, 5, 5)));
+        Assert.Equal(700, sim.Water.TotalVolume());
+        Assert.Equal(1, sim.Water.ActiveCount);      // landed this step; leaves after a step with no change
     }
 
     [Fact(Skip = "M2-T2")]

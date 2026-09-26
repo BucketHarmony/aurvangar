@@ -13,9 +13,8 @@ public sealed class WaterStats
     public long Pumped { get; set; }
 }
 
-/// <summary>Cellular-automaton water. Spec: docs/specs/water.md.
-/// SCAFFOLD: storage, sources/drains lists and accessors exist; Tick is a no-op until M2.</summary>
-public sealed class WaterGrid
+/// <summary>Cellular-automaton water. Spec: docs/specs/water.md. The step itself lives in WaterGrid.Step.cs.</summary>
+public sealed partial class WaterGrid
 {
     /// <summary>WAT-01: units per full cell.</summary>
     public const int Full = 1024;
@@ -24,6 +23,7 @@ public sealed class WaterGrid
     private readonly ushort[] _level;
     private readonly List<int> _sources = new();
     private readonly List<int> _drains = new();
+    private readonly WaterActiveSet _active;
 
     public WaterStats Stats { get; } = new();
 
@@ -34,6 +34,9 @@ public sealed class WaterGrid
     {
         _world = world;
         _level = new ushort[world.CellCount];
+        _active = new WaterActiveSet(world.CellCount);
+        _delta = new int[world.CellCount];
+        _touchedFlag = new bool[world.CellCount];
     }
 
     public int GetLevel(Int3 c) => _world.InBounds(c) ? _level[_world.Index(c)] : 0;
@@ -45,12 +48,15 @@ public sealed class WaterGrid
     internal Span<ushort> LevelsMutable => _level;
 
     /// <summary>Set a level directly (setup, tests, loader). Clamps to [0, Full]. Solid cells are forced to 0.
-    /// M2-T1: must also activate the cell and its neighbors.</summary>
+    /// A change activates the cell and its 6 neighbors (WAT-02).</summary>
     public void SetLevel(Int3 c, int level)
     {
         if (!_world.InBounds(c)) return;
         int i = _world.Index(c);
-        _level[i] = _world.IsSolidAt(i) ? (ushort)0 : (ushort)Math.Clamp(level, 0, Full);
+        ushort v = _world.IsSolidAt(i) ? (ushort)0 : (ushort)Math.Clamp(level, 0, Full);
+        if (_level[i] == v) return;
+        _level[i] = v;
+        ActivateAround(i);
     }
 
     public void AddSource(Int3 c) { if (_world.InBounds(c)) _sources.Add(_world.Index(c)); }
@@ -62,7 +68,7 @@ public sealed class WaterGrid
     public IReadOnlyList<int> Drains => _drains;
 
     /// <summary>Number of cells in the active set (WAT-02).</summary>
-    public int ActiveCount => 0; // M2-T1
+    public int ActiveCount => _active.Count;
 
     /// <summary>Sum of all levels. Used by conservation tests.</summary>
     public long TotalVolume()
@@ -72,20 +78,17 @@ public sealed class WaterGrid
         return sum;
     }
 
-    /// <summary>ARCH-06: levels, source strength, sources, drains (list order), and volume accounting.</summary>
+    /// <summary>ARCH-06: levels, active set (sorted), source strength, sources, drains (list order), and volume
+    /// accounting. The active set is state: which cells step next changes the outcome (ADR-010).</summary>
     public void AddToHash(ref StateHasher h)
     {
         h.Add(Levels);
+        var active = _active.Sorted();
+        h.Add(active.Count); foreach (var i in active) h.Add(i);
         h.Add(SourceStrength);
         h.Add(_sources.Count); foreach (var i in _sources) h.Add(i);
         h.Add(_drains.Count); foreach (var i in _drains) h.Add(i);
         h.Add(Stats.SourceAdded); h.Add(Stats.Drained); h.Add(Stats.Evaporated); h.Add(Stats.Pumped);
-    }
-
-    /// <summary>One CA step (WAT-03..16). M2-T1..T4.</summary>
-    public void Tick(EventBus events)
-    {
-        // Intentionally empty until M2. Do not add logic here without un-skipping the WaterGridTests first.
     }
 
     /// <summary>A cell is deep (not walkable) at or above half a block (WAT-14).</summary>

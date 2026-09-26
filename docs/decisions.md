@@ -78,3 +78,16 @@ the flat using its footprint from data (`TerrainResult.HubOrigin(footprint)`; it
 Consequences: The river is fed/drained by level difference only (flat bed); the M2-T5 settle and WAT-P2 budget are
 measured on this geometry. Initial water also fills the lower bank cells (y ≤ 17), so the wet surface is wider
 than the 7-cell channel.
+
+## ADR-010: Water active set holds wet cells only and is hashed state (2026-09-26, M2-T1)
+Context: WAT-02 says a cell becomes active when it or a neighbor changes, but every step rule (WAT-04..07) applies
+only to wet cells, and activating dry air/solid neighbors would inflate `ActiveCount` against the WAT-P2 budget.
+Separately, which cells step next affects the outcome (a cell outside the set is not re-evaluated), so the set is
+state, not a cache.
+Decision: `Activate` admits only cells with level > 0 (solid cells always hold 0). A dry cell that receives water
+changes level and is activated then. A cell that dries during a step is not re-flagged; one dried by `SetLevel`
+while already flagged stays in the set until the next step, which drops it.
+`WaterGrid.AddToHash` includes the active set as sorted indices. Save/load (M4-T10) must persist the active set
+rather than recomputing it.
+Consequences: `ActiveCount` counts wet cells that may change. M2-T4 dig activation (WAT-13) works through the wet
+neighbors of the dug cell. Adding the (empty) set to the hash changed the seed-1 golden hashes.
