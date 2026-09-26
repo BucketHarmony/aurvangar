@@ -3,7 +3,7 @@
 ## C#
 
 - Nullable enabled, warnings as errors (set in `Directory.Build.props`). File-scoped namespaces.
-- Namespaces mirror folders: `Colony.Sim.Water`, `Colony.Sim.Jobs`, …
+- Namespaces mirror folders: `Aurvangar.Sim.Water`, `Aurvangar.Sim.Jobs`, …
 - Value types for coordinates and ids: `Int3`, `AgentId`, `BuildingId`, `JobId`, `PlantId`, `ItemId`, `BlockId`.
   Ids are `readonly record struct` wrappers over `int`. Id 0 is invalid.
 - Hot-path data (blocks, water, path grid) lives in flat arrays indexed by `World.Index(Int3)`
@@ -27,8 +27,8 @@
 
 ## Godot project
 
-- Scenes in `src/Colony.Godot/scenes/`, scripts in `src/Colony.Godot/scripts/` mirroring scene names.
-- Root namespace of the Godot project is `Colony.Client` (ADR-006). Never `Colony.Godot`.
+- Scenes in `src/Aurvangar.Godot/scenes/`, scripts in `src/Aurvangar.Godot/scripts/` mirroring scene names.
+- Root namespace of the Godot project is `Aurvangar.Client` (ADR-006). Never `Aurvangar.Godot`.
 - One `GameRoot` autoload-free root scene (`Main.tscn`). No autoload singletons.
 - UI built with Godot Control nodes in scenes, logic in C#. No GDScript.
 - Placeholder art only: flat-colored `StandardMaterial3D`, box meshes for buildings, capsule for colonists.

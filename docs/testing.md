@@ -7,11 +7,11 @@ What remains (does it look right, is it fun) goes to human gates.
 
 | Category | Where | Runs in | Purpose |
 |---|---|---|---|
-| `Unit` | `tests/Colony.Sim.Tests/<System>Tests.cs` | `check.sh` | One rule per test, tiny worlds |
-| `Scenario` | `tests/Colony.Sim.Tests/Scenarios/` | `check.sh` | Multi-system behavior on built or generated worlds |
-| `Golden` | `tests/Colony.Sim.Tests/GoldenHashTests.cs` | `check.sh` | Determinism lock: seed 1 hash at fixed ticks |
-| `Perf` | `tests/Colony.Sim.Tests/Perf/` | `perf.sh` (Release) | Budgets from specs (`*-P*` IDs) |
-| Mesher | `tests/Colony.Sim.Tests/Meshing/` | `check.sh` | Greedy mesher quad counts and slicing; `Colony.ViewCore` is referenced by the test project |
+| `Unit` | `tests/Aurvangar.Sim.Tests/<System>Tests.cs` | `check.sh` | One rule per test, tiny worlds |
+| `Scenario` | `tests/Aurvangar.Sim.Tests/Scenarios/` | `check.sh` | Multi-system behavior on built or generated worlds |
+| `Golden` | `tests/Aurvangar.Sim.Tests/GoldenHashTests.cs` | `check.sh` | Determinism lock: seed 1 hash at fixed ticks |
+| `Perf` | `tests/Aurvangar.Sim.Tests/Perf/` | `perf.sh` (Release) | Budgets from specs (`*-P*` IDs) |
+| Mesher | `tests/Aurvangar.Sim.Tests/Meshing/` | `check.sh` | Greedy mesher quad counts and slicing; `Aurvangar.ViewCore` is referenced by the test project |
 | Screenshots | `scripts/screenshot.sh` | manual / gates | Visual regression for human review |
 
 ## Scenario DSL

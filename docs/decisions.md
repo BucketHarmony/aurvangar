@@ -24,17 +24,17 @@ Consequences: No avatar, no freeform block placement except levees in the POC.
 ## ADR-002: Godot 4.6 .NET, C# only, sim as a Godot-free library (2026-09-25, scaffold)
 Context: Carried over from the project's earlier decisions. Godot 4.7 exists; 4.6 is kept for stability of the
 decision record. GodotSharp 4.6.x targets net8.0.
-Decision: Godot.NET.Sdk/4.6.2, net8.0 everywhere, Colony.Sim and Colony.ViewCore never reference Godot.
+Decision: Godot.NET.Sdk/4.6.2, net8.0 everywhere, Aurvangar.Sim and Aurvangar.ViewCore never reference Godot.
 Consequences: Upgrading to 4.7 is a one-line csproj change plus project.godot features; do it only via a new ADR.
 
-## ADR-003: Game data embedded in Colony.Sim (2026-09-25, scaffold)
+## ADR-003: Game data embedded in Aurvangar.Sim (2026-09-25, scaffold)
 Context: Sim, tests, headless tool and Godot all need the same data without path logic.
-Decision: data/*.json are EmbeddedResources of Colony.Sim, loaded by ContentDb.LoadEmbedded().
+Decision: data/*.json are EmbeddedResources of Aurvangar.Sim, loaded by ContentDb.LoadEmbedded().
 Consequences: Editing data requires a rebuild. Acceptable for the POC; modding is out of scope.
 
 ## ADR-004: Integer-only sim state and fixed-point water (2026-09-25, scaffold)
 Context: Determinism across runs and machines is required for golden tests, save/load equality and replay.
-Decision: No float/double in Colony.Sim (enforced by scripts/sim-guard.sh). Water in 1/1024 cell units.
+Decision: No float/double in Aurvangar.Sim (enforced by scripts/sim-guard.sh). Water in 1/1024 cell units.
 Trigonometry from a literal integer table (Core/Fixed).
 Consequences: Slightly more verbose math. Palette floats live in Content/Defs.cs, which is exempt because the sim
 never reads them.
@@ -45,13 +45,20 @@ Decision: Add thirst and the Water Pump. Water then matters directly, and the dr
 tension (store water or build a reservoir).
 Consequences: One more need and one more building. Both are small.
 
-## ADR-006: Godot C# namespace is Colony.Client (2026-09-25, scaffold)
-Context: A namespace named Colony.Godot would shadow the Godot namespace inside the project.
-Decision: The folder and csproj are Colony.Godot; the root namespace is Colony.Client.
+## ADR-006: Godot C# namespace is Aurvangar.Client (2026-09-25, scaffold)
+Context: A namespace named Aurvangar.Godot would shadow the Godot namespace inside the project.
+Decision: The folder and csproj are Aurvangar.Godot; the root namespace is Aurvangar.Client.
 Consequences: None beyond naming.
 
-## ADR-007: Godot project is not in Colony.sln (2026-09-25, scaffold)
+## ADR-007: Godot project is not in Aurvangar.sln (2026-09-25, scaffold)
 Context: Godot.NET.Sdk must resolve from NuGet for any tool that loads the solution; the sim, tests and tools do not
 need it.
-Decision: Colony.sln contains Sim, ViewCore, Tests, Headless. check.sh builds the Godot csproj separately.
-Consequences: IDEs should open Colony.sln for sim work and the Godot project folder for view work.
+Decision: Aurvangar.sln contains Sim, ViewCore, Tests, Headless. check.sh builds the Godot csproj separately.
+Consequences: IDEs should open Aurvangar.sln for sim work and the Godot project folder for view work.
+
+## ADR-008: Name and theme: Aurvangar, dwarves (2026-09-26, scaffold)
+Context: The project needed a name before its namespaces spread. The owner chose a dwarf theme and a Norse source.
+Decision: Title, repo, solution and namespaces are Aurvangar (`Aurvangar.Sim`, `Aurvangar.ViewCore`,
+`Aurvangar.Client`). Colonists are dwarves in all player-facing text; code identifiers stay generic. The long-term
+endgame (science, exploration, diplomacy) is recorded in docs/00-overview.md as direction only.
+Consequences: Player-facing strings (UI labels, names) use dwarf flavor from M4-T11 onward. No Tolkien-derived words.

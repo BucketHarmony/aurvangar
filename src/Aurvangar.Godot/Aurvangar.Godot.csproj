@@ -1,0 +1,15 @@
+<Project Sdk="Godot.NET.Sdk/4.6.2">
+  <!-- Godot 4.6 .NET project. View, input and UI only. Gameplay lives in Aurvangar.Sim. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>Aurvangar.Client</RootNamespace>
+    <AssemblyName>AurvangarGodot</AssemblyName>
+    <!-- Godot source generators are outside our control; the view is not held to warnings-as-errors. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Aurvangar.Sim/Aurvangar.Sim.csproj" />
+    <ProjectReference Include="../Aurvangar.ViewCore/Aurvangar.ViewCore.csproj" />
+  </ItemGroup>
+</Project>

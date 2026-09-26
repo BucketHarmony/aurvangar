@@ -19,8 +19,8 @@ Milestone order is by risk: world and water before anything that depends on them
 - [ ] **M0-T1** Verify toolchain and repo · deps: –
   - The repo is already initialized with the scaffold commit. Confirm `git status` is clean.
   - `./scripts/check.sh` runs green (foundation tests pass, acceptance tests reported as skipped).
-  - `dotnet build src/Colony.Godot` succeeds (Godot.NET.Sdk restores from NuGet; no Godot binary needed).
-  - If `GODOT_BIN` is set: `$GODOT_BIN --headless --path src/Colony.Godot --build-solutions --quit` exits 0.
+  - `dotnet build src/Aurvangar.Godot` succeeds (Godot.NET.Sdk restores from NuGet; no Godot binary needed).
+  - If `GODOT_BIN` is set: `$GODOT_BIN --headless --path src/Aurvangar.Godot --build-solutions --quit` exits 0.
   - Write PROGRESS.md entry listing tool versions found.
 - [ ] **M0-T2** CI · deps: M0-T1
   - `.github/workflows/ci.yml` (already present) passes locally via `act` if available; otherwise just confirm
@@ -74,13 +74,13 @@ Milestone order is by risk: world and water before anything that depends on them
 ## M3 — View: terrain, water, camera, slicing
 
 - [ ] **M3-T1** Greedy chunk mesher · specs: VIEW-03 · deps: M1-T2
-  - `Colony.ViewCore.Meshing.ChunkMesher` → `MeshData` (positions, normals, colors, indices).
+  - `Aurvangar.ViewCore.Meshing.ChunkMesher` → `MeshData` (positions, normals, colors, indices).
   - Un-skip `Meshing/ChunkMesherTests.*` (single block = 6 quads; 4×4×1 slab = 6 quads; two block types = no
     merge across types; hidden faces culled across chunk borders).
 - [ ] **M3-T2** Slicing in mesher · specs: VIEW-04 · deps: M3-T1
   - Un-skip `Meshing/SliceTests.*` (cells above slice treated as air; cut faces flagged).
 - [ ] **M3-T3** Water surface builder · specs: water.md rendering contract, VIEW-07 · deps: M2-T4, M3-T1
-  - `Colony.ViewCore.Meshing.WaterMesher`. Un-skip `Meshing/WaterMesherTests.*`.
+  - `Aurvangar.ViewCore.Meshing.WaterMesher`. Un-skip `Meshing/WaterMesherTests.*`.
 - [ ] **M3-T4** Godot: GameRoot loop, ChunkRenderer, WaterRenderer · specs: VIEW-01, VIEW-02 · deps: M3-T3
   - Seed 1 renders with terrain and river. Remesh queue with per-frame budget.
 - [ ] **M3-T5** Godot: camera rig, slice controller, picking, debug overlay (F3) · specs: VIEW-04..06, VIEW-17 · deps: M3-T4

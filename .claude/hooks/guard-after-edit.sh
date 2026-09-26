@@ -3,7 +3,7 @@
 input=$(cat)
 file=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')
 case "$file" in
-  */src/Colony.Sim/*|*/src/Colony.ViewCore/*|*.gd)
+  */src/Aurvangar.Sim/*|*/src/Aurvangar.ViewCore/*|*.gd)
     cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
     out=$(./scripts/sim-guard.sh 2>&1) || { echo "$out" >&2; exit 2; }
     ;;

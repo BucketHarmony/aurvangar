@@ -5,9 +5,9 @@ cd "$(dirname "$0")/.."
 : "${GODOT_BIN:?Set GODOT_BIN to the Godot 4.6 .NET editor binary}"
 OUT="$PWD/artifacts/screens"
 mkdir -p "$OUT"
-ARGS=(--path src/Colony.Godot --rendering-driver opengl3 res://scenes/Screenshot.tscn
+ARGS=(--path src/Aurvangar.Godot --rendering-driver opengl3 res://scenes/Screenshot.tscn
       -- --seed "${SEED:-1}" --ticks "${TICKS:-1200}" --shots "${SHOTS:-overview,river,hub,slice}" --out "$OUT")
-"$GODOT_BIN" --headless --path src/Colony.Godot --build-solutions --quit
+"$GODOT_BIN" --headless --path src/Aurvangar.Godot --build-solutions --quit
 if command -v xvfb-run >/dev/null && [ -z "${DISPLAY:-}" ]; then
   xvfb-run -a -s "-screen 0 1600x900x24" "$GODOT_BIN" "${ARGS[@]}"
 else

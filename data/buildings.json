@@ -2,7 +2,7 @@
   "buildings": [
     {
       "id": "hub",
-      "name": "Colony Hub",
+      "name": "Great Hall",
       "footprint": [3, 2, 3],
       "entrance": [1, 0, -1],
       "cost": {},

@@ -1,8 +1,26 @@
 # 00 — Overview and scope
 
+## The game
+
+**Aurvangar.** The name comes from the Völuspá's list of dwarves: Dvalin's people "went from the stone of the halls
+to the seat of Aurvangar," the mud-plains (*aurr*, wet clay, plus *vangr*, field). A dwarf hold leaves its mountain to
+found an outpost on wet low ground beside a river, far into the wild. The river is what keeps the outpost alive and
+what drowns it when the dwarves dig carelessly.
+
+Theme rules for all player-facing text: the colonists are **dwarves**; the hub is the **Great Hall**. Code
+identifiers stay generic (`Agent`, `hub`) so the sim does not care about flavor. Dwarf names come from the Old Norse
+Dvergatal (public domain). Nothing from Tolkien's invented languages or text.
+
+## Long-term direction (not in the POC; do not build)
+
+Once a hold is stable, the endgame is an outpost's purpose: **science** (studying the wild), **exploration** (beyond
+the starting map) and **diplomacy** (with whoever else lives out there), in the vein of RimWorld's late game. The
+POC proves the foundation those depend on: a fortress that survives its river. No backlog task may add research,
+world-map, or faction systems until a later milestone plan says so.
+
 ## What this POC proves
 
-A small voxel colony sim where water is the system the player plans around. Colonists are directed indirectly
+A small voxel colony sim where water is the system the player plans around. Dwarves are directed indirectly
 (designations and prefab buildings, Timberborn style). Terrain is fully voxel and diggable (Dwarf Fortress
 style). Water is a cellular automaton that floods what you dig and dries up in droughts.
 
@@ -11,7 +29,7 @@ The POC is done when the **definition-of-done session** below plays end to end o
 ## Definition-of-done session (seed 1)
 
 1. The map loads: 128×128×64 voxels, a hill, a river flowing from the west edge to the east edge, trees, berry
-   bushes. A pre-built Colony Hub stands on a flat patch near the river with 5 colonists and starting stock
+   bushes. A pre-built Great Hall (the `hub` building) stands on a flat patch near the river with 5 dwarves and starting stock
    (40 berries, 30 water, 30 logs).
 2. The player places a Water Pump on the riverbank. Colonists build it. It fills storage with water.
 3. The player designates a farm field near the river. Colonists plant; potatoes grow only on moist tiles.
@@ -34,7 +52,7 @@ The POC is done when the **definition-of-done session** below plays end to end o
 | Agents | 5 colonists, no births. Needs: hunger, thirst. Death at zero after a grace period |
 | Movement | A* on voxel grid, 1-block step up/down, 8-way with no corner cutting, deep water impassable |
 | Jobs | Dig, Chop, Haul, Deliver, Construct, Deconstruct, Plant, Harvest, OperatePump, Eat, Drink |
-| Buildings (prefab) | Colony Hub (pre-placed), Warehouse, Water Pump, Levee |
+| Buildings (prefab) | Great Hall `hub` (pre-placed), Warehouse, Water Pump, Levee |
 | Designations | Dig (box), Chop (area), Farm field (area), Cancel, Deconstruct |
 | Water | Fixed-point CA, active-cell update, sources and drains at map edges, drought schedule |
 | Farming | Moisture map from nearby water; potatoes grow only when moist; wither when dry too long |

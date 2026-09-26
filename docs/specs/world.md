@@ -45,7 +45,7 @@ Deterministic from `seed`. Implemented in `TerrainGenerator`, pure function of `
 - **GEN-04** Layers per column of height h: `y=0` Bedrock; `1 ≤ y < h-4` Stone; `h-4 ≤ y < h` Dirt;
   `y = h` Grass (Sand if within 2 cells of the river channel).
 - **GEN-05** Spawn flat: a 9×9 area centered at `(40, 60)` flattened to the median height of that area. The
-  Colony Hub is pre-placed at its center (see `buildings.md`). If the river passes within 6 cells of it on seed 1,
+  Great Hall (`hub`) is pre-placed at its center (see `buildings.md`). If the river passes within 6 cells of it on seed 1,
   shift the area north in 4-cell steps until it does not.
 - **GEN-06** Trees: Poisson-disk style placement with min spacing 4 on Grass cells not in the spawn flat, not
   within 3 of the river; target 150 trees. Tree = trunk height 4 (occupies 4 cells), canopy is visual only.

@@ -1,4 +1,4 @@
-# Colony Sim (working title)
+# Aurvangar
 
 Voxel colony builder POC in the Timberborn / Dwarf Fortress vein. Godot 4.6 .NET, C# only, deterministic
 simulation in a Godot-free library. Built largely by Claude Code working through `BACKLOG.md`.
@@ -10,12 +10,12 @@ CLAUDE.md                 operating manual for Claude Code (read first)
 BACKLOG.md                milestone task queue with acceptance tests
 PROGRESS.md               per-task log, milestone and gate reports
 docs/                     overview, architecture, conventions, testing, decisions (ADRs), specs/
-data/                     blocks, items, buildings, palette (embedded into Colony.Sim)
-src/Colony.Sim            simulation (no Godot)
-src/Colony.ViewCore       engine-neutral meshing and view logic (no Godot)
-src/Colony.Godot          Godot project (namespace Colony.Client)
-tests/Colony.Sim.Tests    xUnit: unit, scenario, golden, perf
-tools/Colony.Headless     console runner
+data/                     blocks, items, buildings, palette (embedded into Aurvangar.Sim)
+src/Aurvangar.Sim            simulation (no Godot)
+src/Aurvangar.ViewCore       engine-neutral meshing and view logic (no Godot)
+src/Aurvangar.Godot          Godot project (namespace Aurvangar.Client)
+tests/Aurvangar.Sim.Tests    xUnit: unit, scenario, golden, perf
+tools/Aurvangar.Headless     console runner
 scripts/                  check, perf, run-headless, screenshot, autopilot, sim-guard
 .claude/                  settings (permissions, hooks), agents, commands
 ```
@@ -48,7 +48,7 @@ report at the bottom of `PROGRESS.md`, answer its questions (edit specs or add b
 box in `BACKLOG.md`, and start it again.
 
 The Stop hook runs `./scripts/check.sh` before Claude can end a turn with source changes. Set
-`COLONY_SKIP_STOP_GATE=1` for exploratory interactive sessions.
+`AURVANGAR_SKIP_STOP_GATE=1` for exploratory interactive sessions.
 
 ## Manual commands
 
@@ -57,5 +57,5 @@ The Stop hook runs `./scripts/check.sh` before Claude can end a turn with source
 ./scripts/perf.sh
 ./scripts/run-headless.sh --seed 1 --ticks 24000 --report-every 2400
 GODOT_BIN=/path/to/Godot_v4.6-stable_mono ./scripts/screenshot.sh
-$GODOT_BIN --path src/Colony.Godot            # play
+$GODOT_BIN --path src/Aurvangar.Godot            # play
 ```

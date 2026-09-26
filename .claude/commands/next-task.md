@@ -10,7 +10,7 @@ Follow "The work loop" in CLAUDE.md for exactly one task:
 3. Read every spec ID it references and the code it touches.
 4. Un-skip (and write bodies for placeholder) acceptance tests. Run them; confirm they fail for the right reason.
 5. Implement. Run ./scripts/check.sh until green. Do not weaken tests.
-6. If the change to src/Colony.Sim is over ~150 lines, run the sim-reviewer agent and apply its required fixes.
+6. If the change to src/Aurvangar.Sim is over ~150 lines, run the sim-reviewer agent and apply its required fixes.
 7. Check the box in BACKLOG.md, append the PROGRESS.md entry, commit as "<ID>: <title>".
 
 $ARGUMENTS

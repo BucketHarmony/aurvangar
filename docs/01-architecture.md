@@ -3,7 +3,7 @@
 ## Layers
 
 ```
-┌──────────────────────── Colony.Godot (view) ────────────────────────┐
+┌──────────────────────── Aurvangar.Godot (view) ────────────────────────┐
 │ GameRoot (Node) ── owns Simulation, runs fixed-tick accumulator      │
 │ ChunkRenderer   ── greedy meshes per chunk, rebuilds on ChunkDirty   │
 │ WaterRenderer   ── surface mesh per chunk, rebuilds on WaterDirty    │
@@ -14,7 +14,7 @@
 └──────────────┬───────────────────────────────▲──────────────────────┘
                │ ICommand (enqueue)            │ read-only queries + SimEvent drain
 ┌──────────────▼───────────────────────────────┴──────────────────────┐
-│                     Colony.Sim (no Godot)                           │
+│                     Aurvangar.Sim (no Godot)                           │
 │ Simulation ── Tick() runs systems in fixed order                    │
 │  World (VoxelWorld, chunks) · WaterGrid · MoistureMap               │
 │  WorldActions (the only mutation path for agent work)               │

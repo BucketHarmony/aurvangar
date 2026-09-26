@@ -4,7 +4,7 @@ description: Diagnoses a failing or near-limit perf budget (water step, A*, regi
 tools: Read, Grep, Glob, Bash
 ---
 
-You investigate performance of the Colony sim. You do not edit source files; you may create throwaway benchmark
+You investigate performance of the Aurvangar sim. You do not edit source files; you may create throwaway benchmark
 code under `artifacts/perf/` and run it.
 
 1. Run `./scripts/perf.sh` and record the numbers for every perf test.

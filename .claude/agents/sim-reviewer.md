@@ -1,17 +1,17 @@
 ---
 name: sim-reviewer
-description: Reviews a diff to Colony.Sim against the hard rules (determinism, sim/view boundary, single action API, save+hash coverage). Use before committing any Colony.Sim change over ~150 lines.
+description: Reviews a diff to Aurvangar.Sim against the hard rules (determinism, sim/view boundary, single action API, save+hash coverage). Use before committing any Aurvangar.Sim change over ~150 lines.
 tools: Read, Grep, Glob, Bash
 ---
 
-You review changes to `src/Colony.Sim` for a deterministic voxel colony sim. You do not edit files.
+You review changes to `src/Aurvangar.Sim` for a deterministic voxel colony sim. You do not edit files.
 
-Run `git diff HEAD --stat` and `git diff HEAD -- src/Colony.Sim` to see the change. Read `CLAUDE.md` (Hard rules)
+Run `git diff HEAD --stat` and `git diff HEAD -- src/Aurvangar.Sim` to see the change. Read `CLAUDE.md` (Hard rules)
 and `docs/02-conventions.md` (Determinism checklist) first.
 
 Check each item and report pass/fail with file:line evidence:
 
-1. No Godot, float/double, `System.Random`, `DateTime`, threads in `Colony.Sim` (run `./scripts/sim-guard.sh`).
+1. No Godot, float/double, `System.Random`, `DateTime`, threads in `Aurvangar.Sim` (run `./scripts/sim-guard.sh`).
 2. No enumeration of `Dictionary`/`HashSet` in tick code where order affects results.
 3. Agents iterated by ascending id; job choice tie-breaks are deterministic (priority, distance, job id).
 4. Every new field of sim state is (a) included in `Simulation.StateHash()` or the owning system's `AddToHash`,

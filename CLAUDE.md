@@ -1,6 +1,6 @@
-# CLAUDE.md — Colony Sim POC
+# CLAUDE.md — Aurvangar POC
 
-Working title: **Colony Sim**. A voxel colony builder in the Timberborn vein: indirect control, prefab
+Working title: **Aurvangar**. A voxel colony builder in the Timberborn vein: indirect control, prefab
 buildings, water as the central system, DF-style digging. This file is the operating manual for Claude Code.
 Read it fully at the start of every session.
 
@@ -8,13 +8,13 @@ Read it fully at the start of every session.
 
 - Godot **4.6** .NET edition, `Godot.NET.Sdk/4.6.2`, C# only. **No GDScript anywhere.**
 - .NET 8 (`net8.0`) for every project.
-- `src/Colony.Sim` — the entire simulation. Plain .NET library. **Must never reference Godot.**
-- `src/Colony.ViewCore` — pure C# view logic with no Godot dependency: chunk mesher, slicing rules, water
+- `src/Aurvangar.Sim` — the entire simulation. Plain .NET library. **Must never reference Godot.**
+- `src/Aurvangar.ViewCore` — pure C# view logic with no Godot dependency: chunk mesher, slicing rules, water
   surface builder. Unit-tested like the sim.
-- `src/Colony.Godot` — the Godot project. Scene nodes, input, UI. Turns ViewCore output into Godot meshes.
+- `src/Aurvangar.Godot` — the Godot project. Scene nodes, input, UI. Turns ViewCore output into Godot meshes.
   Reads sim state, sends commands.
-- `tests/Colony.Sim.Tests` — xUnit. All gameplay correctness is proven here, headless.
-- `tools/Colony.Headless` — console runner: run a seed for N ticks, print stats, dump state hash, profile.
+- `tests/Aurvangar.Sim.Tests` — xUnit. All gameplay correctness is proven here, headless.
+- `tools/Aurvangar.Headless` — console runner: run a seed for N ticks, print stats, dump state hash, profile.
 
 ## Where things are
 
@@ -49,9 +49,9 @@ the conditions in "When to stop" below.
 
 ## Hard rules
 
-- **Sim/view boundary.** Nothing in `Colony.Sim` references Godot, `System.Numerics` floats for state, wall-clock
+- **Sim/view boundary.** Nothing in `Aurvangar.Sim` references Godot, `System.Numerics` floats for state, wall-clock
   time, threads, or `Random`. The view never mutates sim state directly; it sends `ICommand`s.
-- **Determinism.** Sim state is integers only. RNG is `Colony.Sim.Core.Rng` seeded from the world seed. Iterate
+- **Determinism.** Sim state is integers only. RNG is `Aurvangar.Sim.Core.Rng` seeded from the world seed. Iterate
   collections in a defined order (sorted ids or indices, never `Dictionary`/`HashSet` enumeration order).
   Same seed + same command log ⇒ same `StateHash()` on every run. `GoldenHashTests` enforces this.
 - **One action API.** Every world mutation made on behalf of an agent goes through `WorldActions`
@@ -71,7 +71,7 @@ the conditions in "When to stop" below.
 ./scripts/perf.sh           # perf-category tests (budgets). Run at the end of every milestone and after touching water/paths.
 ./scripts/run-headless.sh --seed 1 --ticks 24000   # full-sim smoke run with stats
 ./scripts/screenshot.sh     # renders fixed camera shots to artifacts/screens (needs Godot 4.6 mono + xvfb)
-UPDATE_GOLDEN=1 dotnet test tests/Colony.Sim.Tests --filter Category=Golden   # only when a change is intentional; record in PROGRESS.md
+UPDATE_GOLDEN=1 dotnet test tests/Aurvangar.Sim.Tests --filter Category=Golden   # only when a change is intentional; record in PROGRESS.md
 ```
 
 `GODOT_BIN` must point at the Godot 4.6 .NET editor binary for screenshot and editor tasks. If it is missing,
@@ -89,5 +89,5 @@ skip screenshot steps, note it in PROGRESS.md, and continue.
 - `/next-task` — runs one iteration of the work loop.
 - `/milestone-check` — verifies a milestone's exit criteria and writes the milestone report.
 - `sim-reviewer` agent — review a diff against the hard rules (determinism, boundary, action API). Use it before
-  committing any change to `Colony.Sim` that touches more than ~150 lines.
+  committing any change to `Aurvangar.Sim` that touches more than ~150 lines.
 - `perf-auditor` agent — use when a perf test fails or a budget is within 20% of its limit.

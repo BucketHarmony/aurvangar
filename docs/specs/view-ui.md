@@ -1,6 +1,6 @@
 # Spec — View, input, UI (VIEW)
 
-All of this lives in `src/Colony.Godot`. It reads sim state and sends commands. No gameplay rules here.
+All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends commands. No gameplay rules here.
 
 ## Game loop
 
@@ -11,7 +11,7 @@ All of this lives in `src/Colony.Godot`. It reads sim state and sends commands. 
 
 ## Terrain rendering
 
-- **VIEW-03** `ChunkMesher` (pure C#, lives in `src/Colony.ViewCore/Meshing/`, no Godot types, unit-tested)
+- **VIEW-03** `ChunkMesher` (pure C#, lives in `src/Aurvangar.ViewCore/Meshing/`, no Godot types, unit-tested)
   produces greedy-meshed quads per face direction per block type for a 32³ chunk, reading neighbors across
   chunk borders. Output: vertex, normal, color arrays; one `ArrayMesh` surface per chunk with vertex colors from
   `data/palette.json`. Collision: a `ConcavePolygonShape3D` per chunk from the same quads (used only for mouse

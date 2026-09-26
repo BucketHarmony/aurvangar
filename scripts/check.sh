@@ -7,14 +7,14 @@ echo "== sim guard"
 ./scripts/sim-guard.sh
 
 echo "== build"
-dotnet build Colony.sln -c Debug -nologo -v q
+dotnet build Aurvangar.sln -c Debug -nologo -v q
 
 echo "== tests (excluding Perf)"
-dotnet test tests/Colony.Sim.Tests -c Debug --no-build -nologo \
+dotnet test tests/Aurvangar.Sim.Tests -c Debug --no-build -nologo \
   --filter "Category!=Perf" --logger "console;verbosity=minimal"
 
 echo "== godot project build"
-if dotnet build src/Colony.Godot/Colony.Godot.csproj -c Debug -nologo -v q; then
+if dotnet build src/Aurvangar.Godot/Aurvangar.Godot.csproj -c Debug -nologo -v q; then
   :
 else
   echo "Godot project failed to build." >&2
