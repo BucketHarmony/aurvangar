@@ -57,7 +57,8 @@ public sealed partial class BuildingSystem
 
     /// <summary>BLD-05 (state only): validates with <see cref="CanPlace"/> and, if Ok, adds a building in state
     /// <c>Blueprint</c> with nothing delivered and no progress. Its footprint is then reserved: no other blueprint
-    /// may overlap it. No blocks are written. Jobs, the PlaceBuilding command and events come in M5-T2.</summary>
+    /// may overlap it. No blocks are written. The PlaceBuilding command (<see cref="Construction.Place"/>) adds the
+    /// event and jobs.</summary>
     public PlacementResult TryPlaceBlueprint(BuildingDef def, Int3 origin, int rotation, out Building? building)
     {
         building = null;
@@ -67,13 +68,14 @@ public sealed partial class BuildingSystem
         {
             Id = new BuildingId(Ids.Allocate()), Def = def, Origin = origin, Rotation = rotation, State = BuildingState.Blueprint,
         };
-        _buildings.Add(building.Id.Value, building);
+        Add(building);
         return r;
     }
 
     /// <summary>The building (lowest id first, any state) whose footprint covers the cell, or null.</summary>
     public Building? BuildingAt(Int3 c)
     {
+        if (_world.InBounds(c)) return _cellOwner.TryGetValue(_world.Index(c), out var id) ? _buildings[id] : null;
         foreach (var b in _buildings.Values)
             if (b.Covers(c)) return b;
         return null;

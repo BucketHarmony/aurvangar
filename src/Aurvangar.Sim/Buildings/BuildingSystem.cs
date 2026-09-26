@@ -7,13 +7,18 @@ using Aurvangar.Sim.World;
 namespace Aurvangar.Sim.Buildings;
 
 /// <summary>Placement, construction, storage, production. Spec: docs/specs/buildings.md.
-/// Placement validation and blueprints: BuildingSystem.Placement.cs (M5-T1). Construction is M5-T2.</summary>
+/// Placement validation and blueprints: BuildingSystem.Placement.cs (M5-T1). Construction jobs, completion,
+/// cancel and deconstruction: <see cref="Construction"/> and WorldActions.Construction.cs (M5-T2).</summary>
 public sealed partial class BuildingSystem
 {
     private readonly VoxelWorld _world;
     private readonly PlantSystem _plants;
     private readonly PathGrid _paths;
     private readonly SortedDictionary<int, Building> _buildings = new();
+
+    /// <summary>Footprint cell index -> id of the lowest-id building covering it. Derived (kept by Add/Remove, also on
+    /// load through <see cref="Restore"/>); lookups only, never enumerated.</summary>
+    private readonly Dictionary<int, int> _cellOwner = new();
 
     public IdAllocator Ids { get; } = new();
 
@@ -30,14 +35,48 @@ public sealed partial class BuildingSystem
     public Building PlacePrebuilt(BuildingDef def, Int3 origin, int rotation)
     {
         var b = new Building { Id = new BuildingId(Ids.Allocate()), Def = def, Origin = origin, Rotation = rotation, State = BuildingState.Complete };
-        _buildings.Add(b.Id.Value, b);
+        Add(b);
         if (def.SetsBlocks)
             foreach (var c in b.FootprintCells()) _world.SetBlock(c, BlockId.BuildingSolid);
         return b;
     }
 
     /// <summary>SaveGame load: re-adds a building with its saved id. Blocks are loaded separately, so none are written.</summary>
-    internal void Restore(Building b) => _buildings.Add(b.Id.Value, b);
+    internal void Restore(Building b) => Add(b);
+
+    /// <summary>SaveGame load: re-derives construction-site blocking (PTH-02) from the loaded building states.</summary>
+    internal void AfterLoad()
+    {
+        foreach (var b in _buildings.Values)
+            if (b.State == BuildingState.UnderConstruction)
+                foreach (var c in b.FootprintCells()) _paths.SetSite(c, true);
+    }
+
+    private void Add(Building b)
+    {
+        _buildings.Add(b.Id.Value, b);
+        foreach (var c in b.FootprintCells())
+        {
+            if (!_world.InBounds(c)) continue;
+            int i = _world.Index(c);
+            if (!_cellOwner.TryGetValue(i, out var owner) || owner > b.Id.Value) _cellOwner[i] = b.Id.Value;
+        }
+    }
+
+    /// <summary>Removes a building (cancelled or deconstructed, BLD-09). Blocks, jobs and site cells are the caller's.</summary>
+    internal void Remove(Building b)
+    {
+        _buildings.Remove(b.Id.Value);
+        foreach (var c in b.FootprintCells())
+        {
+            if (!_world.InBounds(c)) continue;
+            int i = _world.Index(c);
+            if (!_cellOwner.TryGetValue(i, out var owner) || owner != b.Id.Value) continue;
+            _cellOwner.Remove(i);
+            foreach (var other in _buildings.Values)   // overlapping prebuilt buildings only (tests); lowest id wins
+                if (other.Covers(c)) { _cellOwner[i] = other.Id.Value; break; }
+        }
+    }
 
     /// <summary>BLD-12: stored items summed over all storage buildings by ItemId.Value, recomputed each tick for the
     /// HUD (complete storage buildings only). Computed at the buildings step (ARCH-01 step 7), so it lags hauling and
@@ -49,7 +88,8 @@ public sealed partial class BuildingSystem
 
     public void Tick(Simulation sim)
     {
-        // M5-T2: construction jobs and completion. M5-T4: pump production.
+        Construction.Tick(sim);   // M5-T2: BLD-06 delivers, BLD-08 construct, BLD-09 deconstruct jobs
+        // M5-T4: pump production.
         _totals.Clear();
         foreach (var b in _buildings.Values)
         {

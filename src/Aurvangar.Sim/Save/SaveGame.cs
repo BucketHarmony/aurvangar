@@ -140,6 +140,7 @@ public static partial class SaveGame
         sim.World.ClearChangeLog();
         sim.World.MarkAllDirty();
         sim.PathGrid.InvalidateAll();
+        sim.Buildings.AfterLoad();   // M5-T2: construction sites block paths (PTH-02)
         if (regionsBuilt) sim.Regions.RebuildIfDirty();
         sim.Jobs.RebuildReservations();
         sim.Events.Drain();   // the loaded world is read by the view directly, like a new world (ADR-026)

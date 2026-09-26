@@ -32,16 +32,6 @@ namespace Aurvangar.Sim.Tests
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class ConstructionScenarioTests
-    {
-        [Fact(Skip = "M5-T2")] public void Warehouse_BuiltByTwoAgents() => Placeholder.Write("buildings.md scenario 2");
-        [Fact(Skip = "M5-T2")] public void DeliverJobs_MatchRemaining() => Placeholder.Write("BLD-06");
-        [Fact(Skip = "M5-T2")] public void FirstDelivery_BlocksFootprint_MovesAgents() => Placeholder.Write("BLD-07");
-        [Fact(Skip = "M5-T2")] public void CancelBlueprint_FullRefund() => Placeholder.Write("BLD-09");
-        [Fact(Skip = "M5-T2")] public void Deconstruct_HalfRefund() => Placeholder.Write("BLD-09 / buildings.md scenario 5");
-    }
-
-    [Trait("Category", "Scenario")]
     public class LeveeScenarioTests
     {
         [Fact(Skip = "M5-T3")] public void LeveeInRiver_LowersDownstream() => Placeholder.Write("buildings.md scenario 3");

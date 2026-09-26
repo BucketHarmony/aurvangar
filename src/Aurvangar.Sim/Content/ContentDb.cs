@@ -40,6 +40,9 @@ public sealed class ContentDb
     public BuildingDef Building(string key) =>
         _buildingsByKey.TryGetValue(key, out var def) ? def : throw new KeyNotFoundException($"buildings.json: unknown building '{key}'");
 
+    /// <summary>The building definition with this id, or null (commands validate player input with it).</summary>
+    public BuildingDef? FindBuilding(string key) => _buildingsByKey.TryGetValue(key, out var def) ? def : null;
+
     public BlockDef Block(BlockId id) => Blocks[(int)id];
 
     /// <summary>Load the content embedded in Aurvangar.Sim.dll.</summary>

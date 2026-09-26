@@ -55,16 +55,23 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 
 - **BLD-05** `PlaceBuilding` creates a `Building` in state `Blueprint` with `delivered = {}`, `progress = 0`.
   Footprint cells are marked reserved (no other blueprint may overlap).
-- **BLD-06** While any cost item is under-delivered, `BuildingSystem` keeps exactly as many open Deliver jobs
-  as needed: `ceil(remaining / CarryCapacity)` minus already-open delivers for that site.
+- **BLD-06** While any cost item is under-delivered, `BuildingSystem` keeps exactly as many open (unclaimed)
+  Deliver jobs as needed for that site and item: `open = remaining - carried by claimed delivers`, in
+  `ceil(open / CarryCapacity)` jobs of `CarryCapacity, ..., rest` (ADR-041). A Deliver job is
+  `GoTo(storage) -> PickUpFromStorage -> GoTo(site) -> DeliverTo(site)`, reserving the storage stock; its source is
+  the nearest complete storage that accepts the item and has the stock (see ADR-041 for the fallbacks). A site on
+  another building posts none until that building is complete (BLD-04).
 - **BLD-07** On first delivery the building moves to `UnderConstruction`; footprint cells become non-walkable
-  (PTH-02). Agents inside the footprint at that moment are moved to the entrance cell.
+  (PTH-02). Agents inside the footprint at that moment are moved to the entrance cell (for a stacked building
+  whose entrance is not standable, the cell below it), and loose piles in it move out (ECO-08).
 - **BLD-08** When all materials are delivered, one Construct job is open at a time per site; work adds
   `progress` by 1 per tick. At `buildTicks`, the building is `Complete`: if `setsBlocks`, footprint cells
   become BuildingSolid (WAT-12 water push, PathGrid dirty, Regions dirty).
-- **BLD-09** Cancel before completion refunds 100% of delivered materials as a pile at the entrance.
-  Deconstruct after completion: Deconstruct job (half build ticks), then footprint cells revert to Air and 50% of
-  cost (rounded down) is dropped as piles at the entrance.
+- **BLD-09** The `Deconstruct` command cancels a blueprint or site: its jobs are cancelled and 100% of delivered
+  materials are refunded as piles at the entrance. On a complete building it starts deconstruction: one
+  Deconstruct job (half build ticks), then footprint cells revert to Air and 50% of cost (rounded down), plus
+  anything stored, is dropped as piles at the entrance. Rejected (`CommandRejected`) for an unknown id, a
+  prebuilt-only building, one already being deconstructed, or one with another building on top (ADR-041).
 
 ## Storage (BLD-10..12)
 

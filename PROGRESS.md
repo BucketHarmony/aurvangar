@@ -1121,3 +1121,42 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   - BLD-04 ordering (an upper levee waits for the one below) is not enforced yet.
   - Placement ignores dig designations on the ground under a blueprint; M5-T2 may want to guard that.
   - `BuildingAt` and `Covers` scan every building; add an index if they end up in per-tick code.
+
+## M5-T2 — Construction flow (2026-09-26)
+- Done: new commands `PlaceBuilding` and `Deconstruct` (both in the CommandCodec).
+  - `Construction` (Construction.cs, Construction.Jobs.cs) runs at ARCH-01 step 7. It keeps the Deliver jobs
+    (BLD-06, loads of at most 10 sourced from storage), one Construct job, and one Deconstruct job per building, and
+    cancels stray ones.
+  - `WorldActions.Construction.cs`:
+    - `DeliverTo` on a site. The first delivery starts construction (BLD-07): the footprint is blocked, agents and
+      piles are moved out, and the last delivery posts the Construct job.
+    - `Work` on a building: completion writes BuildingSolid; deconstruction gives a half refund plus stored items.
+    - `PlacePile`/`MovePile` handle refunds.
+  - Cancel refunds 100%.
+  - Site cells are blocked in `PathGrid` (`SetSite`: not standable, not walkable) and rebuilt in
+    `SaveGame.AfterLoad`.
+  - `BuildingAt` is indexed.
+  - BLD-04 is enforced: an upper levee gets no deliveries until the one below is complete.
+  - A blueprint clears dig marks on its ground, and `Dig` is Blocked under any footprint.
+  - Building-work steps end when the building completes or is removed. The last deconstruct tick stands down if it
+    would strand the worker (M4-T14) and waits while someone is on top.
+- Tests: the 5 placeholders moved to `Scenarios/ConstructionScenarioTests.cs` with real bodies. There are 6 new unit
+  tests in `ConstructionTests.cs` (commands and rejections, BLD-04 stacking, dig marks, save/load mid-build, codec).
+  The tests did not compile before the change (missing command types).
+  - Fixed two of my own new tests: the haul check waited only for the pile to vanish instead of for the delivery,
+    and three `Assert.Empty(Where)` calls became `DoesNotContain` (analyzer).
+  - Existing Dig tests post plain Construct jobs on cells, so construction jobs are recognised by their shape.
+  - check.sh: 394 passed, 25 skipped, 0 failed.
+- Review (sim-reviewer), fixes applied:
+  - ADR-041 written.
+  - The deconstruct wait no longer shares the counter with work ticks.
+  - Fallback refund piles never land inside a building footprint.
+  - Not applied (optional): a count shrunk by low stock is covered one tick later.
+- Decisions: ADR-041.
+- Golden: unchanged. Headless seed 1, 24,000 ticks: hash `d8a1e43aeeb5d540` (unchanged), ~23,000 ticks/s.
+- Perf: perf.sh 6 passed, 2 skipped. No Godot code changed, so no screenshots.
+- Next (M5-T3): levee completion must push water (WAT-12). `Complete` writes BuildingSolid via `World.SetBlock`, so
+  ChangedCells should already carry it; verify in LeveeScenarioTests.
+  - Deconstruct refunds land at `Construction.StandCell`.
+  - Construction jobs are identified by shape (`Construction.IsSiteJob`). A future system posting 4-step Deliver
+    jobs should add a marker instead.

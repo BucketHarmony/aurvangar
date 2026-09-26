@@ -157,6 +157,11 @@ public static class JobRunner
                     StandDown(sim, a, job);   // M4-T14: the world changed on the way; do not start a stranding dig
                     return;
                 }
+                if (job.Kind is JobKind.Construct or JobKind.Deconstruct && Buildings.Construction.IsSiteJob(job))
+                {
+                    BuildWork(sim, a, job, step);
+                    return;
+                }
                 var target = step.Goal == GoalMode.Building
                     ? WorkTarget.AtBuilding(new BuildingId(step.Target)) : WorkTarget.AtCell(step.Cell);
                 r = act.Work(a.Id, target);
@@ -183,6 +188,27 @@ public static class JobRunner
         }
         if (r != ActionResult.Ok) Fail(sim, a, job);
         else NextStep(sim, a, job);
+    }
+
+    /// <summary>M5-T2 (BLD-08/09): building work runs until the site is complete or the building is gone, not for a
+    /// fixed count (progress lives on the building, so a new worker carries on). A deconstruction's last tick stands
+    /// down when removing the building would cut the worker off from the Great Hall (M4-T14), and waits like DSG-08
+    /// while an agent is on top of it.</summary>
+    private static void BuildWork(Simulation sim, Agent a, Job job, JobStep step)
+    {
+        var b = sim.Buildings.Get(new BuildingId(step.Target));
+        if (job.Kind == JobKind.Deconstruct && b is { State: Buildings.BuildingState.Deconstructing }
+            && b.Progress + 1 >= Buildings.Construction.DeconstructTicks(b.Def)
+            && Buildings.Construction.WouldStrand(sim, b, a.Cell))
+        {
+            StandDown(sim, a, job);
+            return;
+        }
+        var r = sim.Actions.Work(a.Id, WorkTarget.AtBuilding(new BuildingId(step.Target)));
+        if (r == ActionResult.Blocked && job.Kind == JobKind.Deconstruct && ++a.StepProgress <= DigDeferLimit) return;
+        if (r != ActionResult.Ok) { Fail(sim, a, job); return; }
+        a.StepProgress = 0;   // progress lives on the building; StepProgress only counts a blocked wait
+        if (Buildings.Construction.WorkDone(sim, job)) NextStep(sim, a, job);
     }
 
     private static void NextStep(Simulation sim, Agent a, Job job)

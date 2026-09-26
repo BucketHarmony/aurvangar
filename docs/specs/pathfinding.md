@@ -6,6 +6,7 @@
   and `c + down` is solid (any solid block including `BuildingSolid`).
 - **PTH-02** A standable cell is **walkable** if it is not deep water (WAT-14) and not reserved as an
   in-progress construction footprint cell (construction sites block movement once the first material is delivered).
+  A site cell is not standable either (ADR-041), so swimming agents and dropped piles also stay out of it.
 - **PTH-03** `PathGrid` caches a `byte[] flags` per cell (Standable, Walkable, Wet). It updates lazily: a block or
   water change marks the cell and its 3×3×3 neighborhood dirty; dirty cells recompute on next query.
 

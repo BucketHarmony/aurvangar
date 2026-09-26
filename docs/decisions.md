@@ -732,3 +732,61 @@ Decision:
   overlap can be tested; the `PlaceBuilding` command, jobs and the `BuildingPlaced` event come in M5-T2.
 Consequences: every placement reason is data-driven except the two placement kinds. Overlap and lookups scan all
 buildings (a few dozen in the POC); an index can be added if building counts grow.
+
+## ADR-041: Construction flow details: commands, site blocking, deliver jobs, cancel and deconstruct (2026-09-26, M5-T2)
+Context: BLD-05..09 leave open how deliveries are split and sourced, what a cancelled or deconstructed building does
+with its jobs and materials, how a site blocks agents, and what happens to dig marks under a blueprint.
+Decision:
+- Commands. `PlaceBuilding(defId, origin, rotation)` emits `BuildingPlaced`, or `CommandRejected` with the
+  `PlacementResult` name or `UnknownBuilding`. `Deconstruct(buildingId)` cancels a blueprint or site and starts
+  deconstruction of a complete building. Its rejections, checked in this order: `UnknownBuilding`, `PrebuiltOnly`,
+  `AlreadyDeconstructing`, `BuildingOnTop` (another building covers a cell right above the footprint; stacked
+  levees come down top first). `Deconstruct` is a non-positional record, because a positional one would generate a
+  `Deconstruct` method, which C# forbids on a type of that name.
+- Site cells (PTH-02) are neither walkable nor standable. `PathGrid.SetSite` marks them and bumps
+  `WalkabilityVersion`. The marks are derived from building state and rebuilt in `SaveGame.AfterLoad`, so they are
+  not saved or hashed. Because the cells are not standable, swimming (fleeing) agents cannot path through a site
+  and ECO-08 never drops a pile in one.
+- BLD-06 Deliver jobs.
+  - Shape: `GoTo(source) -> PickUpFromStorage(source, item, n) -> GoTo(site) -> DeliverTo(site)`. The job reserves
+    the source's stock (BLD-10). Its target is the site's entrance cell, and its site is the last step's target.
+    Construction jobs are recognised by this shape (and Construct/Deconstruct by a last `Work` step on a
+    building), so other code may still post plain Construct jobs on cells.
+  - Count, per site and item, every tick: `open = remaining - sum of claimed delivers`. Keep `ceil(open/10)`
+    unclaimed jobs of 10, 10, ..., rest. Unclaimed jobs are re-planned in place, extras are cancelled and missing
+    ones posted.
+  - Source: complete storage that accepts the item. First choice is the nearest (Manhattan between entrances, ties
+    by lower id) with `n` unpromised in stock. Failing that, the one with the most stock, carrying only that much.
+    Failing that, the nearest, carrying `n` (the job then waits for stock through JOB-06 `CanReserve`). With no
+    such storage, no job is posted. Loose piles are not a source: JOB-10 hauls them into storage first.
+  - BLD-04: while any building under the bottom layer is not complete, no Deliver jobs exist, and `DeliverTo` on the
+    site is `Blocked`.
+- `DeliverTo` on a site delivers `min(carried, remaining)`; any surplus stays carried and is dropped when the job
+  ends. The first delivery starts construction (BLD-07):
+  - Agents in the footprint are moved to the stand cell and halted. A walk in progress re-plans from there instead
+    of failing.
+  - Piles in the footprint move out via the ECO-08 spiral.
+  - The stand cell is the entrance, or for a stacked building whose entrance is not standable, the cell below it
+    (ADR-040).
+  - The delivery that completes the materials posts the Construct job at once. The tick also keeps exactly one.
+- Work steps of Construct and Deconstruct jobs end when the building is complete or gone, not after a fixed tick
+  count. Progress lives on the building, so a new worker continues it. Building-mode goals exclude the building's
+  own footprint and, while it is being deconstructed, the cells on top of it.
+- Deconstruction:
+  - Takes `max(1, buildTicks/2)` work ticks.
+  - The last tick waits (DSG-08 limit) while an agent is on top of the building. It stands down (ADR-037) when
+    removing any footprint cell would cut the worker off from the Great Hall. Each cell is tested like a dig; this
+    is an approximation for multi-cell buildings.
+  - On removal, the footprint becomes Air, and `floor(cost/2)` of each item plus everything stored drops as piles
+    at the stand cell.
+  - Cancel refunds all delivered items the same way. Items no agent carries are placed by the internal
+    `WorldActions.PlacePile` and `MovePile`, so every item move still goes through `WorldActions`.
+- Dig marks: placing a blueprint clears dig marks on the ground under its bottom layer and cancels their dig jobs.
+  `WorldActions.Dig` is `Blocked` under any building footprint in any state. This extends DSG-02, which never marks
+  a building's floor.
+- `BuildingAt` uses a derived cell index (cell -> lowest building id) kept by add, remove and load. It is lookup-only.
+- Only living agents are moved out of a new site; a dead agent's body stays where it is (it holds no cell). A
+  building-work step keeps no tick count on the agent (the count is on the building); `StepProgress` only counts
+  the blocked wait. The last-resort refund placement never uses a cell inside any building footprint.
+Consequences: site jobs and blocking are derived and stateless beyond the building fields that are already saved,
+so there is no save format change and the golden hashes are unchanged. BLD-04 ordering is now enforced for delivery.

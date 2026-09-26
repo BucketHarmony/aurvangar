@@ -51,7 +51,7 @@ public sealed class PathGrid
     /// <summary>PTH-01.</summary>
     public bool IsStandable(Int3 c) => (Flags(c) & Standable) != 0;
 
-    /// <summary>PTH-02 (construction-site blocking is added in M5-T2).</summary>
+    /// <summary>PTH-02: standable, not deep, not a construction site cell.</summary>
     public bool IsWalkable(Int3 c) => (Flags(c) & Walkable) != 0;
 
     /// <summary>The cell holds any water (PTH-07 wading cost).</summary>
@@ -132,7 +132,7 @@ public sealed class PathGrid
         byte f = Valid;
         int level = i == airIndex ? 0 : _water.GetLevelAt(i);
         if (level > 0) f |= Wet;
-        bool standable = !SolidUnless(i, airIndex) && !_plants.IsOccupiedAt(i)
+        bool standable = !SolidUnless(i, airIndex) && !_plants.IsOccupiedAt(i) && !_sites.Contains(i)
             && (y + 1 >= _sizeY || !SolidUnless(i + _layer, airIndex))
             && (y == 0 ? _world.IsSolid(x, -1, z) : SolidUnless(i - _layer, airIndex));
         if (standable)
@@ -145,9 +145,30 @@ public sealed class PathGrid
 
     private bool SolidUnless(int index, int airIndex) => index != airIndex && _world.IsSolidAt(index);
 
-    /// <summary>PTH-01 evaluated directly (water never affects standability).</summary>
+    /// <summary>PTH-01 evaluated directly (water never affects standability). A construction site's footprint cell
+    /// (PTH-02, BLD-07) is neither standable nor walkable (ADR-041), so fleeing agents and loose piles keep out too.</summary>
     private bool StandableAt(Int3 c, int i) =>
-        !_world.IsSolidAt(i) && !_plants.IsOccupiedAt(i) && !_world.IsSolid(c + Int3.Up) && _world.IsSolid(c + Int3.Down);
+        !_world.IsSolidAt(i) && !_plants.IsOccupiedAt(i) && !_world.IsSolid(c + Int3.Up) && _world.IsSolid(c + Int3.Down)
+        && !_sites.Contains(i);
+
+    // ---- PTH-02 construction sites (M5-T2) ----
+
+    /// <summary>Footprint cells of buildings under construction. Set by <see cref="Buildings.BuildingSystem"/>, derived
+    /// from building state (rebuilt after a load), so not hashed or saved. Lookups only, never enumerated.</summary>
+    private readonly HashSet<int> _sites = new();
+
+    /// <summary>True when the cell is a construction site footprint cell (PTH-02).</summary>
+    public bool IsSite(Int3 c) => _world.InBounds(c) && _sites.Contains(_world.Index(c));
+
+    /// <summary>Marks or clears a construction site cell; walkability around it is recomputed and regions rebuild.</summary>
+    public void SetSite(Int3 c, bool site)
+    {
+        if (!_world.InBounds(c)) return;
+        int i = _world.Index(c);
+        if (site ? !_sites.Add(i) : !_sites.Remove(i)) return;
+        InvalidateAround(i);
+        WalkabilityVersion++;
+    }
 
     /// <summary>Bumped on every shallow/deep crossing anywhere (also in cells that are not standable now, whose
     /// depth matters to a what-if dig, M4-T14). Derived, not state.</summary>

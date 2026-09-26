@@ -29,11 +29,13 @@ public sealed partial class WorldActions
     /// <summary>Delivers the whole carried stack to a complete storage building: the building must accept the item
     /// (BLD-11) and have room for all of it under its total and per-item caps, else nothing moves (ADR-027).
     /// Room promised to other claimed jobs (BLD-10) is not free; the actor's own job's reservation is.
-    /// Construction-site delivery (BLD-06/07) is added by M5-T2.</summary>
+    /// A blueprint or construction site takes cost items instead (<see cref="DeliverToSite"/>, BLD-06/07).</summary>
     public ActionResult DeliverTo(AgentId actor, BuildingId building)
     {
         var r = Actor(actor, out var a);
         if (r != ActionResult.Ok) return r;
+        if (_sim.Buildings.Get(building) is { State: BuildingState.Blueprint or BuildingState.UnderConstruction } site)
+            return DeliverToSite(a, site);
         var b = StorageBuilding(building);
         if (b is null) return ActionResult.InvalidTarget;
         if (!InReach(a.Cell, b)) return ActionResult.OutOfReach;

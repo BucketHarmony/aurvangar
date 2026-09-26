@@ -4,7 +4,8 @@ using Aurvangar.Sim.Designations;
 namespace Aurvangar.Sim.Jobs;
 
 /// <summary>Goal cells of a GoTo step: walkable cells from which the step's target is in reach (ARCH-07). Ascending
-/// cell index, so A* ties and the region filter are deterministic.</summary>
+/// cell index, so A* ties and the region filter are deterministic. A building's goals are never inside its own
+/// footprint, nor (while it is deconstructed) on top of it (ADR-041).</summary>
 public static class JobGoals
 {
     public static List<Int3> For(Simulation sim, JobStep step)
@@ -39,7 +40,9 @@ public static class JobGoals
                             for (int dx = -1; dx <= 1; dx++)
                             {
                                 var c = f + new Int3(dx, dy, dz);
-                                if (world.InBounds(c) && grid.IsWalkable(c)) seen.Add(world.Index(c));
+                                if (!world.InBounds(c) || !grid.IsWalkable(c) || b.Covers(c)) continue;
+                                if (b.State == Buildings.BuildingState.Deconstructing && b.Covers(c + Int3.Down)) continue;
+                                seen.Add(world.Index(c));
                             }
                 foreach (var i in seen) goals.Add(world.CellOf(i));
                 return goals;

@@ -49,7 +49,8 @@ public sealed partial class WorldActions
 
     /// <summary>Solid, diggable (WLD-05) → Air. Spawns the block's drop as an item pile at the cell. The world records
     /// the change (ChangedCells, chunk dirtying), which water and paths consume. Blocked when the cell is the floor
-    /// of an agent (JOB-09 and every other agent), of a plant, or of a building (BuildingSolid above).</summary>
+    /// of an agent (JOB-09 and every other agent), of a plant, or of a building in any state (BuildingSolid or a
+    /// footprint above, ADR-041).</summary>
     public ActionResult Dig(AgentId actor, Int3 cell)
     {
         var r = Actor(actor, out var a);
@@ -60,7 +61,8 @@ public sealed partial class WorldActions
         var def = _sim.Content.Block(world.GetBlock(cell));
         if (!def.Solid || !def.Diggable) return ActionResult.InvalidTarget;
         var above = cell + Int3.Up;
-        if (AgentHolds(above) || _sim.Plants.IsOccupied(above) || world.GetBlock(above) == BlockId.BuildingSolid)
+        if (AgentHolds(above) || _sim.Plants.IsOccupied(above) || world.GetBlock(above) == BlockId.BuildingSolid
+            || _sim.Buildings.BuildingAt(above) is not null)
             return ActionResult.Blocked;
 
         world.SetBlock(cell, BlockId.Air);
@@ -140,7 +142,8 @@ public sealed partial class WorldActions
     }
 
     /// <summary>One tick of work on a cell or building. Validates the actor and reach; the step's progress lives on
-    /// the agent (JOB-01). Construction progress (BLD-08) and pump cycles (BLD-13) are added here by M5-T2 / M5-T4.</summary>
+    /// the agent (JOB-01). Building work (construction BLD-08, deconstruction BLD-09) is
+    /// <see cref="WorkOnBuilding"/>; pump cycles (BLD-13) come with M5-T4.</summary>
     public ActionResult Work(AgentId actor, WorkTarget target)
     {
         var r = Actor(actor, out var a);
@@ -148,7 +151,7 @@ public sealed partial class WorldActions
         if (!target.IsBuilding) return InReach(a.Cell, target.Cell) ? ActionResult.Ok : ActionResult.OutOfReach;
         var b = _sim.Buildings.Get(target.Building);
         if (b is null) return ActionResult.InvalidTarget;
-        return InReach(a.Cell, b) ? ActionResult.Ok : ActionResult.OutOfReach;
+        return WorkOnBuilding(a, b);
     }
 
     // ---- helpers ----
