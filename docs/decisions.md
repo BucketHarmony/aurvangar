@@ -603,3 +603,16 @@ wraps `Steps`, so every caller still shares one rule implementation. Flee BFS ke
 Consequences: Release, this machine: A* median ~0.31 ms, p95 ~0.75-0.81 ms (max expanded 5,153); region rebuild
 warm ~2.1 ms, cold ~3.5 ms. Behavior is unchanged: the golden hash is the same and headless seed 1 still gives
 `d8a1e43aeeb5d540`.
+
+## ADR-035: Screenshots render with Forward+ on the default driver (2026-09-26, M4-T13)
+Context: ADR-022 left `screenshot.sh` on `--rendering-driver opengl3` (Compatibility), which lights in gamma space,
+so gate shots looked brighter and more saturated than play. At G2 (early answers) the human asked for gate shots
+in the renderer the game plays in, and to keep the current vertex-color look (no `VertexColorIsSrgb`).
+Decision: `screenshot.sh` passes `--rendering-method forward_plus` and no `--rendering-driver`, so Godot uses its
+default driver (Vulkan on Windows and Linux). The flag matches `project.godot` (features "Forward Plus", no
+rendering-method override) and is explicit so a future project setting cannot silently change the gate renderer.
+The separate `artifacts/screens/forward_plus/` comparison path is dropped. `SEED`, `TICKS`, `SHOTS`, `OUT` and
+`SCRIPT` are unchanged. `ScreenshotRendererTests` guards the script, the project setting and docs/testing.md.
+Consequences: gate shots now match play (lighter, greyer greens; shadowed faces lit by the 0.3 ambient). On Linux
+under `xvfb-run` the shots need a Vulkan driver (e.g. Mesa lavapipe); the CI job does not run screenshots.
+Supersedes the "Compatibility screenshots" consequence of ADR-022.

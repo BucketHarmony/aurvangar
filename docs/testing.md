@@ -68,6 +68,12 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
 `overview` (whole map, 45° pitch), `river` (hub-to-river close-up), `hub` (colony close-up), `slice` (slice at
 y=20 over the hill). Output to `artifacts/screens/<preset>.png`. Human gates review them.
 
+Shots render with Forward+ (`--rendering-method forward_plus` on the default Vulkan driver), the renderer the game
+plays in, so they show the same lighting and colors as play (ADR-035). There is no separate Compatibility render.
+On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env options: `SEED`, `TICKS` (1200),
+`SHOTS`, `OUT`, and `SCRIPT=digchop` (dig a pit and chop trees near the hub, so colonists are at work;
+`TICKS=400` shows the marks, 1200 shows the piles).
+
 ## Scripted play
 
 `Scripts.SurvivalScript` (in the test project) is the command log for the definition-of-done session: place

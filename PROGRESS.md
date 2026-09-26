@@ -865,3 +865,32 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
 - Next: M4-T13 (screenshot.sh to Forward+). Hot search loops should call `PathMoves.Steps` or `PathGrid.FlagsAt`,
   and must call `PathGrid.SyncWorldChanges()` once first. M5-T2 construction-site blocking belongs in
   `PathGrid.Compute`, so both paths see it. The pit-trap issue from M4-T11 is still open for G2.
+
+## M4-T13 — Screenshots render with Forward+ (2026-09-26)
+- Done: `scripts/screenshot.sh` now runs Godot with `--rendering-method forward_plus` and no `--rendering-driver`
+  (was `--rendering-driver opengl3`, Compatibility). Godot reports "Vulkan 1.4.329 - Forward+" on this machine.
+  `SEED`/`TICKS`/`SHOTS`/`OUT`/`SCRIPT` are unchanged. The separate `artifacts/screens/forward_plus/` path is
+  dropped (a stale copy from M3-T9 is still on disk in the ignored `artifacts/`). docs/testing.md "Screenshot
+  presets" now says shots use Forward+ and lists the env options. Vertex-color sRGB handling is untouched (G2 early
+  answer). `SceneLightingTests` and CLAUDE.md do not mention the renderer, so they needed no change.
+- Tests: added `View/ScreenshotRendererTests` (4): the script uses Forward+ on the default driver with no opengl3 or
+  gl_compatibility; it keeps the `SCRIPT`/`TICKS` options; project.godot does not override the Forward+ renderer;
+  docs/testing.md says Forward+. Two failed first for the right reason (no `--rendering-method forward_plus` in the
+  script; no "Forward+" in the doc). check.sh: 361 passed, 37 skipped, 0 failed; Godot csproj 0 warnings.
+  perf.sh: 6 passed, 2 skipped.
+- Screenshots (Godot 4.6.2 .NET, Forward+/Vulkan, seed 1, looked at):
+  - Default, 1200 ticks: `artifacts/screens/{overview,river,hub,slice}.png`. They look like play: lighter, greyer
+    greens than the old Compatibility shots; shadowed faces and tree shadows are dark green-grey, never black; the
+    river is a translucent blue-grey that deepens mid-channel; the slice shows brown dirt with grey stone patches
+    and the cut faces. The hub is a small grey block with the idle dwarves next to it.
+  - `SCRIPT=digchop TICKS=400`: `artifacts/screens/t400/{hub,river}.png`. The half-dug pit has translucent yellow
+    dig marks and 5 white dwarves inside it, with orange chop rings around about 25 trees. The panel reads
+    "Digging" x4 and "Felling a tree".
+  - `SCRIPT=digchop` (1200): `artifacts/screens/digchop/hub.png`. The pit is finished and most marked trees are
+    felled. Log piles show as small brown cubes that are hard to see at this zoom. The panel reads "Felling a tree"
+    and "Hauling log".
+- Decisions: ADR-035 (supersedes the Compatibility-screenshot consequence of ADR-022).
+- Golden: unchanged (no sim change).
+- Perf: n/a (no sim change). perf.sh green.
+- Next: M4-GATE (G2). Use `SCRIPT=digchop` renders, which are now Forward+. The pit-trap issue from M4-T11 is still
+  open. On Linux/xvfb, screenshots now need a Vulkan driver (e.g. lavapipe).

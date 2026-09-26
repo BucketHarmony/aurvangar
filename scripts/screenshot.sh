@@ -37,7 +37,8 @@ for s in "${SHOT_LIST[@]}"; do rm -f "$OUT/$s.png"; done
 echo "== building C# solution (Godot $VERSION)"
 "$GODOT_BIN" --headless --path "$ROOT/src/Aurvangar.Godot" --build-solutions --quit
 
-ARGS=(--path "$ROOT/src/Aurvangar.Godot" --rendering-driver opengl3 res://scenes/Screenshot.tscn
+# Forward+ on the default driver (Vulkan), the renderer the game plays in (M4-T13, ADR-035).
+ARGS=(--path "$ROOT/src/Aurvangar.Godot" --rendering-method forward_plus res://scenes/Screenshot.tscn
       -- --seed "${SEED:-1}" --ticks "${TICKS:-1200}" --shots "$SHOTS" --out "$OUT" --script "${SCRIPT:-none}")
 echo "== rendering $SHOTS"
 if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
