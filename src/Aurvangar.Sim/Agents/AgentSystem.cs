@@ -31,6 +31,14 @@ public sealed class AgentSystem
         return a;
     }
 
+    /// <summary>True if a living agent other than <paramref name="except"/> stands in the cell or is stepping into it.</summary>
+    public bool AnyHolds(Int3 c, AgentId except = default)
+    {
+        foreach (var a in _agents.Values)
+            if (a.IsAlive && a.Id != except && (a.Cell == c || a.NextCell == c)) return true;
+        return false;
+    }
+
     /// <summary>Paths the agent to a goal and starts following it (PTH-15). See <see cref="AgentMovement.Start"/>.</summary>
     public PathStatus MoveTo(Simulation sim, Agent a, Int3 goal) => MoveTo(sim, a, new[] { goal });
 

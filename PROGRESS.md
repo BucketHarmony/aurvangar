@@ -692,3 +692,32 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   or otherwise darken the scene.
 - Q (screenshot renderer): should gate screenshots use the renderer the game plays in? **Yes.** Added M4-T13 to
   switch `screenshot.sh` to Forward+; it is now a dep of M4-GATE.
+
+## M4-T7 — Designations: dig and chop (2026-09-26)
+- Done: commands `DesignateDig(A, B)`, `DesignateChop(X0, Z0, X1, Z1)`, `CancelDesignation(A, B)`
+  (`Commands/DesignationCommands.cs`) and a stateless `DesignationSystem` (ARCH-01 step 8) that posts one Dig job per
+  exposed `Dig` mark (DSG-03) and one Chop job per marked tree. DSG-04 height bonus is recomputed every tick and capped at +4.
+  JOB-09 `GoalMode.Dig` (never on top of the target; floors that are not designated come first). DSG-08: the job is
+  not selected, and the Dig step waits (up to 200 ticks), while another agent stands on the block. An idle agent with no
+  job that stands on a designated block steps aside. Chop give-up sets the new hashed `Plant.ChopUnreachable`.
+  `DesignationMap` keeps a sorted index of marks. `AgentSystem.AnyHolds` is shared with `WorldActions`.
+- Tests: `Scenarios/DigScenarioTests` (9 run + 2 with full bodies re-tagged `Skip = "M4-T8"` because they need hauling,
+  ADR-029) and `DesignationTests` (12). All failed first on the missing API. Mutation checks: removing the JOB-09
+  exclusion, step-aside, the height bonus, the exposure rule, or the select deferral each fails at least one test.
+  check.sh: 282 passed, 47 skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4 passed, 4 skipped (unchanged).
+  sim-reviewer: no rule violations. Its required fix is applied: the M4-T8 backlog line now names the two
+  re-tagged tests. Also applied: DSG-02 skips plant floors, and a `DigUnreachable` mark on air is cleared. Deferred: stale
+  `Dig` marks on solid, non-diggable cells (a manual bedrock mark is used by a JobBoardTests case), per-tick
+  allocations, and moving `ChopTicks` into data.
+- Decisions: ADR-029
+- Golden: regenerated (`UPDATE_GOLDEN=1`): the plant hash now includes `ChopUnreachable`. With the field left out,
+  the old golden still matched, so seed-1 behavior is unchanged.
+- Perf: headless seed 1, 24,000 ticks: tick median 0.032 ms, p95 0.038 ms, 25,942 ticks/s, hash `d8a1e43aeeb5d540`
+  (no commands, so jobs 0/0). One-off load probe (not committed): seed 1 with ~670 dig marks next to the hub plus
+  every tree marked, 6,000 ticks: tick median 0.056 ms, p95 2.8 ms (A* searches, see M4-T12), 739 jobs done, 9 failed.
+  No Godot code touched, so screenshots were not re-rendered.
+- Next: M4-T8 (hauling). Un-skip `DigStone_EndsInHubStorage` and `Chop_MarkedTrees_LogsHauled` in
+  `Scenarios/DigScenarioTests.cs` together with `HaulScenarioTests`. Implement `ScenarioBuilder.Hub/Stock` (both tests
+  use `Hub`). Dig/chop piles land on the dug cell or the tree base. M4-T10 must save `Plant.ChopUnreachable` and the
+  designation marks. Commands have tags `DesignateDig`, `DesignateChop` and `CancelDesignation` for the command log.
+  M4-T11: draw `DigUnreachable` and `ChopUnreachable` in red.

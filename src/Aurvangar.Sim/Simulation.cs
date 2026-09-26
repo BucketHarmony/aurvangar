@@ -78,7 +78,7 @@ public sealed class Simulation
         Plants.Tick(Clock);                      // 5
         // 6  NeedsSystem.Tick                    (M5-T5)
         Buildings.Tick(this);                    // 7
-        // 8  DesignationSystem.Tick              (M4-T7)
+        DesignationSystem.Tick(this);            // 8
         // 9  HaulSystem.Tick                     (M4-T8)
         Agents.Tick(this);                       // 10
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)

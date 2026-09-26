@@ -450,3 +450,35 @@ job; acceptable until M4-T8 refines hauling. A dead agent's claimed job is not r
 `JobRunner.Cancel`-like release). Chop give-up has no mark yet (M4-T7). A job returned to the board restarts at step 0. The region filter
 requires every GoTo leg to have a goal in the agent's region. A haul that fails after its pick-up drops the stack,
 so its pile reservation may never fit again: M4-T8 must re-post or cancel such jobs.
+
+## ADR-029: Designation commands, dig/chop posting, DSG-04 cap, DSG-08 deferral and step-aside (2026-09-26, M4-T7)
+Context: DSG-02..08 and JOB-09 leave open: box corner order and out-of-world boxes, what "under a building" means,
+whether re-designating a `DigUnreachable` cell retries, what a DSG-04 "job batch" is and whether the height bonus is
+bounded, how "deferred" (DSG-08) behaves when an idle agent never leaves, where a chop give-up is recorded, and how
+the two acceptance tests that end in hub storage can pass before hauling (M4-T8) exists.
+Decision: Commands `DesignateDig(A, B)`, `DesignateChop(X0, Z0, X1, Z1)`, `CancelDesignation(A, B)` (tags equal the
+type names) order their corners and intersect with the world; a box with nothing inside is rejected with
+`CommandRejected` (still logged). DSG-02 skips y = 0, non-solid and non-diggable cells, building footprint cells,
+the cells directly under them, and plant floors (`WorldActions.Dig` refuses those); `Dig` stays `Dig`; `DigUnreachable` becomes `Dig` (the player's retry). DSG-05 marks
+trees only (bushes are harvested) and clears a chop give-up. DSG-06 clears marks in the box, unmarks trees whose base
+is in the box, and `JobRunner.Cancel`s Dig jobs targeting the box and Chop jobs of those trees. `DesignationSystem.Tick`
+(ARCH-01 step 8, stateless) posts `GoTo(cell, GoalMode.Dig) → Work(hardness) → Dig` with a cell reservation for each
+`Dig` mark on a solid, diggable, exposed cell without a Dig job, and `GoTo(base) → Work(80) → Chop` for each marked
+tree without a Chop job and not given up; marks in ascending index, trees in ascending id. A `Dig` mark on a
+non-solid cell with no job, or a `DigUnreachable` mark on a non-solid cell, is cleared. DSG-04: the "batch" is every live `Dig` mark; an unclaimed dig job's priority
+is 25 + min(y − lowest marked solid y, 4), recomputed each tick. The cap keeps dig (≤ 29) below Plant (30) so a tall
+designation never starves farming, construction or delivery. `DesignationMap` keeps a sorted index of marked cells
+so iteration costs the mark count. JOB-09: `GoalMode.Dig` goals are the reach cells except the one on top of the
+target; if any of them has a floor not marked `Dig`, only those are used. DSG-08: a Dig job is not selected while
+another living agent holds the target's top cell (`Cell` or `NextCell`); a claimed Dig step waits (no failure) while
+one does, up to 200 ticks, then fails normally. So such a wait cannot last forever, an idle agent that found no job
+and stands on a `Dig`-marked block walks to a cell in its region within a 5×3×5 box whose floor is not marked
+(step-aside). Chop give-up (fifth failure) sets the new hashed `Plant.ChopUnreachable`; no job is posted for that tree
+until it is designated again. Tests: `DigStone_EndsInHubStorage` and `Chop_MarkedTrees_LogsHauled` have full bodies
+but stay skipped under `M4-T8` (they need `HaulSystem` and `ScenarioBuilder.Hub`); M4-T7 covers their dig/chop halves
+with `DigStone_LeavesStonePile` and `Chop_MarkedTrees_DropLogs`.
+Consequences: seed-1 golden regenerated (the plant hash now includes `ChopUnreachable`; with the field left out the
+old golden still matched, so behavior on seed 1 is unchanged). The tick scans the job board, the marks and the plant
+list every tick (O(jobs + marks + plants)); seed 1 with ~670 marks and 150 trees: tick median 0.056 ms. A pit deeper
+than 5 levels relies on exposure, not priority, below the capped band. Step-aside ignores other agents' targets, and
+a 3-level pit can leave an agent at its bottom with no way out (no ramps); acceptable for the POC.

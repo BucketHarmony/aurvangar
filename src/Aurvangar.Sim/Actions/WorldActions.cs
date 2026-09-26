@@ -175,12 +175,7 @@ public sealed partial class WorldActions
     }
 
     /// <summary>A living agent stands in the cell or is stepping into it.</summary>
-    private bool AgentHolds(Int3 c)
-    {
-        foreach (var a in _sim.Agents.All)
-            if (a.IsAlive && (a.Cell == c || a.NextCell == c)) return true;
-        return false;
-    }
+    private bool AgentHolds(Int3 c) => _sim.Agents.AnyHolds(c);
 
     /// <summary>Carried stack can take <paramref name="count"/> more of <paramref name="item"/> (JOB-01).</summary>
     private static ActionResult CanCarry(Agent a, ItemId item, int count)

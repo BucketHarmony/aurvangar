@@ -17,6 +17,10 @@ public sealed class Plant
 
     public bool MarkedForChop { get; set; }
 
+    /// <summary>JOB-08 for chop (ADR-029): its chop job gave up after five failures. No new job is posted until the
+    /// tree is designated again. The view shows it like DigUnreachable.</summary>
+    public bool ChopUnreachable { get; set; }
+
     /// <summary>Bushes: berries available (0 = growing).</summary>
     public int Berries { get; set; }
 
@@ -101,7 +105,7 @@ public sealed class PlantSystem
         foreach (var p in _plants.Values)
         {
             h.Add(p.Id.Value); h.Add((byte)p.Kind); h.Add(p.Base); h.Add(p.Height);
-            h.Add(p.MarkedForChop); h.Add(p.Berries); h.Add(p.RegrowTicks);
+            h.Add(p.MarkedForChop); h.Add(p.ChopUnreachable); h.Add(p.Berries); h.Add(p.RegrowTicks);
         }
     }
 }

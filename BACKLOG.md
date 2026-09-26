@@ -118,10 +118,11 @@ Milestone order is by risk: world and water before anything that depends on them
   - All methods with reach validation and results. Un-skip `WorldActionsTests.*`.
 - [x] **M4-T6** JobBoard, job steps, selection, reservations, failure/retry · specs: JOB-03..08 · deps: M4-T5, M4-T3
   - Un-skip `JobBoardTests.*`.
-- [ ] **M4-T7** Designations: dig and chop · specs: DSG-01..08, JOB-09, ECO-09 · deps: M4-T6
+- [x] **M4-T7** Designations: dig and chop · specs: DSG-01..08, JOB-09, ECO-09 · deps: M4-T6
   - Commands `DesignateDig`, `DesignateChop`, `CancelDesignation`. Un-skip `Scenarios/DigScenarioTests.*`.
 - [ ] **M4-T8** Item piles, hub storage, hauling · specs: ECO-08, JOB-10, BLD-10..12 · deps: M4-T7
-  - Un-skip `Scenarios/HaulScenarioTests.*`.
+  - Un-skip `Scenarios/HaulScenarioTests.*`, `Scenarios/DigScenarioTests.DigStone_EndsInHubStorage` and
+    `Scenarios/DigScenarioTests.Chop_MarkedTrees_LogsHauled` (re-tagged M4-T8 by M4-T7, ADR-029).
 - [ ] **M4-T9** Flee from deep water · specs: WAT-14 · deps: M4-T6
   - Un-skip `Scenarios/FloodScenarioTests.AgentFleesRisingWater`.
 - [ ] **M4-T10** Save/load v1 · specs: SAV-01..06 · deps: M4-T8

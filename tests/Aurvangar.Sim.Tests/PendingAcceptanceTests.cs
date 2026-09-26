@@ -51,17 +51,6 @@ namespace Aurvangar.Sim.Tests
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class DigScenarioTests
-    {
-        [Fact(Skip = "M4-T7")] public void DigStone_EndsInHubStorage() => Placeholder.Write("jobs-agents.md scenario 1");
-        [Fact(Skip = "M4-T7")] public void Tunnel_DugFromExposedSideInward() => Placeholder.Write("DSG-03");
-        [Fact(Skip = "M4-T7")] public void Pit_DugTopDown() => Placeholder.Write("DSG-04");
-        [Fact(Skip = "M4-T7")] public void AgentNeverDigsOwnFloor() => Placeholder.Write("JOB-09, DSG-08");
-        [Fact(Skip = "M4-T7")] public void Chop_MarkedTrees_LogsHauled() => Placeholder.Write("DSG-05, ECO-09");
-        [Fact(Skip = "M4-T7")] public void Cancel_ReleasesClaimedJob() => Placeholder.Write("DSG-06");
-    }
-
-    [Trait("Category", "Scenario")]
     public class HaulScenarioTests
     {
         [Fact(Skip = "M4-T8")] public void LoosePiles_HauledToNearestStorage() => Placeholder.Write("JOB-10");

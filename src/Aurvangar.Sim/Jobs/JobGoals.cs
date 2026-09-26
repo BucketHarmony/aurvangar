@@ -1,4 +1,5 @@
 using Aurvangar.Sim.Core;
+using Aurvangar.Sim.Designations;
 
 namespace Aurvangar.Sim.Jobs;
 
@@ -26,6 +27,8 @@ public static class JobGoals
                             if (grid.IsWalkable(c)) goals.Add(c);
                         }
                 return goals;
+            case GoalMode.Dig:
+                return DigGoals(sim, step.Cell);
             case GoalMode.Building:
                 var b = sim.Buildings.Get(new BuildingId(step.Target));
                 if (b is null) return goals;
@@ -43,5 +46,26 @@ public static class JobGoals
             default:
                 throw new InvalidOperationException($"unknown goal mode {step.Goal}");
         }
+    }
+
+    /// <summary>JOB-09: reach cells of a dig target except the cell on top of it (its floor would vanish). When
+    /// possible only cells whose own floor is not designated for digging, so they stay standable after the next digs.</summary>
+    private static List<Int3> DigGoals(Simulation sim, Int3 target)
+    {
+        var grid = sim.PathGrid;
+        var marks = sim.Designations;
+        var all = new List<Int3>();
+        var safe = new List<Int3>();
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dy == 1 && dz == 0 && dx == 0) continue;
+                    var c = target + new Int3(dx, dy, dz);
+                    if (!grid.IsWalkable(c)) continue;
+                    all.Add(c);
+                    if (marks.Get(c + Int3.Down) != DesignationMark.Dig) safe.Add(c);
+                }
+        return safe.Count > 0 ? safe : all;
     }
 }

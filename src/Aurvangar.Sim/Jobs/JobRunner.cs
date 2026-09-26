@@ -13,6 +13,9 @@ public static class JobRunner
     /// <summary>JOB-06: an idle agent looks for a job at most once per this many ticks.</summary>
     public const int SearchInterval = 5;
 
+    /// <summary>DSG-08: ticks a Dig step waits for another agent to leave the block's top before the job fails.</summary>
+    public const int DigDeferLimit = 200;
+
     /// <summary>One tick for a living agent: pick a job if idle, then run the current step.</summary>
     public static void Tick(Simulation sim, Agent a)
     {
@@ -26,7 +29,7 @@ public static class JobRunner
             // A stack left over from a failed drop goes down before the agent takes new work.
             if (!a.Carried.IsEmpty && sim.Actions.Drop(a.Id, a.Cell) != ActionResult.Ok) return;
             job = Select(sim, a);
-            if (job is null) return;
+            if (job is null) { StepAside(sim, a); return; }
             Claim(sim, a, job);
         }
         RunStep(sim, a, job);
@@ -49,6 +52,7 @@ public static class JobRunner
             if (best is not null && (job.Priority < best.Priority || (job.Priority == best.Priority && dist >= bestDist)))
                 continue;   // ascending id: an equal key never beats an earlier job
             if (!Reachable(sim, job, region) || !sim.Jobs.CanReserve(sim, job)) continue;
+            if (job.Kind == JobKind.Dig && sim.Agents.AnyHolds(job.Target + Int3.Up, a.Id)) continue;   // DSG-08
             best = job;
             bestDist = dist;
         }
@@ -142,7 +146,16 @@ public static class JobRunner
                 r = act.Work(a.Id, target);
                 if (r == ActionResult.Ok && ++a.StepProgress < step.Ticks) return;
                 break;
-            case StepKind.Dig: r = act.Dig(a.Id, step.Cell); break;
+            case StepKind.Dig:
+                if (sim.Agents.AnyHolds(step.Cell + Int3.Up, a.Id))
+                {
+                    // DSG-08: someone stands on the block; wait for them to move on (idle agents step aside).
+                    if (++a.StepProgress <= DigDeferLimit) return;
+                    Fail(sim, a, job);
+                    return;
+                }
+                r = act.Dig(a.Id, step.Cell);
+                break;
             case StepKind.Chop: r = act.Chop(a.Id, new PlantId(step.Target)); break;
             case StepKind.PickUp: r = act.PickUp(a.Id, step.Cell, step.Item, step.Count); break;
             case StepKind.PickUpFromStorage: r = act.PickUpFromStorage(a.Id, new BuildingId(step.Target), step.Item, step.Count); break;
@@ -180,7 +193,8 @@ public static class JobRunner
         {
             sim.Jobs.Remove(job);   // cancelled
             if (job.Kind == JobKind.Dig) sim.Designations.MarkUnreachable(job.Target);
-            // M4-T7: a chop job that gives up marks its tree (DSG-05 has no unreachable state yet).
+            else if (job.Kind == JobKind.Chop && sim.Plants.Get(DesignationSystem.ChopTree(job)) is { } tree)
+                tree.ChopUnreachable = true;
         }
         else job.RetryAfterTick = sim.Clock.Tick + Job.RetryCooldown;
     }
@@ -195,6 +209,25 @@ public static class JobRunner
         AgentMovement.Halt(a);
         if (!a.Carried.IsEmpty) sim.Actions.Drop(a.Id, a.Cell);
         ResetAgent(a);
+    }
+
+    /// <summary>DSG-08 companion (ADR-029): an idle agent with nothing to do that stands on a block marked for digging
+    /// walks to a nearby cell of its region (5×3×5 box) whose floor is not marked, so the dig is not deferred forever.</summary>
+    private static void StepAside(Simulation sim, Agent a)
+    {
+        if (a.Move == MoveStatus.Moving || sim.Designations.Get(a.Cell + Int3.Down) != DesignationMark.Dig) return;
+        int region = sim.Regions.RegionOf(a.Cell);
+        if (region == Paths.Regions.None) return;
+        var goals = new List<Int3>();
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dz = -2; dz <= 2; dz++)
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    var c = a.Cell + new Int3(dx, dy, dz);
+                    if (c == a.Cell || !sim.PathGrid.IsWalkable(c) || sim.Regions.RegionOf(c) != region) continue;
+                    if (sim.Designations.Get(c + Int3.Down) != DesignationMark.Dig) goals.Add(c);
+                }
+        if (goals.Count > 0) sim.Agents.MoveTo(sim, a, goals);
     }
 
     private static void ResetAgent(Agent a)
