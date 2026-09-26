@@ -79,12 +79,21 @@ the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the 
 
 ## Scripted play
 
-`Scripts.SurvivalScript` (`Aurvangar.ViewCore.Scripts`, pure C#, ADR-045) is the command log for the
-definition-of-done session: place pump, farm 6×6 field, chop area, place warehouse, dig into the hill, breach the
-bank at tick N, levee line at tick N+300. It is a fixed list of `(tick, command)` for seed 1; call
+`Scripts.SurvivalScript` (`Aurvangar.ViewCore.Scripts`, pure C#, ADR-045, ADR-051) is the command log for the
+definition-of-done session on seed 1. It is a fixed list of `(tick, command)`; call
 `SurvivalScript.EnqueueDue(sim)` before every `Tick()` (or use `SurvivalScript.Run`). It is used by the golden test,
-the survival scenario, and `run-headless.sh --script survival`. Build it incrementally: each milestone that adds a
-command type extends the script. So far (M5-T7): pump-entrance notch + chop, pump, warehouse, a levee line.
+the survival scenario (`SurvivalScenarioTests`), and `run-headless.sh --script survival`. Complete since M6-T6:
+
+| Tick | Command |
+|---|---|
+| 0 | dig the pump-entrance notch `(40,18,79)` |
+| 600 | pump at `(40,18,80)`; chop the 48×48 area around the Great Hall |
+| 1200 | warehouse at `(34,24,54)` |
+| 1800 | five levees `(33..37,23,76)` on the bank between the hall and the river |
+| 2400 | 6×6 farm field `(62,67)..(67,72)` on moist ground |
+| 3000 | tunnel into the hill's south slope `(84,17,56)..(85,18,65)`; its north half is stone |
+| 7200 | breach (N): dig the bank cells `(84..85,17,66)` between the tunnel mouth and the river; the tunnel floods |
+| 7500 | levee repair (N+300): a levee on each breach cell; the flood is walled off |
 
 `run-headless.sh --script digchop` (also `none`, `build`, `farm` and `survival`) runs the screenshot harness's `ScreenshotScripts` command list
 (ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a

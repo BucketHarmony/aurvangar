@@ -1563,3 +1563,35 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   corner is `ScreenshotScripts.FindFarm(sim)` on seed 1 if the survival script wants the same spot. Crops there
   are straw colored and wither during every drought (river empty days 5-7); the 9,000-tick run already stores 75
   potatoes before the first drought.
+
+## M6-T6 — Complete SurvivalScript (farms, hill dig, breach, levee repair); survival scenario: all 5 alive at day 10 on seed 1 (2026-09-26)
+- Done: `SurvivalScript` (ViewCore) now has the whole DoD command log (ADR-051). No sim code changed.
+  - Tick 2400: 6×6 farm `(62,67)..(67,72)` (nearest all-moist field, the `FindFarm` search with size 6).
+  - Tick 3000: two-wide tunnel `(84,17,56)..(85,18,65)` into the hill's south slope, floor one below the river surface,
+    entered from the bank top; 22 stone dug and hauled by ~6,900.
+  - Tick 7200 (breach): dig the bank cells `(84..85,17,66)`; the river floods the tunnel to deep water; a dwarf in it
+    flees out. Tick 7500 (repair): a levee on each breach cell (entrance in the flooded tunnel, built from the dry bank
+    top); both complete by 7,906. The tunnel keeps its water through the drought while the river outside is dry.
+  - docs/testing.md "Scripted play" now lists the script as a table.
+- Tests: the two placeholders moved from `PendingAcceptanceTests.cs` (file removed, nothing else in it) to
+  `Scenarios/SurvivalScenarioTests.cs` with bodies:
+  - `Seed1_SurvivalScript_AllAliveAtDay10`: 36 farm tiles, tunnel dug and ≥ 10 stone stored before the breach, tunnel
+    deep after it, both repair levees complete and potatoes stored by day 5, tunnel still deep mid-drought with the
+    river beside the breach at 0, no rejected commands, no deaths, all 5 alive at day 10, at least one dwarf caught in
+    the flood lived.
+  - `Seed1_NoCommands_ColonyLost`: without commands the colony is lost before day 7, all dead, one Dehydrated.
+  - The tests reference the new script members, so they did not compile against the M5-T7 script. Mutation check:
+    without the repair levees the scenario test fails (repair count).
+  - check.sh: 509 passed, 1 skipped (`SaveSize_Day5_Under3MB`, M6-T7), 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-051.
+- Golden: regenerated with `UPDATE_GOLDEN=1` (intentional): the farm at tick 2400 is new script content. 0 and 1200
+  unchanged; 3000 `25f61178eeb2b39f`, 6000 `01b5005c23875f6c`.
+- Headless seed 1, `--script survival`, 24,000 ticks: hash `7344b913cc2909c9`, 3,713 ticks/s (median 0.068 ms, p95
+  1.18 ms), all 5 alive, 406 jobs done, 0 failed, 978 region rebuilds, stored log 76 / stone 22 / berries 39 /
+  potato 105 / water 110, 0 trapped.
+- Perf: perf.sh 7 passed, 1 skipped (SIM-P1 placeholder). No water or path code changed.
+- Screenshots: none. No rendering or Godot code changed; the screenshot harness still does not run `SCRIPT=survival`.
+- Next: M6-T7 (perf pass). SIM-P1 runs the survival script to day 5 (tick 12,000); the tunnel flood and its levees now
+  exist then. M6-T8: the headless `summary:` dig/chop counts are measured against the marks after tick 1, so with
+  `--script survival` they report only the tick-0 notch (1 cell dug, 0 trees); use the stored stone (22) and the tests
+  as evidence, or fix the summary for timed scripts.

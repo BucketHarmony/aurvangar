@@ -14,7 +14,7 @@ public class GoldenHashTests
     private static ulong[] RunSeed1()
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
-        // M5-T7: the survival script (pump, warehouse, levees so far; M6-T6 completes it), commands at their ticks.
+        // M5-T7/M6-T6: the full survival script (ADR-045, ADR-051), commands at their ticks.
         var hashes = new List<ulong>();
         long last = 0;
         foreach (var cp in Checkpoints)

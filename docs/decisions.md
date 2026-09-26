@@ -1065,3 +1065,30 @@ Decision:
   presets (`ScreenshotPresets.DefaultShots`).
 Consequences: no sim changes; golden unchanged. The view reads `sim.Farms`, `sim.Moisture`, `Plant.Berries` each frame
 for signatures (a few hundred entries on seed 1).
+
+## ADR-051: Survival script: farm, hill tunnel, breach under the river surface, levees on the breach (2026-09-26, M6-T6)
+Context: docs/testing.md asks the SurvivalScript for a 6×6 farm, a dig into the hill, a bank breach at tick N and a
+levee line at N+300, with all 5 dwarves alive at day 10 (needs-economy.md scenario 5). No coordinates or ticks are
+given. On seed 1 the river's top water layer is y=17, and the dry ground next to it is at y ≥ 18, so a tunnel at
+ground level can never flood. A levee's entrance must be standable (BLD-02), and every cell beside a breach is either
+solid bank or water.
+Decision (seed-1 coordinates, fixed like the rest of the script):
+- Tick 2400: `DesignateFarm(62,67,67,72)`, the nearest 6×6 all-moist farmable field to the hall (the `FindFarm`
+  ring search with size 6). The first crops are harvested before the day-5 drought.
+- Tick 3000: `DesignateDig((84,17,56),(85,18,65))`, a two-wide, two-high tunnel north into the hill's south slope
+  (x=85 is 20 cells from the hill center). Its floor is one below the river surface, so it is entered by a one-step
+  descent from the bank top at (84..85,18,66). Rows z ≤ 61 are stone (22 stone, all hauled by tick ~6900). Tick 3000
+  keeps `SurvivalScriptTests.Seed1_BuildsPumpWarehouseAndLevees_AllAccepted` (which runs to tick 3000 and expects no
+  marks and no failed jobs) valid.
+- Tick 7200 (N): `DesignateDig((84,17,66),(85,17,66))`, the two bank cells between the tunnel mouth and the river
+  water at z=67. The tunnel floods to deep water; a dwarf standing in it flees out over the bank (WAT-14).
+- Tick 7500 (N+300): a levee on each breach cell, rotation 0. The entrance is the tunnel cell north of it: standable
+  (PTH-01 ignores water), so placement is valid while it is flooded. Builders use the Building goal (any walkable cell
+  next to the footprint), which includes the dry bank-top cells (83,18,66) and (86,18,66). The levees are complete by
+  tick ~7900; the tunnel keeps its water through the drought while the river outside is dry.
+- The "levee line at N+300" of testing.md is read as "levees on the breach". The M5-T7 levee line at tick 1800 stays.
+- `PendingAcceptanceTests.cs` held only the two SurvivalScenario placeholders; they moved to
+  `Scenarios/SurvivalScenarioTests.cs` with bodies and the empty file was removed.
+Consequences: golden hashes at 3000 and 6000 change (farm at 2400). Headless seed 1 with the script: all 5 alive at
+day 10, 0 failed jobs, 105 potatoes, 22 stone stored. The headless `summary:` dig/chop counts are measured against
+the marks present after tick 1, so for `--script survival` they cover only the tick-0 notch (1 cell) and no trees.
