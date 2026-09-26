@@ -721,3 +721,31 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   use `Hub`). Dig/chop piles land on the dug cell or the tree base. M4-T10 must save `Plant.ChopUnreachable` and the
   designation marks. Commands have tags `DesignateDig`, `DesignateChop` and `CancelDesignation` for the command log.
   M4-T11: draw `DigUnreachable` and `ChopUnreachable` in red.
+
+## M4-T8 — Item piles, hub storage, hauling (2026-09-26)
+- Done: stateless `HaulSystem` (`Jobs/HaulSystem.cs`, ARCH-01 step 9) keeps one Haul job per loose pile
+  (`GoTo(pile) → PickUp(n ≤ 10) → GoTo(storage) → DeliverTo`, reserving the pile items and the storage room) while a
+  complete storage accepts the item and has room; nearest storage by Manhattan to its entrance, ties by id. Unclaimed
+  pile hauls are re-planned every tick or withdrawn (pile gone / no room), which also cleans up a haul that failed after
+  its pick-up. `JobBoard.StorageRoom/StorageStock/ReservedInTotal` (BLD-10, total cap counts all items' reservations);
+  `WorldActions.DeliverTo/PickUpFromStorage/Consume` honor other jobs' reservations (own job's count as its own);
+  `WorldActions.Accepts` public. BLD-12 `BuildingSystem.Totals`. `ScenarioBuilder.Hub/Storage/Stock/Pile`.
+- Tests: un-skipped `DigStone_EndsInHubStorage`, `Chop_MarkedTrees_LogsHauled`; new `Scenarios/HaulScenarioTests` (7:
+  nearest storage + tie + BLD-11, storage full, ECO-08 drop spiral then haul, trips of 10, two haulers never overfill,
+  failure after pick-up, totals), 4 `WorldActionsTests` (reserved room/stock, own reservation, warehouse total), 1
+  `JobBoardTests` (total-cap reservations). Before wiring `HaulSystem` all 8 haul scenarios failed (conditions not
+  reached / no haul job). Mutations: no re-plan → 2 fail; room without reservations → 1 fails. check.sh: 296 passed,
+  42 skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4 passed, 4 skipped. sim-reviewer: no required fixes;
+  applied: `Totals` counts complete storage only, and its doc notes the one-tick lag.
+- Decisions: ADR-030
+- Golden: unchanged (no piles on seed 1 without commands).
+- Perf: headless seed 1, 24,000 ticks: tick median 0.031 ms, p95 0.038 ms, 26,390 ticks/s, hash `d8a1e43aeeb5d540`
+  (unchanged). One-off probe (not committed): seed 1, one-layer dig of a 17×7 box next to the hub plus every tree
+  chopped, 24,000 ticks: tick median 0.139 ms, p95 0.191 ms, 276 jobs done, 1 failed, 304 A* searches; the hub fills to
+  its 100-log per-item cap and the other 125 log piles stay (no warehouse yet), 12 dig jobs stay unclaimed. No Godot
+  code touched, so screenshots were not re-rendered.
+- Next: M4-T9 (flee). M4-T10 must save item piles; haul jobs are plain board jobs (re-plan needs no extra state), and
+  `Jobs.RebuildReservations()` now also rebuilds the total-in table. M4-T11: draw piles (`ItemPileChanged`). Pile
+  hauls are recognised by kind + 4-step shape (`HaulSystem.IsPileHaul`): M5 haul-like jobs (refunds, BLD-14 pump
+  hauls) must use a different shape or a marker. One job per pile means big piles are hauled one trip at a time.
+  Hub per-item cap (100) is the limit on logs until warehouses (M5-T3).

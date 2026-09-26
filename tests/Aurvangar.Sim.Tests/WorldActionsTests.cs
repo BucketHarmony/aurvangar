@@ -4,6 +4,7 @@ using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Events;
 using Aurvangar.Sim.Items;
+using Aurvangar.Sim.Jobs;
 using Aurvangar.Sim.Tests.Support;
 using Aurvangar.Sim.World;
 using Xunit;
@@ -397,6 +398,70 @@ public class WorldActionsTests
         Assert.Equal(2, hub.Stored[Item("water").Value]);
         Assert.Equal(ActionResult.WrongItem, sim.Actions.Consume(a.Id, hub.Id, Item("log")));
         Assert.Equal(3, hub.Stored[Item("log").Value]);
+    }
+
+    // ---- BLD-10 reservations (M4-T8) ----
+
+    /// <summary>A second agent claims a job that reserves storage room / stock.</summary>
+    private static Job ClaimReserving(Simulation sim, Reservation r)
+    {
+        sim.Agents.Spawn(new Int3(2, 5, 2), "Other");
+        var other = sim.Agents.All.Last();
+        var job = sim.Jobs.Post(JobKind.Haul, other.Cell, new[] { JobStep.Work(other.Cell, 1000) }, new[] { r });
+        JobRunner.Claim(sim, other, job);
+        return job;
+    }
+
+    [Fact]
+    public void DeliverTo_RoomReservedByAnotherJob_StorageFull()
+    {
+        var (sim, a, hub) = WithHub();
+        hub.Stored[Item("stone").Value] = 90;
+        ClaimReserving(sim, Reservation.IntoStorage(hub.Id, Item("stone"), 7));
+        a.Carried = new ItemStack(Item("stone"), 4);
+        Assert.Equal(ActionResult.StorageFull, sim.Actions.DeliverTo(a.Id, hub.Id));   // 90 + 7 reserved + 4 > 100
+        Assert.Equal(90, hub.Stored[Item("stone").Value]);
+        a.Carried = new ItemStack(Item("stone"), 3);
+        Assert.Equal(ActionResult.Ok, sim.Actions.DeliverTo(a.Id, hub.Id));
+        Assert.Equal(93, hub.Stored[Item("stone").Value]);
+    }
+
+    [Fact]
+    public void DeliverTo_OwnReservationCounts_AsRoom()
+    {
+        var (sim, a, hub) = WithHub();
+        hub.Stored[Item("stone").Value] = 96;
+        var job = sim.Jobs.Post(JobKind.Haul, a.Cell, new[] { JobStep.DeliverTo(hub.Id) },
+            new[] { Reservation.IntoStorage(hub.Id, Item("stone"), 4) });
+        JobRunner.Claim(sim, a, job);
+        a.Carried = new ItemStack(Item("stone"), 4);
+        Assert.Equal(ActionResult.Ok, sim.Actions.DeliverTo(a.Id, hub.Id));
+        Assert.Equal(100, hub.Stored[Item("stone").Value]);
+    }
+
+    [Fact]
+    public void DeliverTo_Warehouse_TotalRoomReservedForOtherItems()
+    {
+        var sim = new ScenarioBuilder().Ground(4).Agent(new Int3(10, 5, 9)).Build();
+        var a = sim.Agents.All.First();
+        var wh = PlaceStorage(sim, "warehouse", new Int3(10, 5, 10));
+        wh.Stored[Item("log").Value] = 140;
+        ClaimReserving(sim, Reservation.IntoStorage(wh.Id, Item("stone"), 6));
+        a.Carried = new ItemStack(Item("berries"), 5);
+        Assert.Equal(ActionResult.StorageFull, sim.Actions.DeliverTo(a.Id, wh.Id));   // 140 + 6 + 5 > 150
+        a.Carried = new ItemStack(Item("berries"), 4);
+        Assert.Equal(ActionResult.Ok, sim.Actions.DeliverTo(a.Id, wh.Id));
+    }
+
+    [Fact]
+    public void PickUpFromStorage_StockReservedByAnotherJob_NotEnoughItems()
+    {
+        var (sim, a, hub) = WithHub();
+        hub.Stored[Item("water").Value] = 5;
+        ClaimReserving(sim, Reservation.OutOfStorage(hub.Id, Item("water"), 3));
+        Assert.Equal(ActionResult.NotEnoughItems, sim.Actions.PickUpFromStorage(a.Id, hub.Id, Item("water"), 3));
+        Assert.Equal(ActionResult.Ok, sim.Actions.PickUpFromStorage(a.Id, hub.Id, Item("water"), 2));
+        Assert.Equal(3, hub.Stored[Item("water").Value]);
     }
 
     // ---- Work ----

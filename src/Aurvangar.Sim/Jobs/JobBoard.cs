@@ -1,4 +1,5 @@
 using Aurvangar.Sim.Actions;
+using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.World;
 
@@ -15,6 +16,7 @@ public sealed class JobBoard
     private readonly SortedDictionary<int, int> _pileOut = new();               // cell index → reserved count
     private readonly SortedDictionary<(int B, int Item), int> _storageIn = new();
     private readonly SortedDictionary<(int B, int Item), int> _storageOut = new();
+    private readonly SortedDictionary<int, int> _storageInTotal = new();       // building id → all items
 
     public JobBoard(VoxelWorld world) { _world = world; }
 
@@ -61,6 +63,47 @@ public sealed class JobBoard
     /// <summary>BLD-10: items promised out of a storage building.</summary>
     public int ReservedOut(BuildingId b, ItemId item) => _storageOut.TryGetValue((b.Value, item.Value), out var n) ? n : 0;
 
+    /// <summary>BLD-10: items of every kind on their way into a storage building (for its total cap).</summary>
+    public int ReservedInTotal(BuildingId b) => _storageInTotal.TryGetValue(b.Value, out var n) ? n : 0;
+
+    /// <summary>BLD-10: how many more of <paramref name="item"/> the storage can take once every claimed job's incoming
+    /// items are counted, under its per-item and total caps (0 = no cap). <paramref name="own"/>, when claimed, is the
+    /// asking job: its own reservations count as room for it. Acceptance (BLD-11) is not checked here.</summary>
+    public int StorageRoom(Building b, ItemId item, Job? own = null)
+    {
+        var s = b.Def.Storage;
+        if (s is null) return 0;
+        int ownItem = 0, ownTotal = 0;
+        if (own is { IsClaimed: true })
+            foreach (var r in own.Reservations)
+                if (r.Kind == ReservationKind.StorageIn && r.Building == b.Id)
+                {
+                    ownTotal += r.Count;
+                    if (r.Item == item) ownItem += r.Count;
+                }
+        int room = int.MaxValue;
+        if (s.PerItemCapacity > 0)
+            room = s.PerItemCapacity - WorldActions.StoredCount(b, item) - (ReservedIn(b.Id, item) - ownItem);
+        if (s.Capacity > 0)
+        {
+            int total = 0;
+            foreach (var v in b.Stored.Values) total += v;
+            room = Math.Min(room, s.Capacity - total - (ReservedInTotal(b.Id) - ownTotal));
+        }
+        return Math.Max(room, 0);
+    }
+
+    /// <summary>BLD-10: stock of <paramref name="item"/> not promised to other claimed jobs (<paramref name="own"/>'s
+    /// reservations count as available to it).</summary>
+    public int StorageStock(Building b, ItemId item, Job? own = null)
+    {
+        int ownOut = 0;
+        if (own is { IsClaimed: true })
+            foreach (var r in own.Reservations)
+                if (r.Kind == ReservationKind.StorageOut && r.Building == b.Id && r.Item == item) ownOut += r.Count;
+        return Math.Max(WorldActions.StoredCount(b, item) - (ReservedOut(b.Id, item) - ownOut), 0);
+    }
+
     /// <summary>True if every reservation of the job can be taken now, next to what other claimed jobs hold.</summary>
     public bool CanReserve(Simulation sim, Job job)
     {
@@ -79,15 +122,13 @@ public sealed class JobBoard
                 case ReservationKind.StorageOut:
                 {
                     var b = sim.Buildings.Get(r.Building);
-                    int stored = b is null ? 0 : WorldActions.StoredCount(b, r.Item);
-                    if (stored - ReservedOut(r.Building, r.Item) < r.Count) return false;
+                    if (b is null || StorageStock(b, r.Item) < r.Count) return false;
                     break;
                 }
                 case ReservationKind.StorageIn:
                 {
                     var b = sim.Buildings.Get(r.Building);
-                    if (b?.Def.Storage is null) return false;
-                    if (WorldActions.FreeCapacity(b, r.Item) - ReservedIn(r.Building, r.Item) < r.Count) return false;
+                    if (b?.Def.Storage is null || StorageRoom(b, r.Item) < r.Count) return false;
                     break;
                 }
             }
@@ -102,7 +143,7 @@ public sealed class JobBoard
     /// <summary>Rebuilds the reservation tables from the claimed jobs (after a load).</summary>
     public void RebuildReservations()
     {
-        _cells.Clear(); _pileOut.Clear(); _storageIn.Clear(); _storageOut.Clear();
+        _cells.Clear(); _pileOut.Clear(); _storageIn.Clear(); _storageOut.Clear(); _storageInTotal.Clear();
         foreach (var j in _jobs.Values)
             if (j.IsClaimed) Apply(j, +1);
     }
@@ -119,7 +160,10 @@ public sealed class JobBoard
                     else if (_cells.TryGetValue(ci, out var h) && h == job.Id.Value) _cells.Remove(ci);
                     break;
                 case ReservationKind.PileItems: Add(_pileOut, _world.Index(r.Cell), sign * r.Count); break;
-                case ReservationKind.StorageIn: Add(_storageIn, (r.Building.Value, r.Item.Value), sign * r.Count); break;
+                case ReservationKind.StorageIn:
+                    Add(_storageIn, (r.Building.Value, r.Item.Value), sign * r.Count);
+                    Add(_storageInTotal, r.Building.Value, sign * r.Count);
+                    break;
                 case ReservationKind.StorageOut: Add(_storageOut, (r.Building.Value, r.Item.Value), sign * r.Count); break;
             }
         }

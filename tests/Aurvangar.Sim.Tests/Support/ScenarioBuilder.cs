@@ -26,6 +26,7 @@ public sealed class ScenarioBuilder
 
     private readonly Simulation _sim;
     private readonly List<(Int3 Cell, int Level)> _water = new();
+    private Buildings.Building? _lastStorage;
 
     public ScenarioBuilder(int sizeX = 32, int sizeY = 32, int sizeZ = 32, ulong seed = 1)
     {
@@ -94,11 +95,31 @@ public sealed class ScenarioBuilder
         return this;
     }
 
-    /// <summary>M4-T8: place a pre-built hub (storage) with its origin at the cell.</summary>
-    public ScenarioBuilder Hub(Int3 origin) => throw new NotImplementedException("M4-T8: ScenarioBuilder.Hub");
+    /// <summary>Place a pre-built hub (storage) with its origin at the cell, rotation 0.</summary>
+    public ScenarioBuilder Hub(Int3 origin) => Storage("hub", origin);
 
-    /// <summary>M4-T8: add items to the hub placed with Hub().</summary>
-    public ScenarioBuilder Stock(string item, int count) => throw new NotImplementedException("M4-T8: ScenarioBuilder.Stock");
+    /// <summary>Place a complete storage building of the given definition (e.g. "warehouse") without construction.</summary>
+    public ScenarioBuilder Storage(string def, Int3 origin)
+    {
+        _lastStorage = _sim.Buildings.PlacePrebuilt(TestContent.Db.Building(def), origin, 0);
+        return this;
+    }
+
+    /// <summary>Add items to the storage building placed last with Hub() or Storage().</summary>
+    public ScenarioBuilder Stock(string item, int count)
+    {
+        if (_lastStorage is null) throw new InvalidOperationException("ScenarioBuilder: Stock() needs Hub() first");
+        int id = TestContent.Db.Item(item).Value;
+        _lastStorage.Stored[id] = _lastStorage.Stored.GetValueOrDefault(id) + count;
+        return this;
+    }
+
+    /// <summary>A loose item pile on the cell (ECO-08: one item type per cell).</summary>
+    public ScenarioBuilder Pile(Int3 cell, string item, int count)
+    {
+        _sim.Piles.Add(cell, TestContent.Db.Item(item), count);
+        return this;
+    }
 
     public Simulation Build()
     {

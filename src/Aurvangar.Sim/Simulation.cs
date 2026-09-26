@@ -79,7 +79,7 @@ public sealed class Simulation
         // 6  NeedsSystem.Tick                    (M5-T5)
         Buildings.Tick(this);                    // 7
         DesignationSystem.Tick(this);            // 8
-        // 9  HaulSystem.Tick                     (M4-T8)
+        HaulSystem.Tick(this);                   // 9
         Agents.Tick(this);                       // 10
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)
         PathGrid.SyncWorldChanges();             // PTH-03: before the change log is cleared

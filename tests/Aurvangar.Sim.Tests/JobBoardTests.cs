@@ -287,6 +287,27 @@ public class JobBoardTests
         Assert.True(job.IsClaimed);
     }
 
+    /// <summary>BLD-10 with a total cap (warehouse 150): room reserved for one item counts against every item.</summary>
+    [Fact]
+    public void StorageInReservations_CountAgainstTotalCapacity()
+    {
+        var sim = Flat(new Int3(5, 5, 5));
+        var a = AgentN(sim, 0);
+        var wh = sim.Buildings.PlacePrebuilt(TestContent.Db.Building("warehouse"), new Int3(20, 5, 20), 0);
+        var log = TestContent.Db.Item("log");
+        var stone = TestContent.Db.Item("stone");
+        var berries = TestContent.Db.Item("berries");
+        wh.Stored[log.Value] = 140;
+        Job Into(ItemId item, int n) => sim.Jobs.Post(JobKind.Haul, wh.EntranceCell,
+            new[] { JobStep.GoToBuilding(wh.Id) }, new[] { Reservation.IntoStorage(wh.Id, item, n) });
+
+        JobRunner.Claim(sim, a, Into(stone, 6));
+        Assert.Equal(6, sim.Jobs.ReservedInTotal(wh.Id));
+        Assert.Equal(4, sim.Jobs.StorageRoom(wh, berries));
+        Assert.False(sim.Jobs.CanReserve(sim, Into(berries, 5)));
+        Assert.True(sim.Jobs.CanReserve(sim, Into(berries, 4)));
+    }
+
     [Fact]
     public void JobBoard_IsInStateHash()
     {

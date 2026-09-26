@@ -54,7 +54,7 @@ public class DigScenarioTests
     }
 
     /// <summary>jobs-agents.md scenario 1 in full. Needs HaulSystem (M4-T8), see ADR-029.</summary>
-    [Fact(Skip = "M4-T8")]
+    [Fact]
     public void DigStone_EndsInHubStorage()
     {
         var sim = new ScenarioBuilder().Ground(4).Hub(new Int3(20, 5, 20)).Agent(new Int3(5, 5, 5)).Build();
@@ -230,7 +230,7 @@ public class DigScenarioTests
     }
 
     /// <summary>DSG-05, ECO-09 in full. Needs HaulSystem (M4-T8), see ADR-029.</summary>
-    [Fact(Skip = "M4-T8")]
+    [Fact]
     public void Chop_MarkedTrees_LogsHauled()
     {
         var sim = new ScenarioBuilder().Ground(4).Hub(new Int3(20, 5, 20))

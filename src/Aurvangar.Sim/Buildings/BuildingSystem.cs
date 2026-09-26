@@ -33,9 +33,23 @@ public sealed class BuildingSystem
         return b;
     }
 
+    /// <summary>BLD-12: stored items summed over all storage buildings by ItemId.Value, recomputed each tick for the
+    /// HUD (complete storage buildings only). Computed at the buildings step (ARCH-01 step 7), so it lags hauling and
+    /// eating by one tick and is empty after a load until the next tick. Derived from <see cref="Building.Stored"/>, so
+    /// not hashed or saved.</summary>
+    public IReadOnlyDictionary<int, int> Totals => _totals;
+
+    private readonly SortedDictionary<int, int> _totals = new();
+
     public void Tick(Simulation sim)
     {
         // M5-T2: construction jobs and completion. M5-T4: pump production.
+        _totals.Clear();
+        foreach (var b in _buildings.Values)
+        {
+            if (b.State != BuildingState.Complete || b.Def.Storage is null) continue;
+            foreach (var (item, n) in b.Stored) _totals[item] = (_totals.TryGetValue(item, out var t) ? t : 0) + n;
+        }
     }
 
     public void AddToHash(ref StateHasher h)

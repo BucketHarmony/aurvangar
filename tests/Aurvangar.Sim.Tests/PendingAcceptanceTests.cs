@@ -51,14 +51,6 @@ namespace Aurvangar.Sim.Tests
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class HaulScenarioTests
-    {
-        [Fact(Skip = "M4-T8")] public void LoosePiles_HauledToNearestStorage() => Placeholder.Write("JOB-10");
-        [Fact(Skip = "M4-T8")] public void StorageFull_PilesStay() => Placeholder.Write("JOB-10, BLD-10");
-        [Fact(Skip = "M4-T8")] public void DropOnOccupiedPile_SpiralsToFreeCell() => Placeholder.Write("ECO-08");
-    }
-
-    [Trait("Category", "Scenario")]
     public class FloodScenarioTests
     {
         [Fact(Skip = "M4-T9")] public void AgentFleesRisingWater() => Placeholder.Write("WAT-14 flee; pathfinding.md scenario 7");

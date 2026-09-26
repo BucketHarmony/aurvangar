@@ -8,7 +8,8 @@ namespace Aurvangar.Sim.Actions;
 /// <summary>Storage actions (BLD-10, BLD-11, ECO-05) and ECO-08 pile placement.</summary>
 public sealed partial class WorldActions
 {
-    /// <summary>Takes <paramref name="count"/> of an item from a complete storage building into the carried stack.</summary>
+    /// <summary>Takes <paramref name="count"/> of an item from a complete storage building into the carried stack. Stock
+    /// promised to other claimed jobs (BLD-10) is not available; the actor's own job's reservation is.</summary>
     public ActionResult PickUpFromStorage(AgentId actor, BuildingId storage, ItemId item, int count)
     {
         var r = Actor(actor, out var a);
@@ -18,7 +19,7 @@ public sealed partial class WorldActions
         if (!InReach(a.Cell, b)) return ActionResult.OutOfReach;
         r = CanCarry(a, item, count);
         if (r != ActionResult.Ok) return r;
-        if (StoredCount(b, item) < count) return ActionResult.NotEnoughItems;
+        if (_sim.Jobs.StorageStock(b, item, OwnJob(a)) < count) return ActionResult.NotEnoughItems;   // BLD-10
 
         RemoveStored(b, item, count);
         a.Carried = new ItemStack(item, a.Carried.Count + count);
@@ -27,7 +28,8 @@ public sealed partial class WorldActions
 
     /// <summary>Delivers the whole carried stack to a complete storage building: the building must accept the item
     /// (BLD-11) and have room for all of it under its total and per-item caps, else nothing moves (ADR-027).
-    /// Construction-site delivery (BLD-06/07) is added by M5-T2. M4-T8: honor BLD-10 Reserved in/out counts.</summary>
+    /// Room promised to other claimed jobs (BLD-10) is not free; the actor's own job's reservation is.
+    /// Construction-site delivery (BLD-06/07) is added by M5-T2.</summary>
     public ActionResult DeliverTo(AgentId actor, BuildingId building)
     {
         var r = Actor(actor, out var a);
@@ -39,7 +41,7 @@ public sealed partial class WorldActions
         var item = a.Carried.Item;
         int n = a.Carried.Count;
         if (!Accepts(b, item)) return ActionResult.WrongItem;
-        if (FreeCapacity(b, item) < n) return ActionResult.StorageFull;
+        if (_sim.Jobs.StorageRoom(b, item, OwnJob(a)) < n) return ActionResult.StorageFull;         // BLD-10
 
         b.Stored[item.Value] = StoredCount(b, item) + n;
         a.Carried = ItemStack.Empty;
@@ -56,7 +58,7 @@ public sealed partial class WorldActions
         if (!InReach(a.Cell, b)) return ActionResult.OutOfReach;
         var def = _sim.Content.ItemDef(item);
         if (def.Food <= 0 && def.Drink <= 0) return ActionResult.WrongItem;
-        if (StoredCount(b, item) < 1) return ActionResult.NotEnoughItems;
+        if (_sim.Jobs.StorageStock(b, item, OwnJob(a)) < 1) return ActionResult.NotEnoughItems;   // BLD-10
 
         RemoveStored(b, item, 1);
         a.Hunger = Math.Min(Agent.NeedMax, a.Hunger + def.Food);
@@ -75,6 +77,9 @@ public sealed partial class WorldActions
 
     public static int StoredCount(Building b, ItemId item) => b.Stored.TryGetValue(item.Value, out var n) ? n : 0;
 
+    /// <summary>The job the actor has claimed, if any (its reservations are its own to use).</summary>
+    private Jobs.Job? OwnJob(Agent a) => _sim.Jobs.Get(a.CurrentJob) is { } j && j.ClaimedBy == a.Id ? j : null;
+
     /// <summary>Removes items; an emptied entry is removed so the hash does not depend on history.</summary>
     private static void RemoveStored(Building b, ItemId item, int count)
     {
@@ -83,7 +88,8 @@ public sealed partial class WorldActions
         else b.Stored.Remove(item.Value);
     }
 
-    private bool Accepts(Building b, ItemId item)
+    /// <summary>BLD-11: the storage building takes this item (its `accepts` list).</summary>
+    public bool Accepts(Building b, ItemId item)
     {
         var key = _sim.Content.ItemDef(item).Id;
         foreach (var k in b.Def.Storage!.Accepts)

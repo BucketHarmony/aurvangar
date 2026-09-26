@@ -482,3 +482,30 @@ old golden still matched, so behavior on seed 1 is unchanged). The tick scans th
 list every tick (O(jobs + marks + plants)); seed 1 with ~670 marks and 150 trees: tick median 0.056 ms. A pit deeper
 than 5 levels relies on exposure, not priority, below the capped band. Step-aside ignores other agents' targets, and
 a 3-level pit can leave an agent at its bottom with no way out (no ramps); acceptable for the POC.
+
+## ADR-030: Pile hauling, storage choice, re-planned haul jobs, reservation-aware storage actions (2026-09-26, M4-T8)
+Context: JOB-10 says "one Haul job per pile when some storage accepts the item with free capacity", "nearest by
+Manhattan", "capacity is reserved on claim", but not: nearest to what point of a building, how many items one job
+moves, what happens when the chosen storage fills between posting and claiming, how a haul that fails after its
+pick-up is cleaned up (ADR-028 left this open), whether the BLD-10 reserved counts bind `WorldActions`, and how a
+reservation for one item counts against a total cap (warehouse).
+Decision: `HaulSystem` (ARCH-01 step 9, stateless) keeps at most one pile haul per pile cell:
+`GoTo(pile, Reach) → PickUp(pile, item, n) → GoToBuilding(storage) → DeliverTo(storage)` reserving `FromPile(n)` and
+`IntoStorage(storage, n)`, target = the pile cell. Storage choice: complete buildings with storage that accept the item
+(BLD-11) and have unreserved room, min Manhattan from the pile cell to the building's entrance cell, ties by lower id.
+`n = min(pile count − other jobs' pile reservations, 10 (carry cap), room)`, so a big pile or a nearly full storage
+takes several jobs in turn. Every tick, each unclaimed pile haul is re-planned from the current pile and room (steps
+and reservations rewritten; failures and cooldown kept) or withdrawn (`JobRunner.Cancel`) when its pile is gone or
+nothing has room; claimed hauls are left alone. So a haul that fails after its pick-up (stack dropped elsewhere) is
+withdrawn and the new pile gets its own job. Pile hauls are recognised by kind + step shape, so other Haul-kind jobs
+(tests, later pump hauls) are not touched. Room (`JobBoard.StorageRoom`) = min(per-item cap − stored − reserved in for
+that item, total cap − total stored − reserved in for all items), 0 = no cap; a new `ReservedInTotal` table backs the
+total. `WorldActions.DeliverTo` needs that room and `PickUpFromStorage` / `Consume` need stock not reserved out, both
+counting the actor's own claimed job's reservations as its own (so an avatar or an unreserved job cannot take room or
+stock another job was promised). BLD-12: `BuildingSystem.Totals` sums `Stored` over all buildings at the buildings
+step; derived, not hashed or saved.
+Consequences: seed-1 golden unchanged (no piles without commands). A job cancelled after five failures is re-posted
+by the next tick with a fresh failure count; the region filter and the reservations make repeated haul failures
+unlikely, so no give-up mark is kept. The storage choice ignores regions: if the nearest storage is unreachable from
+the pile while a farther one is reachable, the pile waits. A partly hauled pile gets no second job until the first
+ends (one job per pile). `Totals` is computed before the haul and agent steps, so it lags delivery by one tick.
