@@ -31,14 +31,20 @@ public sealed class PathGrid
         _world = world; _water = water; _plants = plants;
         _flags = new byte[world.CellCount];
         _worldSeen = world.ChangeLogBase + world.ChangedCells.Count;
-        water.WalkClassChanged = InvalidateAround;
-        plants.OccupancyChanged = InvalidateAround;
+        water.WalkClassChanged = OnWaterClassChanged;
+        plants.OccupancyChanged = OnOccupancyChanged;
     }
 
     public VoxelWorld World => _world;
 
     /// <summary>Diagnostics: number of cell flag computations so far. Never read by gameplay code.</summary>
     public long FlagComputations { get; private set; }
+
+    /// <summary>Bumped whenever walkability or a move rule input may have changed: any block change, plant
+    /// occupancy change, shallow/deep water crossing in a standable cell, or <see cref="InvalidateAll"/>. Dry/wet crossings (wading cost
+    /// only) do not bump it. <see cref="Regions"/> rebuilds when it differs from the version it was built at (PTH-13).
+    /// Derived, not state.</summary>
+    public long WalkabilityVersion { get; private set; }
 
     /// <summary>PTH-01.</summary>
     public bool IsStandable(Int3 c) => (Flags(c) & Standable) != 0;
@@ -64,6 +70,7 @@ public sealed class PathGrid
         else
         {
             for (int k = (int)(_worldSeen - logBase); k < changes.Count; k++) InvalidateAround(changes[k]);
+            WalkabilityVersion++;
         }
         _worldSeen = total;
     }
@@ -72,6 +79,7 @@ public sealed class PathGrid
     public void InvalidateAll()
     {
         Array.Clear(_flags);
+        WalkabilityVersion++;
         _worldSeen = _world.ChangeLogBase + _world.ChangedCells.Count;
     }
 
@@ -93,13 +101,30 @@ public sealed class PathGrid
         byte f = Valid;
         int level = _water.GetLevelAt(i);
         if (level > 0) f |= Wet;
-        if (!_world.IsSolidAt(i) && !_plants.IsOccupiedAt(i)
-            && !_world.IsSolid(c + Int3.Up) && _world.IsSolid(c + Int3.Down))
+        if (StandableAt(c, i))
         {
             f |= Standable;
             if (level < WaterGrid.Full / 2) f |= Walkable;   // WAT-14
         }
         return f;
+    }
+
+    /// <summary>PTH-01 evaluated directly (water never affects standability).</summary>
+    private bool StandableAt(Int3 c, int i) =>
+        !_world.IsSolidAt(i) && !_plants.IsOccupiedAt(i) && !_world.IsSolid(c + Int3.Up) && _world.IsSolid(c + Int3.Down);
+
+    private void OnWaterClassChanged(int index, bool deepChanged)
+    {
+        InvalidateAround(index);
+        // Only a standable cell's walkability depends on its depth; deep crossings elsewhere (mid-column, no floor)
+        // change nothing a move reads (ADR-025).
+        if (deepChanged && StandableAt(_world.CellOf(index), index)) WalkabilityVersion++;
+    }
+
+    private void OnOccupancyChanged(int index)
+    {
+        InvalidateAround(index);
+        WalkabilityVersion++;
     }
 
     /// <summary>PTH-03: clear the cell and its 3x3x3 neighborhood.</summary>

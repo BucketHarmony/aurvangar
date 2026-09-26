@@ -109,8 +109,9 @@ public sealed partial class WaterGrid
     public bool IsDeep(Int3 c) => GetLevel(c) >= Full / 2;
 
     /// <summary>PTH-03 hook: called with a cell index whenever that cell's level crosses dry/wet (0) or shallow/deep
-    /// (<c>Full / 2</c>). PathGrid sets it. Not state: never hashed or saved.</summary>
-    public Action<int>? WalkClassChanged { get; set; }
+    /// (<c>Full / 2</c>); the flag is true when the shallow/deep line was crossed (walkability changed, not only the
+    /// wading cost). PathGrid sets it. Not state: never hashed or saved.</summary>
+    public Action<int, bool>? WalkClassChanged { get; set; }
 
     /// <summary>0 dry, 1 wet but wadeable, 2 deep (WAT-14).</summary>
     private static int WalkClass(int level) => level == 0 ? 0 : level < Full / 2 ? 1 : 2;
@@ -119,6 +120,8 @@ public sealed partial class WaterGrid
     /// <paramref name="oldLevel"/>. Call after writing the new level.</summary>
     private void NoteWalkClass(int i, int oldLevel)
     {
-        if (WalkClassChanged != null && WalkClass(oldLevel) != WalkClass(_level[i])) WalkClassChanged(i);
+        if (WalkClassChanged == null) return;
+        int was = WalkClass(oldLevel), now = WalkClass(_level[i]);
+        if (was != now) WalkClassChanged(i, (was == 2) != (now == 2));
     }
 }

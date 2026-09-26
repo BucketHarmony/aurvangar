@@ -340,3 +340,25 @@ Consequences: Search state is scratch, not sim state: not hashed, not saved. War
 (pairs 60-75 cells apart in x/z, paths about 120 cells): median 1.1 ms, p95 about 4 ms, up to about 10k
 expansions when the path detours around the river. PTH-P1 (1.5 ms p95) is measured in M4-T12, which will likely
 need per-expansion speedups (flat-index neighbor walk) and must define its sampling of "~100-cell" paths.
+
+## ADR-025: Regions: full flood fill keyed on a PathGrid walkability version (2026-09-26, M4-T3)
+Context: PTH-13 says regions are recomputed fully "when flagged dirty (any walkability change)" but not how the
+change is detected. PathGrid's lazy cache cannot report old-vs-new walkability. On seed 1 the settled river makes
+dry/wet and shallow/deep crossings every tick (about 17 per tick, ~0.5 deep crossings per tick), and a full rebuild
+costs about 4-5 ms (Release), so rebuilding on every water crossing would cost ~4 ms per tick.
+Decision: `PathGrid.WalkabilityVersion` is bumped on any block change (seen through the change-log sync), any plant
+occupancy change, `InvalidateAll`, and a shallow/deep crossing in a *standable* cell (`WaterGrid.WalkClassChanged`
+now passes a `deepChanged` flag). Dry/wet crossings (wading cost only) and deep crossings in non-standable cells
+(which are never walkable) do not bump it. `Regions` rebuilds at ARCH-01 step 11 when the version differs from the
+one it was built at, or after `MarkDirty()`; `Simulation` counts rebuilds in `Counters.RegionRebuilds`. The fill
+scans flat indices ascending (cheap prefilter: not solid and solid below), seeds a BFS from each unlabelled walkable
+cell with `PathMoves.From`, and numbers regions 1, 2, ... in that order, so ids are deterministic. Move rules are
+symmetric between walkable cells (step up/down headroom and diagonal intermediates mirror), so a region is exactly
+an A*-connected set; `RegionRuleTests.SameRegion_IffPathExists` checks this on random rough terrain. Region data is
+derived: not hashed, not saved; M4-T10 load calling `PathGrid.InvalidateAll()` also dirties regions.
+`PathGridCacheTests.Cache_ComputesEachCellOnceUntilInvalidated` used the global `FlagComputations` counter across a
+`Tick()`, which now includes the first region build querying every candidate cell; the test now builds regions
+first and then checks that neither a quiet tick nor a repeat query recomputes the cell, and that a neighboring
+change recomputes it exactly once (same intent, the counter was a proxy).
+Consequences: seed 1 rebuilds about 14 times per 500 ticks (one drain-side bank cell oscillates around half depth);
+headless 24,000-tick median tick unchanged at ~0.03 ms. PTH-P2 (25 ms) has ~5x headroom; M4-T12 measures it.

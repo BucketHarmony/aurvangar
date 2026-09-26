@@ -110,7 +110,7 @@ Milestone order is by risk: world and water before anything that depends on them
     breaking those tests. Add a test that a cached cell updates after a dig and after water rises.
 - [x] **M4-T2** A* pathfinder · specs: PTH-04..12 · deps: M4-T1
   - Un-skip `PathfinderTests.*`.
-- [ ] **M4-T3** Regions · specs: PTH-13, PTH-14 · deps: M4-T2
+- [x] **M4-T3** Regions · specs: PTH-13, PTH-14 · deps: M4-T2
   - Un-skip `RegionTests.*`, `WorldInvariantTests.HubReachesRiverAndHill`.
 - [ ] **M4-T4** Agents and movement · specs: JOB-01, JOB-02, PTH-15..17 · deps: M4-T2
   - Spawn 5 agents at the hub entrance area in `WorldFactory`. Movement with progress; view interpolation data.

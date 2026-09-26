@@ -75,7 +75,7 @@ public sealed class Simulation
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)
         PathGrid.SyncWorldChanges();             // PTH-03: before the change log is cleared
         Profiler?.Begin(TickPhase.Regions);
-        Regions.RebuildIfDirty();                // 11
+        if (Regions.RebuildIfDirty()) Counters.RegionRebuilds++;   // 11
         Profiler?.End(TickPhase.Regions);
         foreach (var ci in World.TakeDirtyChunks()) Events.Emit(new ChunkDirty(ci));
         World.ClearChangeLog();

@@ -133,7 +133,7 @@ public class PathfinderTests
 
 public class RegionTests
 {
-    [Fact(Skip = "M4-T3")]
+    [Fact]
     public void WallSeparates_DigMerges() // PTH-13
     {
         var sim = new ScenarioBuilder().Ground(4)
@@ -149,7 +149,7 @@ public class RegionTests
         Assert.Equal(sim.Regions.RegionOf(left), sim.Regions.RegionOf(right));
     }
 
-    [Fact(Skip = "M4-T3")]
+    [Fact]
     public void NonWalkableCell_HasNoRegion()
     {
         var sim = new ScenarioBuilder().Ground(4).Build();

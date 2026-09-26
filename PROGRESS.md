@@ -588,3 +588,25 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   (per-expansion cost ~0.4 us: `PathGrid.Flags` syncs the world log on every query, `CellOf` divisions,
   Int3-based neighbor walk) and must define the "~100-cell" sampling. The multi-goal heuristic loops over all
   goals per push; keep goal lists small in M4-T6/T7.
+
+## M4-T3 — Regions (2026-09-26)
+- Done: `Regions` full flood fill (BFS with `PathMoves.From`, ascending-index seeds, ids 1..n) rebuilt at ARCH-01
+  step 11 when `PathGrid.WalkabilityVersion` changed (blocks, plants, `InvalidateAll`, shallow/deep crossings in
+  standable cells only; `WaterGrid.WalkClassChanged` now carries a `deepChanged` flag) or after `MarkDirty()`.
+  `Counters.RegionRebuilds` is counted. `RegionOf` returns `None` for non-walkable and out-of-bounds cells.
+- Tests: un-skipped `RegionTests.*` (2) and `WorldInvariantTests.HubReachesRiverAndHill` (body written: nearest
+  walkable dry cell with water within 2 cells of the hub, and the highest walkable cell within half the hill radius
+  of the hill center, at least 8 above the entrance, share the hub's region). Added `RegionRuleTests` (deep water in
+  a wall gap splits, a tree in the gap splits, no rebuild on quiet ticks or shallow-only water, out-of-bounds/solid
+  None, and same region iff A* finds a path on 3 random rough terrains, 300 pairs each). All failed first on
+  NotImplementedException. `PathGridCacheTests.Cache_ComputesEachCellOnceUntilInvalidated` setup adjusted (ADR-025).
+  check.sh: 213 passed, 67 skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4 passed, 4 skipped.
+- Decisions: ADR-025
+- Golden: unchanged (regions are derived).
+- Perf: seed-1 full rebuild ~4-5 ms Release (PTH-P2 budget 25 ms), 2 regions. Settled river: 14 rebuilds per 500
+  ticks (one bank cell near the drains oscillates around half depth); without the standable filter it was 244.
+  Headless seed 1, 24,000 ticks: tick median 0.032 ms, p95 0.071 ms, 18,336 ticks/s, hash `0f27c8ee613dd61c`
+  (unchanged).
+- Next: M4-T4 (agents and movement). JOB-06 region check: compare `Regions.RegionOf(agentCell)` against the target's
+  adjacent cells; regions only update at tick end, so a same-tick dig is not visible until the next tick.
+  M5-T2 construction blocking must bump `PathGrid.WalkabilityVersion` (via its invalidation feed).

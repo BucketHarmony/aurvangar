@@ -17,19 +17,22 @@ public class PathGridCacheTests
     {
         var sim = new ScenarioBuilder().Ground(4).Build();
         var c = new Int3(3, 5, 3);
+        sim.Tick();                                    // first region build (PTH-13) computes every candidate cell, c too
         long before = sim.PathGrid.FlagComputations;
         Assert.True(sim.PathGrid.IsWalkable(c));
         Assert.True(sim.PathGrid.IsStandable(c));
         Assert.False(sim.PathGrid.IsWet(c));
-        Assert.Equal(before + 1, sim.PathGrid.FlagComputations);
+        Assert.Equal(before, sim.PathGrid.FlagComputations);
 
-        sim.Tick();                                    // nothing changed near c
+        sim.Tick();                                    // nothing changed: no recompute, no region rebuild
         Assert.True(sim.PathGrid.IsWalkable(c));
-        Assert.Equal(before + 1, sim.PathGrid.FlagComputations);
+        Assert.Equal(before, sim.PathGrid.FlagComputations);
 
         sim.World.SetBlock(new Int3(4, 6, 4), BlockId.Stone);  // inside c's 3x3x3 neighborhood
         Assert.True(sim.PathGrid.IsWalkable(c));
-        Assert.Equal(before + 2, sim.PathGrid.FlagComputations);
+        Assert.Equal(before + 1, sim.PathGrid.FlagComputations);
+        Assert.True(sim.PathGrid.IsWalkable(c));
+        Assert.Equal(before + 1, sim.PathGrid.FlagComputations);
     }
 
     [Fact]
