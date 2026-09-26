@@ -321,3 +321,22 @@ hooks are derived data: not hashed, not saved. `FlagComputations` is a diagnosti
 Consequences: Queries are correct mid-tick, which the job pipeline needs. The state hash is unchanged (seed-1
 24,000-tick hash still `0f27c8ee613dd61c`). Anything that later affects walkability (M5-T2 construction sites)
 must also invalidate through PathGrid. Regions (M4-T3) can hook the same invalidation points to mark itself dirty.
+
+## ADR-024: A* start/goal rules, shared move rules, pooled search state (2026-09-26, M4-T2)
+Context: PTH-04..12 do not say what happens when the start is not walkable, when a goal is not walkable, or when
+the start is itself a goal. WAT-14 flee needs a path out of a deep (standable, not walkable) cell. PTH-13 regions
+must use "the same neighbor rules" as A*.
+Decision: The neighbor and cost rules live in `PathMoves.From` (8 horizontal directions in `Int3.Horizontal8`
+order; per direction at most one of dy = 0, +1, -1 can be standable, so each direction yields at most one move) and
+`PathMoves.Heuristic`; A* and M4-T3 regions both call them. PTH-06 intermediates are checked at a.y for flat and
+down moves and at b.y for up moves; PTH-05 headroom is `a+up+up` for up and `b+up+up` for down. The wading cost is
+added when the destination cell holds any water (walkable + wet = wadeable). Start: must be standable, else
+`InvalidStart` (deep start allowed, for flee). Goals that are not walkable are dropped; none left gives `NoPath`;
+a goal equal to the start returns `[start]` at cost 0, even when the start is deep (the agent is already there). The multi-goal heuristic is the minimum over goals
+(consistent), so a closed node is never reopened. The heap holds `(f, h, index)` with stale entries skipped on pop.
+`TooFar` is returned when a node would be expanded after 20,000 expansions. Search arrays (`g`, `cameFrom`, seen
+and closed stamps, goal marks) are sized to the world on the first search and reused with a generation stamp.
+Consequences: Search state is scratch, not sim state: not hashed, not saved. Warm informal timing on seed 1
+(pairs 60-75 cells apart in x/z, paths about 120 cells): median 1.1 ms, p95 about 4 ms, up to about 10k
+expansions when the path detours around the river. PTH-P1 (1.5 ms p95) is measured in M4-T12, which will likely
+need per-expansion speedups (flat-index neighbor walk) and must define its sampling of "~100-cell" paths.

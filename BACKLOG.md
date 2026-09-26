@@ -108,7 +108,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - The scaffold's PathGrid evaluates rules directly and `PathGridTests` already pass. Add the lazy flag cache fed
     by `World.ChangedCells`, water level changes (including `WaterGrid.SetLevel`) and plant add/remove, without
     breaking those tests. Add a test that a cached cell updates after a dig and after water rises.
-- [ ] **M4-T2** A* pathfinder · specs: PTH-04..12 · deps: M4-T1
+- [x] **M4-T2** A* pathfinder · specs: PTH-04..12 · deps: M4-T1
   - Un-skip `PathfinderTests.*`.
 - [ ] **M4-T3** Regions · specs: PTH-13, PTH-14 · deps: M4-T2
   - Un-skip `RegionTests.*`, `WorldInvariantTests.HubReachesRiverAndHill`.

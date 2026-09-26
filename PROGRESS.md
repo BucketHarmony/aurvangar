@@ -568,3 +568,23 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   (same as M3-T8).
 - Next: M4-T2 (A*). Query PathGrid freely; it syncs itself. M4-T10 load must call `PathGrid.InvalidateAll()`;
   M5-T2 construction-site blocking must add its own invalidation feed.
+
+## M4-T2 — A* pathfinder (2026-09-26)
+- Done: `Pathfinder.FindPath` (single and multi-goal) with A* keyed `(f, h, index)` (`PathHeap`, lazy decrease-key),
+  octile + 2|dy| heuristic (min over goals), 20,000-expansion `TooFar` limit, pooled world-sized search arrays with
+  a generation stamp. Neighbor/cost rules (PTH-04..08) in `PathMoves.From` so M4-T3 regions reuse them. Start must
+  be standable (deep start allowed for WAT-14 flee); non-walkable goals are dropped. `LastExpanded` diagnostic.
+- Tests: un-skipped `PathfinderTests.*` (8; all failed first on NotImplementedException). Added
+  `PathfinderRuleTests` (9: step-down cost, climb/descent headroom, start==goal, invalid start, deep start paths out,
+  unwalkable goals dropped, TooFar at exactly 20,000 expansions, path contiguity + cost = sum of legal steps).
+  check.sh: 203 passed, 70 skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4 passed, 4 skipped.
+  sim-reviewer: no required fixes; applied two doc clarifications.
+- Decisions: ADR-024
+- Golden: unchanged (search state is scratch).
+- Perf: headless seed 1, 24,000 ticks: tick median 0.033 ms, p95 0.086 ms, 19,827 ticks/s, hash `0f27c8ee613dd61c`
+  (unchanged). Informal A* on seed 1 (Release, warm, 200 pairs 60-75 cells apart in x/z, paths ~120 cells):
+  median 1.1 ms, p95 ~4 ms, up to ~10k expansions on river detours. PTH-P1 budget is 1.5 ms p95.
+- Next: M4-T3 (regions): flood fill with `PathMoves.From` on walkable cells. M4-T12 will likely need A* speedups
+  (per-expansion cost ~0.4 us: `PathGrid.Flags` syncs the world log on every query, `CellOf` divisions,
+  Int3-based neighbor walk) and must define the "~100-cell" sampling. The multi-goal heuristic loops over all
+  goals per push; keep goal lists small in M4-T6/T7.

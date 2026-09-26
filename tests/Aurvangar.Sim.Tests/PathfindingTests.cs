@@ -48,7 +48,7 @@ public class PathfinderTests
     private static ScenarioBuilder Corridor() =>
         new ScenarioBuilder().Ground(6).FillBox(new Int3(1, 5, 5), new Int3(10, 6, 5), BlockId.Air);
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void OpenFloor_StraightLineCost() // PTH-07, PTH-12
     {
         var sim = new ScenarioBuilder().Ground(4).Build();
@@ -60,7 +60,7 @@ public class PathfinderTests
         Assert.Equal(new Int3(6, 5, 1), r.Path[^1]);
     }
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void OpenFloor_UsesDiagonals()
     {
         var sim = new ScenarioBuilder().Ground(4).Build();
@@ -68,7 +68,7 @@ public class PathfinderTests
         Assert.Equal(42, r.Cost);
     }
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void StepUpOne_Found_StepUpTwo_NoPath() // PTH-04, PTH-05
     {
         var one = new ScenarioBuilder().Ground(4).FillBox(new Int3(5, 5, 0), new Int3(31, 5, 31), BlockId.Stone).Build();
@@ -80,7 +80,7 @@ public class PathfinderTests
         Assert.Equal(PathStatus.NoPath, two.Pathfinder.FindPath(new Int3(2, 5, 2), new Int3(7, 7, 2)).Status);
     }
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void NoCornerCutting() // PTH-06
     {
         var sim = new ScenarioBuilder().Ground(4).Build();
@@ -91,7 +91,7 @@ public class PathfinderTests
         Assert.Equal(3, r.Path.Length);
     }
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void DropOfTwo_NotTraversed() // PTH-08
     {
         var sim = new ScenarioBuilder().Ground(4).Build();
@@ -100,7 +100,7 @@ public class PathfinderTests
         Assert.Equal(PathStatus.NoPath, sim.Pathfinder.FindPath(new Int3(8, 5, 10), new Int3(10, 3, 10)).Status);
     }
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void DeepWater_Blocks_WadeableCostsExtra() // PTH-02, PTH-07
     {
         var sim = Corridor().Build();
@@ -113,7 +113,7 @@ public class PathfinderTests
         Assert.Equal(90 + Pathfinder.CostWade, r.Cost);
     }
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void MultiGoal_PicksCheapest() // PTH-11
     {
         var sim = new ScenarioBuilder().Ground(4).Build();
@@ -121,7 +121,7 @@ public class PathfinderTests
         Assert.Equal(new Int3(8, 5, 5), r.Path[^1]);
     }
 
-    [Fact(Skip = "M4-T2")]
+    [Fact]
     public void SameInputs_SamePath() // PTH-09 determinism
     {
         var a = new ScenarioBuilder().Ground(4).Build();
