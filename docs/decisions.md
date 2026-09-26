@@ -1009,3 +1009,31 @@ Decision:
 Consequences: no new state (Berries / RegrowTicks were already saved and hashed); no save version change. A ripe bush
 nobody can reach keeps a job on the board (region filtering keeps agents from trying it). Every stock drop below 60
 sends dwarves to the bushes ahead of digs and chops.
+
+## ADR-049: Weather is a function of the tick; drought springs seep away (2026-09-26, M6-T4)
+Context: ECO-17 cycles Wet(5 days) / Drought(2 days) and sets the source strength; WAT-09 says sources are "set to"
+`Full * strength / 100`, and water.md scenario 6 (`DroughtDrainsRiver`) needs the seed-1 river to lose >= 70% within
+one day of drought. ADR-011 made sources raise-only. With raise-only springs, strength 0 only stops inflow: the flat
+bed (ADR-009, ADR-021) drains through the x=127 drains alone and the river still held 79% after the full 2-day
+drought. `Seed1_RiverHoldsVolumeThroughDay10` (M3-T8) asserted +-10% every 100 ticks to day 10, which a working
+drought cannot satisfy.
+Decision:
+- `Water/WeatherSystem` is static: the season is `tick % 7 days < 5 days ? Wet : Drought`, so there is no weather state
+  to save or hash. The strength it sets is `WaterGrid.SourceStrength`, already saved and hashed. No FormatVersion bump.
+- ARCH-01 step 2 writes the strength only on the first tick of a season (5 d, 7 d, 12 d, ...; not tick 0, where the
+  default 100 is the Wet value) and emits `SeasonChanged(season)` for the view. A strength set by hand (tests,
+  scenarios) stays until the next season change.
+- `SeasonAt`, `TicksUntilChange`, `DaysUntilChange` (rounded up) are the ECO-18 readout API for M6-T5.
+- WAT-09 is now literal: a source cell is set to the target both ways. Raising counts in `SourceAdded`; lowering
+  (only below full strength) counts in `Drained`, so WAT-11 still balances. This amends ADR-011 (2). At strength 100
+  nothing changes (a cell is never above Full between steps), so wet-season behavior and the golden hashes are
+  unchanged. In drought the spring columns (every 16 cells, ADR-021) act as sinks: the seed-1 river is at 23% 200
+  ticks into the drought and empty by ~800; it is back to 96% 400 ticks after the drought ends and 99% by 1,000.
+- `Seed1_RiverHoldsVolumeThroughDay10` now checks +-10% in the Wet season only, skipping the first 600 ticks after a
+  drought (refill): ticks 100..11,900 and 17,400..24,000 (186 samples, counted in the test). The drought itself is
+  covered by `DroughtDrainsRiver`.
+Consequences: every drought empties the river completely for about 1.5 days, so crops wither (2,400 dry ticks) and a
+pump runs dry unless water is stored (the DoD's "colonies that stored water survive"). While the river drains and
+refills, active water cells peak near 3,500 and regions rebuild often (the whole bed becomes walkable), so drought
+ticks cost more (headless survival run: 4,400 ticks/s over 10 days vs ~9,000 before day 5; median tick 0.063 ms,
+p95 1.0 ms; SIM-P1 is measured at day 5, M6-T7).

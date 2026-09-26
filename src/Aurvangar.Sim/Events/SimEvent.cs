@@ -16,6 +16,8 @@ public sealed record BuildingRemoved(BuildingId Building) : SimEvent;
 public sealed record ItemPileChanged(Int3 Cell) : SimEvent;
 public sealed record CommandRejected(string Command, string Reason) : SimEvent;
 public sealed record ColonyLost : SimEvent;
+/// <summary>ECO-17: a season began this tick (the view refreshes its season readout, ECO-18).</summary>
+public sealed record SeasonChanged(Aurvangar.Sim.Water.Season Season) : SimEvent;
 
 /// <summary>Per-tick event buffer. The view drains it after each tick.</summary>
 public sealed class EventBus

@@ -1484,3 +1484,43 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   - `Seed1_NoCommands_ColonyLost` still holds: the colony dies of thirst at 15,009.
   - Any new script command near tick 0 competes with berry picking for about 500 ticks.
   - The M6-T5 HUD can show `BushHarvest.FoodInStorage`. Bush ripeness is `Plant.Berries` / `RegrowTicks`.
+
+## M6-T4 — Weather and drought (2026-09-26)
+- Done: ECO-17, WAT-09; the ECO-18 readout API (the HUD itself is M6-T5).
+  - New static `Water/WeatherSystem` at ARCH-01 step 2. The season is a pure function of the tick
+    (`tick % 7 days < 5 days` → Wet, else Drought), so there is no new state. The strength it sets is
+    `WaterGrid.SourceStrength`, which was already saved and hashed. No FormatVersion bump.
+  - The strength is written only on the first tick of a season (5 d, 7 d, 12 d, ...; tick 0 keeps the default 100).
+    A new `SeasonChanged(Season)` event fires then. A strength set by hand stays until the next season change.
+  - `SeasonAt(tick)`, `TicksUntilChange(tick)` and `DaysUntilChange(tick)` (rounded up) are for the M6-T5 HUD.
+  - WAT-09 is now literal: a source is set to the target both ways, and lowering counts as `Drained` (ADR-049,
+    amends ADR-011). With raise-only springs, the drought left 79% of the river after 2 days. Now the spring columns
+    act as sinks in a drought.
+- Seed-1 river (no commands): 99% at day 5 → 23% after 200 drought ticks → empty by ~800. It is back at 96% 400 ticks
+  after the drought and at 99% by 1,000.
+- Tests: un-skipped `RiverTests.DroughtDrainsRiver`. New `WeatherTests.cs` (15): schedule and days-left table,
+  strength follows the season, `SeasonChanged` only on transitions, drought source seeps with WAT-11 conservation,
+  manual strength kept until the next change, save/load mid-drought matches a continuous run across the change to Wet.
+  With the weather step disabled, the 4 system tests and `DroughtDrainsRiver` failed. With raise-only sources,
+  `DroughtDrainsRiver` still failed.
+  - `Seed1_RiverHoldsVolumeThroughDay10` (M3-T8) changed: it now checks ±10% in the Wet season only, skipping the
+    600-tick refill after a drought (186 samples, count asserted). The old form cannot hold with a working drought
+    (it failed at tick 13,700, 89%). Recorded in ADR-049.
+  - check.sh: 489 passed, 3 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-049. ECO-17 and WAT-09 are annotated.
+- Golden: unchanged. All golden checkpoints (0 / 1200 / 3000 / 6000) are before the first drought, and nothing changes
+  at strength 100.
+- Headless seed 1, `--script survival`, 24,000 ticks: hash `c24f24f134a69709`, all 5 alive at day 10, 190 jobs done,
+  0 failed, stored log 80 / berries 67 / water 110. The 110 stored water carries the colony through the dry pump.
+  4,432 ticks/s (median tick 0.063 ms, p95 1.0 ms), down from ~9,000 ticks/s before day 5. During drain and refill,
+  active water cells peak near 3,500, and regions rebuild often (903 rebuilds vs 139 by day 5). No script: hash
+  `6cef6aa7d84e85dd`, colony lost at 15,009 (thirst, unchanged).
+- Perf: perf.sh 7 passed, 1 skipped (SIM-P1). WAT-P1 1.73 / 1.12 ms, WAT-P2 699 active, ECO-16 0.91 ms, PTH-P2 warm
+  3.88 ms, MESH-P1 0.62 ms. PTH-P1 p95 was 1.19 ms on the first run (noise, budget 1.5 ms); two reruns gave 0.77-0.79 ms.
+  No path code changed.
+- Screenshots: none. No rendering or Godot code changed.
+- Next: M6-T5. The season HUD reads `WeatherSystem.SeasonAt(sim.Clock.Tick)` / `DaysUntilChange`, and can refresh on
+  `SeasonChanged`. The river visibly empties during days 5-7 (WaterDirty fires normally).
+  - M6-T6: farm crops wither during every drought unless they stay moist.
+  - M6-T7: the region rebuild churn and active-cell peak during drain/refill are the main new tick cost. SIM-P1 is
+    measured at day 5, the first drought tick.

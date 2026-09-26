@@ -40,16 +40,18 @@ public sealed partial class WaterGrid
         FlushDirty(events);
     }
 
-    /// <summary>WAT-09: raise each source cell to <c>Full * strength / 100</c> before the step. A source never
-    /// lowers a cell (ADR-011); the added volume is counted in <see cref="WaterStats.SourceAdded"/>.</summary>
+    /// <summary>WAT-09: set each source cell to <c>Full * strength / 100</c> before the step. Raising counts in
+    /// <see cref="WaterStats.SourceAdded"/>. Lowering (only possible below full strength, e.g. drought's 0: the
+    /// spring seeps away) counts in <see cref="WaterStats.Drained"/> (ADR-049, which amends ADR-011).</summary>
     private void ApplySources()
     {
         int target = Full * SourceStrength / 100;
         foreach (var s in _sources)
         {
-            if (_world.IsSolidAt(s) || _level[s] >= target) continue;
             int old = _level[s];
-            Stats.SourceAdded += target - old;
+            if (old == target || _world.IsSolidAt(s)) continue;
+            if (old < target) Stats.SourceAdded += target - old;
+            else Stats.Drained += old - target;
             _level[s] = (ushort)target;
             NoteWalkClass(s, old);
             NoteLevelChange(s);

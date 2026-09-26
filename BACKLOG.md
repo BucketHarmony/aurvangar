@@ -175,7 +175,7 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M6-T2** Farm designation and crops · specs: ECO-11..14 · deps: M6-T1, M5-T5
   - Un-skip `Scenarios/FarmScenarioTests.*`.
 - [x] **M6-T3** Berry bushes · specs: ECO-10 · deps: M5-T5
-- [ ] **M6-T4** Weather and drought · specs: ECO-17, ECO-18, WAT-09 · deps: M2-T5
+- [x] **M6-T4** Weather and drought · specs: ECO-17, ECO-18, WAT-09 · deps: M2-T5
   - Un-skip `RiverTests.DroughtDrainsRiver`.
 - [ ] **M6-T5** Godot: farm tool, crop rendering, season HUD · deps: M6-T2, M6-T4
 - [ ] **M6-T6** Complete SurvivalScript (farms, hill dig, breach, levee repair); survival scenario: all 5 alive

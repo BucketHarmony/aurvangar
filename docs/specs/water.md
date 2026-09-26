@@ -39,7 +39,7 @@ levels. No pressure, no currents. Integer math only.
 
 - **WAT-09** Source cells (from terrain gen) are set to `Full * strength / 100` at the start of each step,
   where `strength` comes from `WeatherSystem` (100 in Wet season, 0 in Drought). Added volume goes to
-  `WaterStats.SourceAdded`.
+  `WaterStats.SourceAdded`; volume removed by lowering a source (drought) goes to `WaterStats.Drained` (ADR-049).
 - **WAT-10** Drain cells are set to 0 at the end of each step. Removed volume goes to `WaterStats.Drained`.
 - **WAT-11** Conservation: over any run, `initial + SourceAdded - Drained - Evaporated - Pumped == current total`
   exactly. Tested.

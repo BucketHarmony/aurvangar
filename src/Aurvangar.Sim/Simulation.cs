@@ -80,7 +80,7 @@ public sealed class Simulation
     public void Tick()
     {
         Commands.ApplyAll(this);                 // 1
-        // 2  WeatherSystem.Tick                  (M6-T4)
+        WeatherSystem.Tick(this);                // 2  ECO-17: source strength on season change
         Profiler?.Begin(TickPhase.Water);
         Water.Tick(Events);                      // 3
         Profiler?.End(TickPhase.Water);

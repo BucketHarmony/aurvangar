@@ -164,19 +164,27 @@ public class RiverTests
     }
 
     [Fact]
-    public void Seed1_RiverHoldsVolumeThroughDay10() // M3-T8, GEN-08, WAT-09, WAT-11, ADR-021
+    public void Seed1_RiverHoldsVolumeThroughDay10() // M3-T8, GEN-08, WAT-09, WAT-11, ADR-021, ADR-049
     {
+        // Wet season only: the day-5..7 drought drains the river on purpose (ECO-17, DroughtDrainsRiver). After
+        // it, the river must be back within +-10% once the springs have had RefillTicks to refill it.
+        const int RefillTicks = 600;
         var sim = WorldFactory.Create(1, TestContent.Db);
         long v0 = sim.Water.TotalVolume();
         long lo = v0 * 90 / 100, hi = v0 * 110 / 100;
         const int every = 100;
+        int checkedSamples = 0;
         for (int t = every; t <= 10 * Core.SimClock.TicksPerDay; t += every)
         {
             sim.RunTicks(every);
             long v = sim.Water.TotalVolume();
+            bool refilling = t >= WeatherSystem.CycleTicks && t % WeatherSystem.CycleTicks < RefillTicks;
+            if (WeatherSystem.SeasonAt(t) != Season.Wet || refilling) continue;
+            checkedSamples++;
             Assert.True(v >= lo && v <= hi,
                 $"river volume {v} at tick {t} is outside +-10% of tick-0 volume {v0} ({v * 100 / v0}%)");
         }
+        Assert.Equal(119 + 67, checkedSamples);        // ticks 100..11,900 and 17,400..24,000
     }
 
     [Fact]
@@ -187,7 +195,7 @@ public class RiverTests
         Assert.Equal(a.StateHash(), b.StateHash());
     }
 
-    [Fact(Skip = "M6-T4")]
+    [Fact]
     public void DroughtDrainsRiver() // water.md scenario 6, ECO-17
     {
         var sim = WorldFactory.Create(1, TestContent.Db);

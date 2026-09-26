@@ -61,6 +61,7 @@
 
 - **ECO-17** `WeatherSystem` cycles `Wet(5 days) → Drought(2 days) → Wet …`, starting in Wet at tick 0.
   The first drought on seed 1 therefore starts at day 5. Source strength: Wet 100, Drought 0.
+  Implemented as a pure function of the tick; the strength is written on each season change (ADR-049).
 - **ECO-18** HUD shows current season and days until change.
 
 ## Acceptance scenarios
