@@ -7,16 +7,6 @@ using Xunit;
 
 namespace Aurvangar.Sim.Tests
 {
-    public class WorldActionsTests
-    {
-        [Fact(Skip = "M4-T5")] public void Dig_OutOfReach_Rejected() => Placeholder.Write("ARCH-07: actor 3+ cells away gets OutOfReach; block unchanged");
-        [Fact(Skip = "M4-T5")] public void Dig_Stone_DropsStonePile() => Placeholder.Write("Dig stone adjacent → Air + pile of 1 stone at that cell; ChangedCells contains it");
-        [Fact(Skip = "M4-T5")] public void Dig_Bedrock_InvalidTarget() => Placeholder.Write("WLD-05: bedrock not diggable");
-        [Fact(Skip = "M4-T5")] public void PickUp_MixedItem_WrongItem() => Placeholder.Write("carrying logs, picking up stone → WrongItem");
-        [Fact(Skip = "M4-T5")] public void PickUp_OverCapacity_InventoryFull() => Placeholder.Write("carry cap 10");
-        [Fact(Skip = "M4-T5")] public void Chop_UnmarkedTree_InvalidTarget() => Placeholder.Write("only MarkedForChop trees; chop drops 4 logs, frees trunk cells");
-    }
-
     public class JobBoardTests
     {
         [Fact(Skip = "M4-T6")] public void OneJobTwoAgents_OnlyOneClaims() => Placeholder.Write("jobs-agents.md scenario 2");

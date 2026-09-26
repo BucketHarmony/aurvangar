@@ -385,3 +385,34 @@ neighbor order) takes the first five dry walkable cells, one dwarf each, named f
 pre-settle), so the initial world, like the hub, is read by the view rather than announced.
 Consequences: seed-1 golden regenerated (five agents in the state). A mid-step `MoveTo` snaps the view back up to
 one cell; acceptable for the POC.
+
+## ADR-027: WorldActions rules, item piles, all-or-nothing storage (2026-09-26, M4-T5)
+Context: ARCH-07 lists the actions and result codes but not the check order, what a building's "target cell" is,
+which blocks `PlaceBlock` may place or what it costs, how partial deliveries behave, or where ECO-08 looks for a
+free cell. No pile store existed.
+Decision: New `ItemPiles` (`Simulation.Piles`): `SortedDictionary<cellIndex, ItemStack>`, one item type per cell,
+emits `ItemPileChanged`, hashed in cell-index order (save in M4-T10). Every action checks, in order: actor exists
+(`InvalidTarget`) and is alive (`AgentDead`), an id target (plant, building) exists, reach (target is the actor's
+`Cell` or one of its 26 neighbors; for a building, any footprint cell), then the target cell's contents and other
+preconditions; any non-Ok result changes nothing. An out-of-reach cell target is `OutOfReach` whatever it holds.
+`Dig`: solid + diggable block (WLD-05 via `blocks.json`; y = 0 always refused) → Air, drop as a 1-item pile on the dug
+cell; `Blocked` if the cell is the floor of a living agent (its `Cell` or `NextCell`; JOB-09 for the digger and every
+other agent), of a plant, or of a building (`BuildingSolid` above; keeps the API safe for a future avatar,
+DSG-02 only guards designations). `Chop`: marked trees only, reach to the base, 4 logs on the base. `PlaceBlock`: Air cell
+→ a natural block (solid and diggable: Stone/Dirt/Grass/Sand/Farmland), `Blocked` by an agent in the cell or in the
+cell below it (headroom), a plant, or a pile; no material is consumed (no task needs a cost yet; the future avatar
+task adds one). `PickUp`/`PickUpFromStorage`: carried stack must be empty or the same item (`WrongItem`) and stay
+≤ 10 (`InventoryFull`), then the source must hold the count (`NotEnoughItems`). `DeliverTo` and storage are
+all-or-nothing: the whole carried stack goes in only if the building accepts the item (BLD-11) and has room under
+both the per-item and total caps, else `WrongItem` / `StorageFull` and nothing moves (haul reservations in M4-T8
+keep this from failing in normal play). Storage actions need a `Complete` building with storage; emptied entries
+are removed from `Stored`. `Consume`: one unit, needs clamped at max, non-food/drink → `WrongItem`. `Drop`: the whole
+stack on the target cell if it is standable (PTH-01, so never mid-air or in a trunk) and holds no other item, else the first cell in a fixed
+spiral (radius 3 by horizontal Chebyshev ring, then x/z Manhattan, then same level / one up / one down, then z, then
+x) that is standable and holds no other item (a same-item pile counts as free); none → `Blocked`. "Radius 3" is horizontal; the search also looks one level
+up and down.
+`Work(actor, WorkTarget)` checks the actor and reach only; step progress lives on the agent. Construction-site
+delivery and construction progress (BLD-06..08) and pump cycles (BLD-13) extend `DeliverTo`/`Work` in M5-T2/M5-T4.
+Consequences: seed-1 golden regenerated (the hash now includes the empty pile set). `Dig`/`Chop` put their drop on the
+dug cell / tree base (always pile-free), so a dig in an overhang, or under an existing pile, can leave a pile without
+a floor; acceptable for the POC. The spiral ignores regions, so a fallback pile can land where haulers cannot reach.

@@ -631,3 +631,29 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   (`Arrived`/`Failed`) each tick; `Failed` is the PTH-16 step failure. A mid-step `MoveTo` abandons the step.
   M4-T5 `PlaceBlock` should refuse a cell an agent stands in (`CanStep` assumes the agent's own cell is standable).
   M4-T10 must save `Move` and `Repathed`. Agents are not rendered yet (M4-T11).
+
+## M4-T5 — WorldActions (2026-09-26)
+- Done: every ARCH-07 action (`Dig`, `Chop`, `PlaceBlock`, `PickUp`, `PickUpFromStorage`, `Drop`, `DeliverTo`,
+  `Consume`, new `Work(actor, WorkTarget)`) with the check order actor → id target → reach (26-neighborhood; any
+  footprint cell for buildings) → preconditions, and no change on a non-Ok result. New `ItemPiles`
+  (`Simulation.Piles`, one item per cell, sorted by cell index, emits `ItemPileChanged`, hashed). ECO-08 drop placement
+  (target if standable and free, else a fixed radius-3 spiral of standable cells). Dig/PlaceBlock refuse cells that
+  would remove an agent's floor or headroom (Cell or NextCell), a plant's floor, or a building's floor.
+  `WorldActions` split into `WorldActions.cs` and `WorldActions.Storage.cs`.
+- Tests: moved the 6 M4-T5 placeholders into `WorldActionsTests` with real bodies, plus 22 more (reach in 3D, dirt has no
+  drop, agent/tree/building floors, dead/unknown actor, chop reach and bushes, PlaceBlock rules, pile merge, spiral
+  cell, headroom drop, no free cell, storage pick-up/deliver caps, BLD-11 water, consume clamps, Work reach, piles in
+  hash); 28 total, all failed first on the missing API (compile). check.sh: 249 passed, 57 skipped, 0 failed; Godot
+  csproj 0 warnings. sim-reviewer: required fixes applied (ADR-027 written; Drop target must be standable, so piles
+  never float from a drop). Also applied: check-order doc, dig under BuildingSolid refused, M4-T8 marker for BLD-10
+  reservations.
+- Decisions: ADR-027
+- Golden: regenerated (`UPDATE_GOLDEN=1`): `StateHash` now includes the item pile set (empty on seed 1).
+- Perf: n/a (no water/path code touched). Headless seed 1, 24,000 ticks: tick median 0.032 ms, p95 0.062 ms,
+  21,091 ticks/s, 5 agents alive, hash `b05cc68ba432480e` (hash change only from the new pile field).
+- Next: M4-T6 (JobBoard). Steps call `sim.Actions.*`; a non-Ok result is the JOB-08 failure. Reach uses `Agent.Cell`
+  (not NextCell), so act only after `Move == Arrived`. `OutOfReach` is returned before any cell-content check.
+  JOB-07 "drop carried on the agent's cell" can return `Blocked` (no free standable cell within radius 3): define a
+  fallback. `Work` only checks reach; step progress lives on `Agent.StepProgress`. M4-T8: add BLD-10 reservations
+  to storage actions and `ScenarioBuilder.Hub/Stock` (tests currently use `Buildings.PlacePrebuilt` + `Stored`).
+  M4-T10: save `ItemPiles`. M5-T2 extends `DeliverTo` (sites, BLD-07 state change) and `Work` (construct progress).

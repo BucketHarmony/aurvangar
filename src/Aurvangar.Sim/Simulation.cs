@@ -5,6 +5,7 @@ using Aurvangar.Sim.Commands;
 using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Events;
+using Aurvangar.Sim.Items;
 using Aurvangar.Sim.Paths;
 using Aurvangar.Sim.Plants;
 using Aurvangar.Sim.Water;
@@ -27,6 +28,7 @@ public sealed class Simulation
     public Regions Regions { get; }
     public AgentSystem Agents { get; }
     public BuildingSystem Buildings { get; }
+    public ItemPiles Piles { get; }
     public WorldActions Actions { get; }
     public SimClock Clock { get; } = new();
     public Rng Rng { get; }
@@ -52,6 +54,7 @@ public sealed class Simulation
         Regions = new Regions(PathGrid);
         Agents = new AgentSystem(Events);
         Buildings = new BuildingSystem(World);
+        Piles = new ItemPiles(World, Events);
         Actions = new WorldActions(this);
     }
 
@@ -99,6 +102,7 @@ public sealed class Simulation
         Water.AddToHash(ref h);
         Plants.AddToHash(ref h);
         Buildings.AddToHash(ref h);
+        Piles.AddToHash(ref h);
         Agents.AddToHash(ref h);
         return h.Value;
     }
