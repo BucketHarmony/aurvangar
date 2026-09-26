@@ -243,3 +243,18 @@ Entry template:
   M3-T4: Godot's default front face is clockwise, so the Godot layer must reverse the index order (or set cull
   mode) when it copies `MeshData` into an `ArrayMesh`. Positions are in world space, so place chunk MeshInstances at
   the origin.
+
+## M3-T2 — Slicing in mesher (2026-09-26)
+- Done: `ChunkMesher` flags slice cut faces (VIEW-04): a top face of a solid cell at `y == sliceY` whose real-world
+  cell above is solid gets a cut bit (`1 << 8`) in the greedy mask key, is colored with `BlockColors.GetCut`, and is
+  passed to `AddQuad` with `isCut` (counted in `CutQuadCount`). Cells above the slice were already Air (M3-T1).
+  ViewCore only; no Sim changes.
+- Tests: un-skipped `SliceTests.NoSlice_ColumnHasNoCutFaces`, `Slice_CutsColumnWithOneCutFace` (failed first:
+  CutQuadCount 0), `BlocksAboveSlice_Hidden` (already passed from M3-T1). Added `Slice_AtNaturalSurface_NoCutFace`,
+  `CutAndUncutTops_DoNotMerge_AndCutIsDarkened`, `Slice_AtChunkTop_CutUsesCellInChunkAbove`. check.sh: 118 passed,
+  81 skipped, 0 failed.
+- Decisions: ADR-016 (cut only where the real cell above is solid; cut bit in the mask key).
+- Golden: unchanged
+- Perf: n/a (MESH-P1 is M3-T7; the cut check adds one `world.IsSolid` call per visible top face on the slice layer)
+- Next: M3-T3 (WaterMesher, ViewCore). It should also hide water above `sliceY` (VIEW-04). M3-T5 slice controller:
+  remesh the chunks containing the old and new slice (ADR-016).

@@ -13,6 +13,7 @@ public static class ChunkMesher
     private const int S = VoxelWorld.ChunkSize;
     private const int P = S + 2;                 // padded edge: one neighbor cell on each side
     private static readonly int[] PadStride = { 1, P * P, P };   // x, y, z strides in the padded grid
+    private const int CutBit = 1 << 8;           // mask flag above the block id byte: slice cut face (VIEW-04)
 
     public static MeshData Build(VoxelWorld world, int cx, int cy, int cz, int sliceY, BlockColors colors)
     {
@@ -33,6 +34,7 @@ public static class ChunkMesher
                 {
                     // VIEW-03: a face is visible where a solid cell borders a non-solid cell (neighbor chunks included).
                     bool any = false;
+                    bool cutLayer = d == 1 && sign > 0 && oy + k == sliceY;   // VIEW-04: top faces on the slice
                     c[d] = k;
                     for (int j = 0; j < S; j++)
                     {
@@ -43,7 +45,8 @@ public static class ChunkMesher
                             int pi = (c[0] + 1) + (c[2] + 1) * P + (c[1] + 1) * P * P;
                             byte b = pad[pi];
                             int m = b != 0 && pad[pi + nOff] == 0 ? b : 0;
-                            // M3-T2: cut flag (VIEW-04) goes into the mask key so cut and uncut faces never merge.
+                            // The cut flag is part of the mask key, so cut and uncut faces never merge (ADR-016).
+                            if (m != 0 && cutLayer && world.IsSolid(ox + c[0], sliceY + 1, oz + c[2])) m |= CutBit;
                             mask[i + j * S] = m;
                             any |= m != 0;
                         }
@@ -113,10 +116,12 @@ public static class ChunkMesher
                 var a = new Vector3(p[0], p[1], p[2]);
                 var eu = du * w;
                 var ev = dv * h;
-                var color = colors.Get((BlockId)(m & 0xFF));
+                bool cut = (m & CutBit) != 0;
+                var id = (BlockId)(m & 0xFF);
+                var color = cut ? colors.GetCut(id) : colors.Get(id);
                 // Counter-clockwise seen from the normal side (MeshData contract).
-                if (sign > 0) mesh.AddQuad(a, a + eu, a + eu + ev, a + ev, normal, color);
-                else mesh.AddQuad(a, a + ev, a + eu + ev, a + eu, normal, color);
+                if (sign > 0) mesh.AddQuad(a, a + eu, a + eu + ev, a + ev, normal, color, cut);
+                else mesh.AddQuad(a, a + ev, a + eu + ev, a + eu, normal, color, cut);
                 i += w;
             }
         }

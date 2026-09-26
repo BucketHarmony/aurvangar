@@ -77,7 +77,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - `Aurvangar.ViewCore.Meshing.ChunkMesher` → `MeshData` (positions, normals, colors, indices).
   - Un-skip `Meshing/ChunkMesherTests.*` (single block = 6 quads; 4×4×1 slab = 6 quads; two block types = no
     merge across types; hidden faces culled across chunk borders).
-- [ ] **M3-T2** Slicing in mesher · specs: VIEW-04 · deps: M3-T1
+- [x] **M3-T2** Slicing in mesher · specs: VIEW-04 · deps: M3-T1
   - Un-skip `Meshing/SliceTests.*` (cells above slice treated as air; cut faces flagged).
 - [ ] **M3-T3** Water surface builder · specs: water.md rendering contract, VIEW-07 · deps: M2-T4, M3-T1
   - `Aurvangar.ViewCore.Meshing.WaterMesher`. Un-skip `Meshing/WaterMesherTests.*`.

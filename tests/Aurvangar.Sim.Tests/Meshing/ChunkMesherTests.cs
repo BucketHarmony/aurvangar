@@ -121,7 +121,7 @@ public class SliceTests
         return w;
     }
 
-    [Fact(Skip = "M3-T2")]
+    [Fact]
     public void NoSlice_ColumnHasNoCutFaces()
     {
         var m = ChunkMesher.Build(Column(), 0, 0, 0, sliceY: 31, Colors);
@@ -129,7 +129,7 @@ public class SliceTests
         Assert.Equal(0, m.CutQuadCount);
     }
 
-    [Fact(Skip = "M3-T2")]
+    [Fact]
     public void Slice_CutsColumnWithOneCutFace() // VIEW-04
     {
         var m = ChunkMesher.Build(Column(), 0, 0, 0, sliceY: 5, Colors);
@@ -138,12 +138,54 @@ public class SliceTests
         Assert.All(m.Positions, p => Assert.True(p.Y <= 6f));
     }
 
-    [Fact(Skip = "M3-T2")]
+    [Fact]
     public void BlocksAboveSlice_Hidden()
     {
         var w = new VoxelWorld(32, 32, 32, TestContent.Db.SolidTable);
         w.SetBlock(new Int3(5, 20, 5), BlockId.Stone);
         Assert.Equal(0, ChunkMesher.Build(w, 0, 0, 0, sliceY: 10, Colors).QuadCount);
+    }
+
+    [Fact] // ADR-016: a top face at the slice with Air above in the real world is a natural surface, not a cut
+    public void Slice_AtNaturalSurface_NoCutFace()
+    {
+        var m = ChunkMesher.Build(Column(), 0, 0, 0, sliceY: 10, Colors);
+        Assert.Equal(5, m.QuadCount);
+        Assert.Equal(0, m.CutQuadCount);
+    }
+
+    [Fact]
+    public void CutAndUncutTops_DoNotMerge_AndCutIsDarkened()
+    {
+        var w = new VoxelWorld(32, 32, 32, TestContent.Db.SolidTable);
+        for (int x = 2; x < 6; x++) w.SetBlock(new Int3(x, 5, 2), BlockId.Stone);
+        w.SetBlock(new Int3(2, 6, 2), BlockId.Stone);
+        w.SetBlock(new Int3(3, 6, 2), BlockId.Stone);
+        var m = ChunkMesher.Build(w, 0, 0, 0, sliceY: 5, Colors);
+        // top: 1 cut (x 2..3) + 1 uncut (x 4..5); bottom, north, south, west, east: 1 each
+        Assert.Equal(7, m.QuadCount);
+        Assert.Equal(1, m.CutQuadCount);
+        int cutTops = 0;
+        for (int q = 0; q < m.QuadCount; q++)
+        {
+            if (m.Colors[q * 4] != Colors.GetCut(BlockId.Stone)) continue;
+            cutTops++;
+            Assert.Equal(System.Numerics.Vector3.UnitY, m.Normals[q * 4]);
+            Assert.All(m.Positions.GetRange(q * 4, 4), p => { Assert.Equal(6f, p.Y); Assert.InRange(p.X, 2f, 4f); });
+        }
+        Assert.Equal(1, cutTops);
+    }
+
+    [Fact]
+    public void Slice_AtChunkTop_CutUsesCellInChunkAbove()
+    {
+        var w = new VoxelWorld(32, 64, 32, TestContent.Db.SolidTable);
+        w.SetBlock(new Int3(4, 31, 4), BlockId.Stone);
+        w.SetBlock(new Int3(4, 32, 4), BlockId.Stone);
+        var lower = ChunkMesher.Build(w, 0, 0, 0, sliceY: 31, Colors);
+        Assert.Equal(6, lower.QuadCount);
+        Assert.Equal(1, lower.CutQuadCount);
+        Assert.True(ChunkMesher.Build(w, 0, 1, 0, sliceY: 31, Colors).IsEmpty);
     }
 }
 

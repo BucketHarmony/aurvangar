@@ -174,3 +174,17 @@ Decision: Add `Core/IndexSort`, an LSD radix sort with 11-bit digits for non-neg
 (world sizes must be multiples of 32; 160x128 drops to 19,306 active cells). It asserts that at least 20,000 cells
 stay active for every measured step, so it tests a heavier load than the spec (about 23k cells).
 Consequences: Other hot paths (A*, regions, mesher) can reuse `IndexSort`. Budgets are unchanged.
+
+## ADR-016: A slice top face is "cut" only where the real cell above is solid (2026-09-26, M3-T2)
+Context: VIEW-04 says to emit top faces of solid cells at `y == SliceY` with the darkened cut color. Read literally,
+every exposed surface that happens to lie at the slice level (open ground, a floor under open sky) would be drawn
+dark, although nothing was cut there. The scaffold's `ChunkMesher` doc comment already says the cell above must be
+solid in the real world.
+Decision: A top face of a solid cell at `y == SliceY` is a cut face only if the real world cell at `y == SliceY + 1`
+is solid (WLD-04 out-of-bounds rules, so the top of the world is never cut). Cut faces use `BlockColors.GetCut`,
+count in `MeshData.CutQuadCount`, and carry a flag bit (`1 << 8`) in the greedy mask key, so cut and uncut faces
+never merge. A block whose above cell is in the next chunk is checked through the world, not the padded copy.
+Consequences: At the default slice (`SizeY - 1`) there are no cut faces. Cut faces are only emitted by the chunk
+that holds `SliceY`, so the VIEW-04 remesh rule (chunks whose Y range contains the old or new slice) still covers a
+slice change (M3-T5). A block change at `SliceY + 1` in the chunk above already dirties the chunk below (WLD-03
+neighbor dirtying), so cut faces stay current.
