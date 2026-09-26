@@ -6,6 +6,7 @@ using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Designations;
 using Aurvangar.Sim.Events;
+using Aurvangar.Sim.Farming;
 using Aurvangar.Sim.Items;
 using Aurvangar.Sim.Jobs;
 using Aurvangar.Sim.Paths;
@@ -27,6 +28,8 @@ public sealed class Simulation
     /// <summary>ECO-15. Saved and hashed: it reflects the water at the last recompute (ADR-046).</summary>
     public MoistureMap Moisture { get; }
     public PlantSystem Plants { get; }
+    /// <summary>ECO-11..14 farm tiles and crops.</summary>
+    public FarmSystem Farms { get; }
     public PathGrid PathGrid { get; }
     public Pathfinder Pathfinder { get; }
     public Regions Regions { get; }
@@ -58,6 +61,7 @@ public sealed class Simulation
         Water = new WaterGrid(World);
         Moisture = new MoistureMap(World, Water);
         Plants = new PlantSystem(World);
+        Farms = new FarmSystem(World);
         PathGrid = new PathGrid(World, Water, Plants);
         Pathfinder = new Pathfinder(PathGrid);
         Regions = new Regions(PathGrid);
@@ -82,6 +86,7 @@ public sealed class Simulation
         Profiler?.End(TickPhase.Water);
         Moisture.Tick(Clock.Tick);               // 4
         Plants.Tick(Clock);                      // 5
+        Farms.Tick(this);                        // 5  crop growth / wither, Plant and Harvest jobs
         NeedsSystem.Tick(this);                  // 6
         Buildings.Tick(this);                    // 7
         DesignationSystem.Tick(this);            // 8
@@ -114,6 +119,7 @@ public sealed class Simulation
         Water.AddToHash(ref h);
         Moisture.AddToHash(ref h);
         Plants.AddToHash(ref h);
+        Farms.AddToHash(ref h);
         Buildings.AddToHash(ref h);
         Piles.AddToHash(ref h);
         Designations.AddToHash(ref h);

@@ -41,6 +41,7 @@
 
 - **ECO-11** `DesignateFarm(area)` marks top-surface Grass/Dirt cells (the solid cell whose above is Air and
   standable) as farm tiles. The block becomes Farmland immediately (it is a designation, not construction).
+  The area is an XZ rectangle; each column's top solid cell is the candidate (M6-T2, ADR-047).
 - **ECO-12** Farm tile states: `Empty` → Plant job → `Growing(progress)` → `Mature` → Harvest job → 3 potatoes →
   `Empty`. Growth requires the tile to be **moist**: progress +1 per tick when moist, 0 when dry.
   Mature at 3 days (7200 moist ticks).

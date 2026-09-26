@@ -69,6 +69,24 @@ public static class HaulSystem
         return true;
     }
 
+    /// <summary>JOB-11: the complete storage building nearest <paramref name="from"/> (Manhattan to its entrance, ties
+    /// by lower id) that accepts the item and has unreserved room for all <paramref name="count"/>, or null.</summary>
+    public static Building? NearestStorage(Simulation sim, Int3 from, ItemId item, int count)
+    {
+        Building? best = null;
+        int bestDist = int.MaxValue;
+        foreach (var b in sim.Buildings.All)   // ascending id: strict < keeps the lower id on a tie
+        {
+            if (b.State != BuildingState.Complete || b.Def.Storage is null || !sim.Actions.Accepts(b, item)) continue;
+            if (sim.Jobs.StorageRoom(b, item) < count) continue;
+            int dist = Manhattan(from, b.EntranceCell);
+            if (dist >= bestDist) continue;
+            best = b;
+            bestDist = dist;
+        }
+        return best;
+    }
+
     /// <summary>Brings an unclaimed pile haul up to date; false when it should be withdrawn.</summary>
     private static bool Replan(Simulation sim, Job job)
     {

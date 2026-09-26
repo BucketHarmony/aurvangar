@@ -20,10 +20,19 @@ public sealed record DesignateChop(int X0, int Z0, int X1, int Z1) : ICommand
     public void Apply(Simulation sim) => DesignationSystem.DesignateChop(sim, Tag, X0, Z0, X1, Z1);
 }
 
-/// <summary>DSG-06: clear dig marks and chop marks (trees whose base is in the box) and cancel their jobs.</summary>
+/// <summary>DSG-06: clear dig marks, chop marks (trees whose base is in the box) and Empty farm tiles, and cancel their jobs.</summary>
 public sealed record CancelDesignation(Int3 A, Int3 B) : ICommand
 {
     public string Tag => "CancelDesignation";
 
     public void Apply(Simulation sim) => DesignationSystem.Cancel(sim, Tag, A, B);
+}
+
+/// <summary>ECO-11: turn the top-surface Grass/Dirt cell of every column in the XZ rectangle (corners in any order)
+/// into a farm tile.</summary>
+public sealed record DesignateFarm(int X0, int Z0, int X1, int Z1) : ICommand
+{
+    public string Tag => "DesignateFarm";
+
+    public void Apply(Simulation sim) => Farming.FarmSystem.Designate(sim, Tag, X0, Z0, X1, Z1);
 }

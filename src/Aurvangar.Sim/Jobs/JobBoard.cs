@@ -156,6 +156,17 @@ public sealed class JobBoard
 
     internal void ReleaseReservations(Job job) => Apply(job, -1);
 
+    /// <summary>JOB-11: replaces a job's reservations; for a claimed job the old ones are released and the new ones
+    /// taken (the caller has checked they can be).</summary>
+    internal void SetReservations(Job job, IEnumerable<Reservation> reservations)
+    {
+        var list = new List<Reservation>(reservations);
+        if (job.IsClaimed) ReleaseReservations(job);
+        job.Reservations.Clear();
+        job.Reservations.AddRange(list);
+        if (job.IsClaimed) TakeReservations(job);
+    }
+
     /// <summary>Rebuilds the reservation tables from the claimed jobs (after a load).</summary>
     public void RebuildReservations()
     {

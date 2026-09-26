@@ -1392,3 +1392,46 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
 - Next: M6-T2. Crops read `sim.Moisture.IsMoist(x, z)` for their column; ECO-11's farm tile is the column's top
   surface cell, so `SurfaceY` should match the tile's y. Farm tiles need their own save section (bump FormatVersion
   to 4) and hash. No view event exists for moisture changes yet; M6-T5 can add one if it renders moisture.
+
+## M6-T2 — Farm designation and crops (2026-09-26)
+- Done: ECO-11..14, JOB-11 for crops, DSG-06 for farm tiles.
+  - New `Farming/FarmSystem.cs` (`sim.Farms`). It ticks at ARCH-01 step 5, after the plants, and does three things
+    in order. It drops lost tiles (the block is no longer Farmland, or the cell above is solid or part of a
+    building). It grows crops from `sim.Moisture.IsMoist`: while moist, Progress +1 and DryTicks reset; Mature at
+    7200. While dry, DryTicks +1; the crop withers to Empty at 2400. It then keeps one Plant job (30, Work 30) per
+    Empty tile and one Harvest job (35, Work 20) per Mature tile, and withdraws unclaimed stale ones.
+  - Command `DesignateFarm(X0, Z0, X1, Z1)` covers an XZ rectangle. In each column the top solid cell qualifies if
+    it is Grass, Dirt, or Farmland without a tile, has standable air above, and is not part of a building. It
+    becomes Farmland at once. The command is in `CommandCodec`.
+  - New actions `WorldActions.Plant` / `Harvest` (step kinds `Plant`, `Harvest`). Harvest puts 3 potatoes in the
+    carried stack.
+  - JOB-11: after the harvest, the job appends GoToBuilding + DeliverTo to the nearest storage with room for all 3
+    (`HaulSystem.NearestStorage`). It swaps the tile's cell reservation for that storage reservation
+    (`JobBoard.SetReservations`). If no storage has room, it appends a Drop and the pile is hauled later.
+  - `CancelDesignation` removes Empty tiles (Farmland stays) and cancels their Plant jobs.
+  - Tiles are saved (new `Farms` section; `FormatVersion` is now 4) and hashed.
+- Tests: the 4 placeholders moved to `Scenarios/FarmScenarioTests.cs` with bodies, plus 2 new tests
+  (`ShortDrySpell_DoesNotWither`, `Harvest_StorageFull_DropsPile`). New `FarmTests.cs` has 7 tests: designation
+  rules, rejection, re-designating Farmland, cancel, tile loss on dig/cover, save/load mid-growth, hash coverage.
+  - The tests did not compile first (there was no `FarmSystem` or `DesignateFarm` yet).
+  - Mutation check: with growth ignoring moisture and no storage chaining, 4 scenario tests fail.
+  - check.sh: 465 passed, 6 skipped, 0 failed; Godot csproj 0 warnings.
+- Review (sim-reviewer): no rule violations. Its required fixes were ADR-047, which I had not yet written when it
+  read the diff, and the golden note below. Applied: job selection skips a Plant / Harvest job whose tile no longer
+  needs it (`FarmSystem.StillWanted`). This covers a harvest job released mid-delivery by a need job, which could be
+  re-taken in the same tick. Not applied (noted): `NearestStorage` has no region check (same as `HaulSystem.Plan`);
+  per-tick HashSets in `SyncJobs` (see M6-T7).
+- Decisions: ADR-047. ECO-11 and JOB-11 are annotated in the specs.
+- Golden: regenerated with `UPDATE_GOLDEN=1` (intentional). `StateHash` now includes the farm table (its count is 0
+  on the survival script), so every checkpoint changed, including tick 0. Behavior is unchanged. New hashes: 0
+  `3f06893d65057740`, 1200 `3766ea79b5623c8e`, 3000 `289e98388be50fc3`, 6000 `712f3f4bbf421a95`.
+- Headless seed 1, `--script survival`, 24,000 ticks: hash `7512509798ef6638`, ~12,100 ticks/s. Stats are the same
+  as M6-T1 (154 jobs done, 0 failed; 4 alive at day 10). No script: hash `8ea72c37311ecf3b`, colony lost at 15,012.
+- Perf: perf.sh 7 passed, 1 skipped (SIM-P1). No Godot code changed, so no screenshots.
+- Next: M6-T3 (berry bushes, ECO-10: Harvest from PlantSystem while stored food < 60).
+  - `FarmSystem.ChainDelivery` / `HaulSystem.NearestStorage` can be reused for the bush harvest's JOB-11 chain.
+  - `FarmSystem.StillWanted` only covers Plant and Harvest jobs that target farm tiles. Bush harvest jobs also use
+    `JobKind.Harvest`, so tell them apart, for example by the tile lookup or a different step.
+  - M6-T5 renders crops from `sim.Farms.All` (state and Progress / `MatureTicks`). There is no farm view event.
+  - M6-T6 adds `DesignateFarm` near the river to the SurvivalScript. A tile must be within 5 columns of water at
+    [surfaceY - 2, surfaceY + 1] to grow.

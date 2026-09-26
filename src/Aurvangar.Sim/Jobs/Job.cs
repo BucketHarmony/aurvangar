@@ -10,7 +10,7 @@ public enum JobKind : byte
 
 /// <summary>What one job step does. GoTo moves; Work spends ticks; the rest are one <see cref="Actions.WorldActions"/>
 /// call each (JOB-08).</summary>
-public enum StepKind : byte { GoTo, Work, Dig, Chop, PickUp, PickUpFromStorage, DeliverTo, Consume, Drop }
+public enum StepKind : byte { GoTo, Work, Dig, Chop, PickUp, PickUpFromStorage, DeliverTo, Consume, Drop, Plant, Harvest }
 
 /// <summary>Where a GoTo step may end: on the cell itself, anywhere the cell is in reach (ARCH-07), anywhere a
 /// building's footprint is in reach, or (JOB-09) in reach of a dig target but never on top of it.</summary>
@@ -31,6 +31,8 @@ public readonly record struct JobStep(StepKind Kind, Int3 Cell, int Target, Item
     public static JobStep DeliverTo(BuildingId b) => new(StepKind.DeliverTo, default, b.Value, default, 0, 0, default);
     public static JobStep Consume(BuildingId b, ItemId item) => new(StepKind.Consume, default, b.Value, item, 1, 0, default);
     public static JobStep Drop(Int3 cell) => new(StepKind.Drop, cell, 0, default, 0, 0, default);
+    public static JobStep PlantCrop(Int3 tile) => new(StepKind.Plant, tile, 0, default, 0, 0, default);
+    public static JobStep HarvestCrop(Int3 tile) => new(StepKind.Harvest, tile, 0, default, 0, 0, default);
 
     public void AddToHash(ref StateHasher h)
     {

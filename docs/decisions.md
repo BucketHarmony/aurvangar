@@ -944,3 +944,38 @@ Consequences: SAV-03 holds exactly for saves taken between recomputes. The saved
 bytes (small; mostly long runs). Seed-1 golden hashes change (the hash now includes the map); no behavior changes
 until crops read the map. v2 saves no longer load (SAV-04). Recompute on seed 1: ~0.9 ms median (Release; budget
 3 ms, ECO-16).
+
+## ADR-047: Farm tiles: column-top designation, FarmSystem at step 5, harvest chains its own delivery (2026-09-26, M6-T2)
+Context: ECO-11 says `DesignateFarm(area)` marks "top-surface Grass/Dirt cells" but not whether the area is a box or
+an XZ rectangle, whether Farmland left by a cancel can be designated again, or what happens to a tile that is dug or
+built over. ECO-12/13 do not say when in the tick crops grow, and JOB-11 does not say what a harvest does when no
+storage has room (ECO-14 says the harvest posts regardless of storage).
+Decision:
+- `DesignateFarm(X0, Z0, X1, Z1)` is an XZ rectangle like `DesignateChop`. In each column the tile is the column's
+  top solid cell (`MoistureMap.SurfaceY`, the same cell the moisture flag describes). It qualifies when it is Grass,
+  Dirt, or Farmland without a tile, the cell above is standable (PTH-01: air, headroom, no plant), and neither cell
+  belongs to a building. The block becomes Farmland at once (not an agent action, like a designation). A rectangle
+  entirely outside the world is rejected. Existing tiles are unchanged.
+- `Farming/FarmSystem` owns the tiles (SortedDictionary by cell index; state Empty/Growing/Mature, Progress,
+  DryTicks). It ticks at ARCH-01 step 5, right after `PlantSystem`: it drops tiles whose block is no longer Farmland or
+  whose cell above is solid or part of a building; grows crops (moist: DryTicks = 0 and Progress + 1, Mature at 7200;
+  dry: DryTicks + 1, withered to Empty at 2400); then keeps one Plant job (priority 30, Work 30) per Empty tile and one
+  Harvest job (35, Work 20) per Mature tile. Unclaimed farm jobs whose tile is gone or in another state are withdrawn.
+  A crop planted in tick T first grows in tick T + 1 and is Mature at the end of tick T + 7200.
+- New `WorldActions.Plant` / `WorldActions.Harvest` (step kinds `Plant`, `Harvest`) change the crop; Harvest puts 3
+  potatoes in the actor's carried stack (it needs room for them).
+- JOB-11: when the Harvest step succeeds, the job appends `GoToBuilding + DeliverTo` to the nearest complete storage
+  that accepts potatoes and has room for all 3 (Manhattan to entrance, ties by id) and swaps its tile cell reservation
+  for that storage reservation (`JobBoard.SetReservations`), so the tile can be replanted while the potatoes travel.
+  With no such storage it appends a `Drop` at the harvester's cell; `HaulSystem` moves the pile once room appears.
+- ECO-14 overrides the JOB-05 table's "storage below target" for crops: Plant and Harvest jobs are posted by
+  FarmSystem (not PlantSystem) whatever the storage level. JOB-11's "rather than dropping" is kept whenever a storage
+  has room; the Drop fallback exists only because ECO-14 lets a harvest run with none.
+- Job selection skips a Plant / Harvest job whose tile is no longer Empty / Mature (`FarmSystem.StillWanted`), e.g. a
+  harvest job released mid-delivery by a need job; it is withdrawn at the next farm step.
+- DSG-06: `CancelDesignation` removes Empty tiles in the box (Farmland stays) and cancels their Plant jobs, claimed or
+  not. Tiles with a crop stay.
+- Tiles are hashed and saved (new `Farms` section after moisture); save `FormatVersion` is 4.
+Consequences: a tile covered by a building or a placed block is lost silently (its crop too). Crops do not block
+walking or building placement. Crop numbers (7200, 2400, 3 potatoes, work ticks) are spec constants in `FarmSystem`,
+like `LogsPerTree`; the produce item is `potato`. v3 saves no longer load (SAV-04).

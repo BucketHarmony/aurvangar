@@ -18,15 +18,6 @@ namespace Aurvangar.Sim.Tests
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class FarmScenarioTests
-    {
-        [Fact(Skip = "M6-T2")] public void MoistTile_MaturesAt7200() => Placeholder.Write("ECO-12");
-        [Fact(Skip = "M6-T2")] public void DryTile_NeverGrows() => Placeholder.Write("ECO-12");
-        [Fact(Skip = "M6-T2")] public void DryForADay_Withers() => Placeholder.Write("ECO-13");
-        [Fact(Skip = "M6-T2")] public void Harvest_Yields3Potatoes() => Placeholder.Write("ECO-12");
-    }
-
-    [Trait("Category", "Scenario")]
     public class SurvivalScenarioTests
     {
         [Fact(Skip = "M6-T6")] public void Seed1_SurvivalScript_AllAliveAtDay10() => Placeholder.Write("needs-economy.md scenario 5");

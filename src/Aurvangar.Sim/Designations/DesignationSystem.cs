@@ -61,7 +61,8 @@ public static class DesignationSystem
     }
 
     /// <summary>DSG-06. Clears dig marks in the box and chop marks of trees whose base is in it, and cancels their
-    /// jobs (a claimed job is released and its agent goes idle). Farm tiles are M6-T2.</summary>
+    /// jobs (a claimed job is released and its agent goes idle). Empty farm tiles in the box are removed with their
+    /// Plant jobs (<see cref="Farming.FarmSystem.CancelIn"/>).</summary>
     public static void Cancel(Simulation sim, string tag, Int3 a, Int3 b)
     {
         if (!Clamp(sim.World, a, b, out var min, out var max)) { Reject(sim, tag); return; }
@@ -83,6 +84,7 @@ public static class DesignationSystem
             else if (j.Kind == JobKind.Chop && sim.Plants.Get(ChopTree(j)) is { } p && Inside(p.Base, min, max)) cancel.Add(j);
         }
         foreach (var j in cancel) JobRunner.Cancel(sim, j);
+        Farming.FarmSystem.CancelIn(sim, min, max);
     }
 
     // ---- tick (ARCH-01 step 8) ----

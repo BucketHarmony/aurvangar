@@ -40,6 +40,31 @@ public static partial class SaveGame
         }
     }
 
+    private static void WriteFarms(BinaryWriter w, Simulation sim)
+    {
+        w.Section(SaveSection.Farms);
+        w.WriteCount(sim.Farms.Count);
+        foreach (var t in sim.Farms.All)
+        {
+            w.Write(sim.World.Index(t.Cell)); w.Write((byte)t.State); w.Write(t.Progress); w.Write(t.DryTicks);
+        }
+    }
+
+    private static void ReadFarms(BinaryReader r, Simulation sim)
+    {
+        r.ExpectSection(SaveSection.Farms);
+        int n = r.ReadCount(sim.World.CellCount, "farm tile");
+        for (int k = 0; k < n; k++)
+        {
+            var t = new Farming.FarmTile
+            {
+                Cell = sim.World.CellOf(r.ReadIndex(sim.World.CellCount, "farm tile")),
+                State = r.ReadEnum<Farming.CropState>("crop state"), Progress = r.ReadInt32(), DryTicks = r.ReadInt32(),
+            };
+            sim.Farms.Restore(t);
+        }
+    }
+
     private static void WriteBuildings(BinaryWriter w, Simulation sim)
     {
         w.Section(SaveSection.Buildings);

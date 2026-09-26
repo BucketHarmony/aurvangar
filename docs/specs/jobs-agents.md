@@ -50,7 +50,7 @@
   some storage accepts the item with free capacity. Storage choice: nearest by Manhattan with capacity, tie
   by building id. Capacity is reserved on claim.
 - **JOB-11** Harvest jobs end with the agent carrying produce; they chain into a Haul to storage within the same
-  job (steps appended) rather than dropping.
+  job (steps appended) rather than dropping. With no storage room for the produce, the appended step is a Drop (ADR-047).
 
 ## Construction flow
 
