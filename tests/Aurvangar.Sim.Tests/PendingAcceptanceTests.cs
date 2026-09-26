@@ -32,13 +32,6 @@ namespace Aurvangar.Sim.Tests
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class LeveeScenarioTests
-    {
-        [Fact(Skip = "M5-T3")] public void LeveeInRiver_LowersDownstream() => Placeholder.Write("buildings.md scenario 3");
-        [Fact(Skip = "M5-T3")] public void LeveeLine_StopsBreachFlood() => Placeholder.Write("DoD step 7 in miniature");
-    }
-
-    [Trait("Category", "Scenario")]
     public class PumpScenarioTests
     {
         [Fact(Skip = "M5-T4")] public void Pump_FillsHubWithWater() => Placeholder.Write("buildings.md scenario 4, BLD-13/14");

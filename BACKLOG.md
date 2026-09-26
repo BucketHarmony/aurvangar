@@ -158,7 +158,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - `BuildingSystem.CanPlace` returns a reason code. Un-skip `BuildingPlacementTests.*`.
 - [x] **M5-T2** Construction flow · specs: BLD-05..09 · deps: M5-T1, M4-T8
   - Deliver, construct, complete, cancel, deconstruct. Un-skip `Scenarios/ConstructionScenarioTests.*`.
-- [ ] **M5-T3** Warehouse and levee · deps: M5-T2
+- [x] **M5-T3** Warehouse and levee · deps: M5-T2
   - Levee completion pushes water (WAT-12). Un-skip `Scenarios/LeveeScenarioTests.*`.
 - [ ] **M5-T4** Pump · specs: BLD-13, BLD-14 · deps: M5-T3
   - Un-skip `Scenarios/PumpScenarioTests.*`.

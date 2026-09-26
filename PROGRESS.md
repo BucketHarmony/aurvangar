@@ -1160,3 +1160,31 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   - Deconstruct refunds land at `Construction.StandCell`.
   - Construction jobs are identified by shape (`Construction.IsSiteJob`). A future system posting 4-step Deliver
     jobs should add a marker instead.
+
+## M5-T3 — Warehouse and levee (2026-09-26)
+- Done: verification task, no sim code change needed. A completed levee writes BuildingSolid through
+  `World.SetBlock` (M5-T2 `WorldActions.Complete`), so `WaterGrid.EndTick` sees it in `ChangedCells` and pushes
+  the cell's water out (WAT-12) the same tick. The warehouse already works as storage: 150 total, solid goods only,
+  and it gets hauls when it is nearer or the hub is full (M5-T2).
+- Tests: the 2 placeholders moved to `Scenarios/LeveeScenarioTests.cs` with real bodies, plus a new warehouse test
+  (3 in all). The placeholders threw before. All 3 pass on the current code.
+  - Mutation check: with the BuildingSolid write in `Complete` disabled, both levee tests fail (levee cell still at
+    162 water; the line lets water through). The code was then restored.
+  - `LeveeInRiver_LowersDownstream` (buildings.md scenario 3): a 1-wide channel with a source at x=0 and a drain at
+    x=31. Two dwarves build a levee at x=22 (rotation 90, so the entrance is downstream in wadeable water). The levee
+    cell is 0 the tick it completes. The downstream cell goes 117 -> 42 in 200 ticks (the test asks for under half)
+    while upstream rises 209 -> 396.
+  - `LeveeLine_StopsBreachFlood` (DoD step 7 in miniature): the colonists dig a reservoir wall; the flood enters a
+    2-wide tunnel; the player places a 2-levee line at x=18. The line completes at tick 333. At that point water
+    has already leaked to x=24 (max 132). All of it drains within 300 ticks. Over the next 300 ticks no tunnel cell
+    beyond the line holds any water, and the tunnel before the line is flooded (>= Full/2). No job failures and no
+    deaths.
+  - `Warehouse_TakesHubOverflow_NotWater` (BLD-10/11): a hub at 95/100 logs takes 5 of 20 piled logs and the
+    warehouse takes 15. The warehouse rejects water. At 150 total it takes no more, and the pile stays (G2 answer 4).
+  - check.sh: 397 passed, 23 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: none.
+- Golden: unchanged. Headless seed 1, 24,000 ticks: hash `d8a1e43aeeb5d540` (unchanged), 25,360 ticks/s.
+- Perf: perf.sh 6 passed, 2 skipped. No Godot code changed, so no screenshots.
+- Next: M5-T4 (pump). ADR-040 allows a pump at any bank edge; water is only read at production (BLD-13).
+  `WorkOnBuilding` already accepts work ticks on a Complete building (it returns Ok and does nothing), so it is the
+  hook for pump cycles. Pumped water must leave the world through `WaterStats.Pumped` (WAT-11 conservation).
