@@ -53,6 +53,9 @@ public partial class CameraRig : Camera3D
 
     private static float Axis(Key a, Key b) => Input.IsKeyPressed(a) || Input.IsKeyPressed(b) ? 1f : 0f;
 
+    /// <summary>Moves the camera to the rig's current view immediately (screenshot harness).</summary>
+    public void ApplyNow() => Apply();
+
     private void Apply()
     {
         if (Rig == null) return;

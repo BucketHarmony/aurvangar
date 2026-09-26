@@ -327,3 +327,26 @@ Entry template:
 - Next: M3-T6 (screenshot harness) can position the camera with `OrbitRig` (focus/yaw/pitch/distance, `SetYaw`) and
   set the slice with `SliceController.Set`. It needs a Godot .NET binary to actually render; without GODOT_BIN it can
   only be build-verified. Open jobs in F3 are wired as `OpenJobsByKind = null` in `GameRoot.Snapshot()` (M4-T6).
+
+## M3-T6 — Screenshot harness (2026-09-26)
+- Done: ViewCore `Screenshots/ScreenshotArgs` (VIEW-20 user args: --seed/--ticks/--shots/--out, defaults, validation),
+  `Screenshots/ScreenshotPresets` (overview/river/hub/slice computed from the world, `CameraShot.ApplyTo(OrbitRig)`),
+  `OrbitRig.SetView`, `Meshing/PlantMesher` + `PlantColors` (tree = trunk box + canopy cone, bush = small cone;
+  slice-aware). Godot: `ScreenshotRunner.cs` + `scenes/Screenshot.tscn` (Node root instancing Main.tscn as "Main";
+  pauses real time, runs ticks at once, per shot sets slice, flushes all remeshes, waits 3 drawn frames, saves
+  `<out>/<preset>.png`, quits 0/1/2), `PlantRenderer` (plants now render in the game too), GameRoot `RunTicksNow`,
+  `FlushRemesh`, `ApplyShot`, `PickingEnabled`; `CameraRig.ApplyNow`. `scripts/screenshot.sh` rewritten: clear error
+  when GODOT_BIN is unset / not executable / not a 4.6 mono build, `pwd -W` paths on Git Bash, xvfb-run only on
+  Linux without DISPLAY, fails if any requested PNG is missing. No Sim changes.
+- Tests: added `View/ScreenshotTests.cs` (22: args parsing 8, presets 6, plant mesher 5, Godot scene file references
+  3). All failed first to compile (types missing). check.sh: 177 passed, 78 skipped, 0 failed; Godot csproj builds
+  with 0 warnings.
+- Decisions: ADR-020 (preset numbers, harness scene structure, plant placeholder shapes, script checks).
+- Golden: unchanged
+- Perf: n/a (plant mesh is one mesh rebuilt only on slice / plant-count change)
+- Screenshots NOT produced: GODOT_BIN is unset and the only Godot here is the standard 4.6.1 (non-.NET) edition.
+  Verified `./scripts/screenshot.sh` exits 1 with a clear message for: GODOT_BIN unset, GODOT_BIN=/nope, and
+  GODOT_BIN = the winget standard 4.6.1 console exe ("the standard edition. The C# project needs the .NET (mono)
+  edition"). Screenshot.tscn / the runner are build-verified and statically checked only.
+- Next: M3-T7 (mesher perf, MESH-P1). The M3-GATE report needs the 4 PNGs; on this machine it can only list that
+  they could not be produced (install Godot 4.6 .NET and set GODOT_BIN, then run `./scripts/screenshot.sh`).

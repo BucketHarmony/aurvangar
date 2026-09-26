@@ -1,0 +1,124 @@
+using System.Numerics;
+using Aurvangar.Sim;
+using Aurvangar.Sim.Core;
+using Aurvangar.ViewCore.Camera;
+
+namespace Aurvangar.ViewCore.Screenshots;
+
+/// <summary>One camera shot of the screenshot harness: an <see cref="OrbitRig"/> view plus a slice level.</summary>
+public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pitch, float Distance, int SliceY)
+{
+    /// <summary>Puts the rig at this view. The focus height becomes the rig's base height, so the rig's per-frame
+    /// <see cref="OrbitRig.Update"/> keeps the view (presets never focus above <c>SliceY + 1</c>).</summary>
+    public void ApplyTo(OrbitRig rig) => rig.SetView(Focus, Yaw, Pitch, Distance);
+}
+
+/// <summary>Named camera presets (docs/testing.md "Screenshot presets", VIEW-20), computed from the world so they
+/// follow the hub and river wherever terrain generation put them (ADR-020).
+/// <list type="bullet">
+/// <item><c>overview</c>: whole map, 45 degree pitch, max zoom, centered.</item>
+/// <item><c>river</c>: hub-to-river close-up, focused halfway between the hub and the nearest river water along Z,
+/// looking along -X so both ends sit side by side.</item>
+/// <item><c>hub</c>: colony close-up on the hub footprint center.</item>
+/// <item><c>slice</c>: slice at y=20 over the hill peak (the tallest column).</item>
+/// </list></summary>
+public static class ScreenshotPresets
+{
+    public static readonly IReadOnlyList<string> Names = new[] { "overview", "river", "hub", "slice" };
+
+    public const int SliceLevel = 20;
+
+    public static CameraShot For(string name, Simulation sim)
+    {
+        var w = sim.World;
+        int top = w.SizeY - 1;
+        switch (name)
+        {
+            case "overview":
+            {
+                int cx = w.SizeX / 2, cz = w.SizeZ / 2;
+                var focus = new Vector3(cx, SurfaceY(sim, cx, cz) + 1, cz);
+                return new CameraShot(name, focus, 45f, 45f, OrbitRig.MaxDistance, top);
+            }
+            case "hub":
+                return new CameraShot(name, HubFocus(sim), 45f, 50f, 32f, top);
+            case "river":
+            {
+                var hub = HubFocus(sim);
+                var water = NearestWaterAlongZ(sim, (int)hub.X, (int)hub.Z);
+                if (water is not { } wc) return new CameraShot(name, hub, 90f, 40f, 40f, top);
+                float waterZ = wc.Z + 0.5f;
+                float span = MathF.Abs(hub.Z - wc.Z);
+                var focus = new Vector3(hub.X, MathF.Min(hub.Y, wc.Y + 1), (hub.Z + waterZ) / 2f);
+                float distance = Math.Clamp(MathF.Max(40f, span * 1.5f), OrbitRig.MinDistance, OrbitRig.MaxDistance);
+                return new CameraShot(name, focus, 90f, 40f, distance, top);
+            }
+            case "slice":
+            {
+                var (px, pz) = PeakColumn(sim);
+                int slice = Math.Min(SliceLevel, top);
+                return new CameraShot(name, new Vector3(px + 0.5f, slice + 1, pz + 0.5f), 45f, 55f, 50f, slice);
+            }
+            default:
+                throw new ArgumentException($"unknown screenshot preset '{name}' (known: {string.Join(",", Names)})");
+        }
+    }
+
+    /// <summary>Center of the first building's footprint (the pre-placed hub) at its origin height; the world center
+    /// when there is no building.</summary>
+    public static Vector3 HubFocus(Simulation sim)
+    {
+        var hub = sim.Buildings.All.FirstOrDefault();
+        if (hub == null)
+        {
+            int cx = sim.World.SizeX / 2, cz = sim.World.SizeZ / 2;
+            return new Vector3(cx, SurfaceY(sim, cx, cz) + 1, cz);
+        }
+        long sx = 0, sz = 0;
+        int n = 0;
+        foreach (var c in hub.FootprintCells()) { sx += c.X; sz += c.Z; n++; }
+        return new Vector3((float)sx / n + 0.5f, hub.Origin.Y, (float)sz / n + 0.5f);
+    }
+
+    /// <summary>The topmost wet cell of the nearest column with water on the line <c>x</c>, searching outward from
+    /// <paramref name="z"/> (ties: smaller z first). Null if the line is dry.</summary>
+    public static Int3? NearestWaterAlongZ(Simulation sim, int x, int z)
+    {
+        var w = sim.World;
+        for (int d = 0; d < w.SizeZ; d++)
+        {
+            foreach (int zz in d == 0 ? new[] { z } : new[] { z - d, z + d })
+            {
+                if (zz < 0 || zz >= w.SizeZ) continue;
+                for (int y = w.SizeY - 1; y >= 0; y--)
+                {
+                    var c = new Int3(x, y, zz);
+                    if (sim.Water.GetLevel(c) > 0) return c;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>Column with the highest solid cell (ties: first in z-then-x order).</summary>
+    public static (int x, int z) PeakColumn(Simulation sim)
+    {
+        var w = sim.World;
+        int best = -1, bx = 0, bz = 0;
+        for (int z = 0; z < w.SizeZ; z++)
+            for (int x = 0; x < w.SizeX; x++)
+            {
+                int y = SurfaceY(sim, x, z);
+                if (y > best) { best = y; bx = x; bz = z; }
+            }
+        return (bx, bz);
+    }
+
+    /// <summary>Highest solid y in a column, or -1.</summary>
+    public static int SurfaceY(Simulation sim, int x, int z)
+    {
+        for (int y = sim.World.SizeY - 1; y >= 0; y--)
+            if (sim.World.IsSolid(x, y, z)) return y;
+        return -1;
+    }
+}

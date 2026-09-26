@@ -9,6 +9,7 @@ using Aurvangar.ViewCore.Diagnostics;
 using Aurvangar.ViewCore.Frame;
 using Aurvangar.ViewCore.Meshing;
 using Aurvangar.ViewCore.Picking;
+using Aurvangar.ViewCore.Screenshots;
 using Godot;
 
 namespace Aurvangar.Client;
@@ -23,6 +24,7 @@ public partial class GameRoot : Node3D
     public ContentDb Content { get; private set; } = null!;
     public ChunkRenderer Terrain { get; private set; } = null!;
     public WaterRenderer WaterView { get; private set; } = null!;
+    public PlantRenderer PlantView { get; private set; } = null!;
     public RemeshRouter Remesh { get; private set; } = null!;
     public SliceController Slice { get; private set; } = null!;
 
@@ -34,6 +36,9 @@ public partial class GameRoot : Node3D
 
     /// <summary>VIEW-05: the solid cell and face under the mouse, or null.</summary>
     public PickHit? Hover { get; private set; }
+
+    /// <summary>Mouse picking and the hover marker; the screenshot harness turns it off.</summary>
+    public bool PickingEnabled { get; set; } = true;
 
     private readonly TickAccumulator _clock = new();
     private readonly List<SimEvent> _frameEvents = new();
@@ -59,6 +64,9 @@ public partial class GameRoot : Node3D
         WaterView = new WaterRenderer { Name = "Water" };
         WaterView.Init(Sim, new WaterColors(Content));
         AddChild(WaterView);
+        PlantView = new PlantRenderer { Name = "Plants" };
+        PlantView.Init(Sim, new PlantColors(Content));
+        AddChild(PlantView);
         _hoverMarker = new HoverMarker { Name = "HoverMarker" };
         AddChild(_hoverMarker);
         _overlay = new DebugOverlay { Name = "DebugOverlay" };
@@ -97,6 +105,7 @@ public partial class GameRoot : Node3D
         foreach (int ci in _batch) Terrain.Remesh(ci, SliceY);
         Remesh.Water.TakeBatch(RemeshRouter.WaterBudget, _batch);
         foreach (int ci in _batch) WaterView.Remesh(ci, SliceY);
+        PlantView.Refresh(SliceY);
 
         _pathRate.Sample(Time.GetTicksMsec() / 1000.0, Sim.Counters.PathSearches);
         if (_overlay.Visible) _overlay.SetText(DebugOverlayText.Build(Snapshot()));
@@ -104,7 +113,7 @@ public partial class GameRoot : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
-        Hover = PickUnderMouse();
+        Hover = PickingEnabled ? PickUnderMouse() : null;
         _hoverMarker.SetHit(Hover);
     }
 
@@ -127,6 +136,42 @@ public partial class GameRoot : Node3D
                 case Key.Key3: SpeedIndex = 3; break;
                 case Key.F3: _overlay.Toggle(); break;
             }
+        }
+    }
+
+    /// <summary>Runs ticks immediately (no real-time pacing) and routes their events (screenshot harness, VIEW-20).</summary>
+    public void RunTicksNow(int ticks)
+    {
+        for (int i = 0; i < ticks; i++)
+        {
+            Sim.Tick();
+            _frameEvents.AddRange(Sim.Events.Drain());
+        }
+        Remesh.Route(_frameEvents);
+        _frameEvents.Clear();
+    }
+
+    /// <summary>Remeshes every queued terrain and water chunk now, ignoring the per-frame budget, and refreshes plants.</summary>
+    public void FlushRemesh()
+    {
+        Remesh.Terrain.TakeBatch(int.MaxValue, _batch);
+        foreach (int ci in _batch) Terrain.Remesh(ci, SliceY);
+        Remesh.Water.TakeBatch(int.MaxValue, _batch);
+        foreach (int ci in _batch) WaterView.Remesh(ci, SliceY);
+        PlantView.Refresh(SliceY);
+    }
+
+    /// <summary>Screenshot preset (VIEW-20): slice level, full remesh, camera view.</summary>
+    public void ApplyShot(CameraShot shot)
+    {
+        Slice.Set(shot.SliceY, Remesh);
+        FlushRemesh();
+        var camera = GetNode<CameraRig>("Camera");
+        if (camera.Rig != null)
+        {
+            shot.ApplyTo(camera.Rig);
+            camera.Rig.Update(0f, SliceY);
+            camera.ApplyNow();
         }
     }
 

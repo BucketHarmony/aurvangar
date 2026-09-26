@@ -241,3 +241,29 @@ of the chunk layers containing the old and new slice. Open jobs by kind shows "n
 Consequences: Later tasks that want more overlay timings add a `TickPhase` value and bracket the call in `Tick()`.
 The Godot layer (CameraRig, DebugOverlay, HoverMarker, GameRoot input) is build-verified only until a Godot .NET
 binary is available.
+
+## ADR-020: Screenshot presets computed from the world; placeholder plant meshes; harness structure (2026-09-26, M3-T6)
+Context: docs/testing.md names four presets (`overview`, `river`, `hub`, `slice`) in one line each without camera
+numbers. VIEW-20 does not say how the harness scene relates to Main.tscn, and the backlog asks for placeholder
+"trunks/cones" for plants without a spec. The hub and river positions depend on terrain generation (GEN-05 may shift
+the spawn flat). Godot .NET cannot be run on the build machine.
+Decision: `ViewCore.Screenshots.ScreenshotPresets` computes each shot from the simulation: `overview` = world center,
+yaw 45, pitch 45, distance 120 (max zoom), no slice; `hub` = hub footprint center at its origin height, yaw 45,
+pitch 50, distance 32; `river` = halfway (in Z) between the hub center and the topmost water cell of the nearest wet
+column on the hub's X line, yaw 90 (looking along -X so hub and river sit side by side), pitch 40, distance
+max(40, 1.5 x span); `slice` = slice at y=20 over the tallest column (the hill peak), yaw 45, pitch 55, distance 50,
+focus at y=21. Shots go through `OrbitRig.SetView`, which clamps like user input and sets `BaseFocusY` to the focus
+height so the rig's per-frame update keeps the view. `ScreenshotArgs` parses the user args (defaults: seed 1, 1200
+ticks, all four shots, `artifacts/screens`) and rejects unknown keys or shots. `scenes/Screenshot.tscn` is a `Node`
+root with `ScreenshotRunner` that instances Main.tscn as its `Main` child, so the harness always renders the real
+game scene; the runner pauses the real-time loop, runs the ticks at once, then per shot sets the slice, remeshes
+everything unbudgeted, waits 3 drawn frames and saves the viewport PNG; exit code 0 ok, 1 save failed, 2 bad args.
+Plants: `ViewCore.Meshing.PlantMesher` builds one world-space mesh: tree = 0.4-wide trunk box over its 4 trunk cells +
+a square cone canopy (half-width 1.2, from base+2 to trunk top+1.5); bush = small cone (half-width 0.4, height 0.9) in
+its cell; palette `plants.*` colors. Slicing hides plants whose base is above the slice, cuts trunks at the slice
+layer top, and hides a canopy unless the whole trunk is visible. `scripts/screenshot.sh` checks `GODOT_BIN` is set,
+executable and reports a 4.6 mono version (clear error otherwise), converts paths with `pwd -W` on Git Bash, uses
+xvfb-run only on Linux without DISPLAY, and fails if any requested PNG is missing.
+Consequences: Presets follow worldgen changes automatically. Changing preset numbers is a view-only change. When
+chopping arrives (M4-T7) the plant mesh rebuilds on a plant-count change. The Godot side of the harness is
+build-verified only until a Godot .NET binary is available.

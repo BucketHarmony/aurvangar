@@ -44,6 +44,17 @@ public sealed class OrbitRig
 
     public void SetYaw(float degrees) { Yaw = degrees; YawTarget = degrees; }
 
+    /// <summary>Jumps to a view (screenshot presets, VIEW-20). Pitch, distance and focus XZ are clamped like user
+    /// input; the focus height also becomes <see cref="BaseFocusY"/>.</summary>
+    public void SetView(Vector3 focus, float yaw, float pitch, float distance)
+    {
+        _focus = new Vector3(Math.Clamp(focus.X, 0f, _sizeX), focus.Y, Math.Clamp(focus.Z, 0f, _sizeZ));
+        BaseFocusY = focus.Y;
+        SetYaw(yaw);
+        Pitch = Math.Clamp(pitch, MinPitch, MaxPitch);
+        Distance = Math.Clamp(distance, MinDistance, MaxDistance);
+    }
+
     /// <summary>Pans the focus. <paramref name="right"/> and <paramref name="forward"/> are input axes in -1..1.</summary>
     public void Pan(float right, float forward, float dt)
     {

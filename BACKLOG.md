@@ -84,7 +84,7 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M3-T4** Godot: GameRoot loop, ChunkRenderer, WaterRenderer · specs: VIEW-01, VIEW-02 · deps: M3-T3
   - Seed 1 renders with terrain and river. Remesh queue with per-frame budget.
 - [x] **M3-T5** Godot: camera rig, slice controller, picking, debug overlay (F3) · specs: VIEW-04..06, VIEW-17 · deps: M3-T4
-- [ ] **M3-T6** Screenshot harness · specs: VIEW-20 · deps: M3-T5
+- [x] **M3-T6** Screenshot harness · specs: VIEW-20 · deps: M3-T5
   - `scripts/screenshot.sh` produces the 4 preset PNGs. Plants render as placeholder trunks/cones.
 - [ ] **M3-T7** Mesher perf · specs: MESH-P1 · deps: M3-T1
 - [ ] **M3-GATE HUMAN-GATE G1: world and water look** · deps: M3-T6
