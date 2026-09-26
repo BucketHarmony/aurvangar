@@ -896,3 +896,24 @@ seed 1 no valid pump site has water at its intake anywhere on the map (1,921 val
 rise one level per cell, so a pump whose front overhangs the water has its entrance inside the next bank step
 (`EntranceBlocked`). A player must first dig that step (one cell). M5-T7 (SurvivalScript through the pump) has to
 dig the entrance notch before placing the pump.
+
+## ADR-045: SurvivalScript lives in ViewCore as a timed command list; seed-1 pump notch at x=40 (2026-09-26, M5-T7)
+Context: docs/testing.md puts `Scripts.SurvivalScript` "in the test project", but it is also used by
+`run-headless.sh --script survival`, and the headless runner cannot reference the test project (ADR-036 left this
+open). The script also needs commands at later ticks: the pump can only be placed once its entrance notch is dug
+(ADR-044). The notch M5-T6 checked, `(39,18,79)`, is never dug by colonists: a berry bush stands on it, and a dig
+under a plant waits until the plant is gone (DSG-03, M4-T15); bushes are not choppable.
+Decision:
+- `Aurvangar.ViewCore.Scripts.SurvivalScript` (pure C#, beside `ScreenshotScripts`): a fixed list of
+  `(Tick, ICommand)` for seed 1. `EnqueueDue(sim)` enqueues the commands whose tick equals `sim.Clock.Tick`, so they
+  are applied at the start of that tick and logged with it; callers call it before every `Tick()` (`Run` does both).
+  Commands are fixed coordinates, not searched: the script is a replayable command log.
+- Content through M5: tick 0 dig notch `(40,18,79)` + chop the 48x48 area around the Great Hall (same as
+  `ScreenshotScripts`); tick 600 pump at `(40,18,80)` rotation 0 (intake 1024; the notch is dug at tick 485);
+  tick 1200 warehouse at `(34,24,54)`; tick 1800 five levees `(33..37,23,76)` rotation 0 along the top of the bank
+  between the hall and the river. M6-T6 appends the farm, hill dig, breach and levee repair.
+- The headless runner accepts `--script survival` and enqueues due commands before each tick. The screenshot
+  harness does not support it yet (it enqueues everything before tick 1).
+Consequences: golden hashes now cover construction, pumping, hauling and needs (regenerated). With the script no
+dwarf dies of thirst; the colony now starves after the 40 starting berries (first death tick 23,091, lost at
+29,011) until farms (M6).

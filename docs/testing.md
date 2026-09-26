@@ -77,12 +77,14 @@ near the hub; `TICKS=500` catches them mid-build, 1200 shows them complete).
 
 ## Scripted play
 
-`Scripts.SurvivalScript` (in the test project) is the command log for the definition-of-done session: place
-pump, farm 6×6 field, chop area, place warehouse, dig into the hill, breach the bank at tick N, levee line at
-tick N+300. It is used by the golden test, the survival scenario, and `run-headless.sh --script survival`.
-Build it incrementally: each milestone that adds a command type extends the script.
+`Scripts.SurvivalScript` (`Aurvangar.ViewCore.Scripts`, pure C#, ADR-045) is the command log for the
+definition-of-done session: place pump, farm 6×6 field, chop area, place warehouse, dig into the hill, breach the
+bank at tick N, levee line at tick N+300. It is a fixed list of `(tick, command)` for seed 1; call
+`SurvivalScript.EnqueueDue(sim)` before every `Tick()` (or use `SurvivalScript.Run`). It is used by the golden test,
+the survival scenario, and `run-headless.sh --script survival`. Build it incrementally: each milestone that adds a
+command type extends the script. So far (M5-T7): pump-entrance notch + chop, pump, warehouse, a levee line.
 
-`run-headless.sh --script digchop` (also `none` and `build`) runs the screenshot harness's `ScreenshotScripts` command list
+`run-headless.sh --script digchop` (also `none`, `build` and `survival`) runs the screenshot harness's `ScreenshotScripts` command list
 (ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a
 `work:` line per report (marks left, piles, stored items, path searches, trapped agents) and a final `summary:`
 (jobs completed/failed, cells dug, trees felled, items hauled into storage).

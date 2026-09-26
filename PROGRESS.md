@@ -1327,3 +1327,32 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
     after the dig is done. Without a working pump the colony dies of thirst on day 6.
   - The ghost check uses `CanPlace` on current state, so a Shift-drag across cells whose blueprints are not applied
     yet can still be rejected by the sim; the rejection is toasted.
+
+## M5-T7 — Extend SurvivalScript through pump + warehouse + levee; regenerate golden (2026-09-26)
+- Done: new `Aurvangar.ViewCore.Scripts.SurvivalScript` (ADR-045): a fixed `(tick, command)` list for seed 1 with
+  `EnqueueDue(sim)` (call before each `Tick()`) and `Run(sim, ticks)`. No sim code changed.
+  - Tick 0: dig the pump-entrance notch `(40,18,79)` and chop the 48x48 area around the Great Hall. Tick 600: pump at
+    `(40,18,80)` rotation 0 (intake 1024; notch dug at tick 485). Tick 1200: warehouse at `(34,24,54)`. Tick 1800:
+    five levees `(33..37,23,76)` rotation 0 along the top of the river bank.
+  - The M5-T6 notch `(39,18,79)` does not work: a berry bush stands on it, so its dig never posts (DSG-03). x=40 is
+    the nearest wet pump site whose one-cell notch has no plant.
+  - `GoldenHashTests` now runs the script. `run-headless.sh --script survival` enqueues the due commands each tick.
+    docs/testing.md "Scripted play" updated.
+- Tests: new `Scenarios/SurvivalScriptTests.cs` (3): commands in tick order and logged at exactly their ticks; all
+  9 commands accepted, pump + warehouse + 5 levees complete within day 1, pump wet, hub water > 50 at tick 3000,
+  0 failed jobs; all 5 alive at day 7 with >= 90 hub water, and through day 10 no one Dehydrated and no ColonyLost.
+  The script was written before these tests (to find valid coordinates), so they passed on first run; the golden
+  test failed first for the right reason (hashes at 1200/3000/6000 changed once the script was applied).
+  - check.sh: 439 passed, 13 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-045.
+- Golden: regenerated with `UPDATE_GOLDEN=1` (intentional): the golden run now applies the survival script (before
+  it ran with no commands). Tick 0 unchanged (`057b999ab23c4a64`); 1200 `417f878bba53e2e5`, 3000 `6c554c5ab61035ce`,
+  6000 `25531e45ab061864`.
+- Headless seed 1, `--script survival`, 24,000 ticks: hash `48a680f2f8ea3bab`, ~14,500 ticks/s, 154 jobs done,
+  0 failed, 23 trees felled, 1 cell dug, stored log 80 / water 110 (hub 100 + pump buffer 10), 0 trapped. Nobody dies
+  of thirst; the first dwarf starves at tick 23,091 (4 alive at day 10), colony lost at 29,011 when the 40 berries
+  are long gone. No-script run unchanged: `854a3b12a197b9a6`, colony lost 15,012.
+- Perf: perf.sh 6 passed, 2 skipped (no sim code touched). No rendering code changed, so no screenshots.
+- Next: M6-T1. M6-T6 must add food (farm field near the river, berry harvest) to the script so all 5 live to day
+  10; append its commands to `SurvivalScript.Build()` after tick 1800 and keep `EnqueueDue` semantics. The screenshot
+  harness does not support `SCRIPT=survival` yet (it enqueues all commands before tick 1); M6-T8 may want it.

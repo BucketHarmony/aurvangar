@@ -166,7 +166,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - Un-skip `NeedsTests.*`, `Scenarios/StarvationScenarioTests.*`.
 - [x] **M5-T6** Godot: build tool with ghost + reasons, building renderer, deconstruct tool, HUD top bar,
   Colony-lost modal · specs: VIEW-09, 12, 14, 15, 18 · deps: M5-T5, M5-T4
-- [ ] **M5-T7** Extend SurvivalScript through pump + warehouse + levee; regenerate golden · deps: M5-T6
+- [x] **M5-T7** Extend SurvivalScript through pump + warehouse + levee; regenerate golden · deps: M5-T6
 
 ## M6 — Farming, weather, integration
 

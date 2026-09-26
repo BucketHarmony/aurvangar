@@ -4,9 +4,10 @@ using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Plants;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Screenshots;
+using Aurvangar.ViewCore.Scripts;
 
 // Headless runner. Usage:
-//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script digchop]
+//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script none|digchop|build|survival]
 // Prints world stats, per-interval sim stats and the final StateHash. Exit code 0 on success.
 // Later milestones extend the per-interval report (agents alive, jobs, storage, water).
 
@@ -18,16 +19,22 @@ Simulation sim = WorldFactory.Create(opts.Seed, content);
 Console.WriteLine($"world: seed={opts.Seed} size={sim.World.SizeX}x{sim.World.SizeY}x{sim.World.SizeZ} created in {sw.ElapsedMilliseconds} ms");
 PrintWorldStats(sim);
 
-// ADR-036: "none"/"digchop" are the screenshot harness scripts (ViewCore), enqueued before tick 1 exactly as the
-// harness does. M5-T7 / M6-T6 add "survival" (commands at their ticks).
+// ADR-036: "none"/"digchop"/"build" are the screenshot harness scripts (ViewCore), enqueued before tick 1 exactly as
+// the harness does. ADR-045: "survival" is SurvivalScript, whose commands are enqueued at their ticks.
 Baseline? baseline = null;
-if (opts.Script is not null)
+bool survival = opts.Script == "survival";
+var knownScripts = ScreenshotScripts.Names.Append("survival").ToList();
+if (opts.Script is not null && !knownScripts.Contains(opts.Script))
 {
-    if (!ScreenshotScripts.Names.Contains(opts.Script))
-    {
-        Console.Error.WriteLine($"unknown script '{opts.Script}' (known: {string.Join(",", ScreenshotScripts.Names)})");
-        return 2;
-    }
+    Console.Error.WriteLine($"unknown script '{opts.Script}' (known: {string.Join(",", knownScripts)})");
+    return 2;
+}
+if (survival)
+{
+    Console.WriteLine($"script: survival ({SurvivalScript.Commands.Count} commands at ticks 0..{SurvivalScript.LastTick})");
+}
+else if (opts.Script is not null)
+{
     var commands = ScreenshotScripts.For(opts.Script, sim);
     foreach (var c in commands) sim.Enqueue(c);
     Console.WriteLine($"script: {opts.Script} ({commands.Count} commands enqueued before tick 1)");
@@ -38,6 +45,7 @@ long colonyLostTick = -1;
 var runClock = Stopwatch.StartNew();
 for (int t = 0; t < opts.Ticks; t++)
 {
+    if (survival) SurvivalScript.EnqueueDue(sim);
     long start = Stopwatch.GetTimestamp();
     sim.Tick();
     tickTimes.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);

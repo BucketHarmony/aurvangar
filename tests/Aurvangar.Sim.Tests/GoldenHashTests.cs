@@ -2,6 +2,7 @@ using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Plants;
 using Aurvangar.Sim.Tests.Support;
 using Aurvangar.Sim.World;
+using Aurvangar.ViewCore.Scripts;
 using Xunit;
 
 namespace Aurvangar.Sim.Tests;
@@ -13,12 +14,12 @@ public class GoldenHashTests
     private static ulong[] RunSeed1()
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
-        // M5-T7 / M6-T6: apply Scripts.SurvivalScript here once it exists.
+        // M5-T7: the survival script (pump, warehouse, levees so far; M6-T6 completes it), commands at their ticks.
         var hashes = new List<ulong>();
         long last = 0;
         foreach (var cp in Checkpoints)
         {
-            sim.RunTicks((int)(cp - last));
+            SurvivalScript.Run(sim, cp - last);
             last = cp;
             hashes.Add(sim.StateHash());
         }
