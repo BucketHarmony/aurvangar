@@ -505,3 +505,4 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
 - **Q1 water colors**: keep as is (`#5aa9d6` → `#1f4f7a`, alpha 0.72). Closed.
 - **Q3 pan speed**: good as is. Closed.
 - **Lighting**: shadows are a little harsh, so raise the ambient light some. Folded into M3-T9.
+- **Q2 slice cut color**: keep the current value (block color x0.55) for now. Closed.
