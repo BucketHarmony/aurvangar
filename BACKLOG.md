@@ -87,7 +87,16 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M3-T6** Screenshot harness · specs: VIEW-20 · deps: M3-T5
   - `scripts/screenshot.sh` produces the 4 preset PNGs. Plants render as placeholder trunks/cones.
 - [x] **M3-T7** Mesher perf · specs: MESH-P1 · deps: M3-T1
-- [ ] **M3-GATE HUMAN-GATE G1: world and water look** · deps: M3-T6
+- [ ] **M3-T8** River holds its volume · specs: GEN-08, WAT-09, WAT-11 · deps: M3-GATE
+  - Gate G1 answer: keep the initial bank fill (ADR-009); fix the ~43% seed-1 volume loss over 10 days with
+    stronger inflow (source strength and/or more source cells), not by shrinking the fill or weakening drains.
+  - New scenario test: seed-1 river volume stays within ±10% of its tick-0 value from tick 0 through day 10.
+    `Seed1_RiverSettles` (WAT-P2 active-cell budget) must stay green. Regenerate golden; record why.
+- [ ] **M3-T9** Ambient lighting · specs: VIEW-20 · deps: M3-GATE
+  - Screenshots show faces turned away from the sun rendering pure black (only a DirectionalLight3D in
+    `Main.tscn`). Add a `WorldEnvironment` with ambient light / sky so shaded faces stay readable.
+  - Verify with `./scripts/screenshot.sh` (needs `GODOT_BIN`) and describe the before/after in PROGRESS.md.
+- [x] **M3-GATE HUMAN-GATE G1: world and water look** · deps: M3-T6
   - Write a gate report in PROGRESS.md: screenshots produced (paths), perf numbers, known visual issues, and
     3 specific questions for the human (e.g. water color, slice cut color, camera speed). Stop.
 

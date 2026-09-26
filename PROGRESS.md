@@ -489,3 +489,14 @@ First-run checklist for the game itself (play Main.tscn in the editor):
    screenshots itself from M4 on? Until then every Godot task is only compile-verified.
 
 Next after approval: M4-T1 (PathGrid flag cache).
+
+### G1 answers (human, 2026-09-26)
+Screenshots were rendered after the report with Godot 4.6.2 .NET (`artifacts/screens/{overview,river,hub,slice}.png`).
+The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun render pure black (no ambient light).
+1. **Water colors / 2. cut-face color**: keep the current values until the human has seen the screenshots. No water
+   animation in the POC.
+3. **Camera**: keep 90° Q/E steps and the current zoom and pitch limits. Pan speed is tuned after hands-on play.
+4. **River volume**: keep the bank fill; fix it with stronger sources → **M3-T8**.
+5. **Godot .NET**: yes. `GODOT_BIN` points at the Godot 4.6.2 .NET console binary; later gates get real screenshots.
+- Added **M3-T9** (ambient lighting) for the black shaded faces.
+- Gate checked. Next: M3-T8, then M3-T9, then M4-T1.
