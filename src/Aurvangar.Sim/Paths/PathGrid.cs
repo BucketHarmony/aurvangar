@@ -123,13 +123,40 @@ public sealed class PathGrid
         return f;
     }
 
+    /// <summary>M4-T14 what-if: the flag byte the cell would have if the solid block at <paramref name="airIndex"/>
+    /// were air (a dig). Not cached. The dug cell itself counts as dry (water has not flowed in yet).</summary>
+    internal byte FlagsIfAir(int x, int y, int z, int airIndex)
+    {
+        if ((uint)x >= (uint)_sizeX || (uint)y >= (uint)_sizeY || (uint)z >= (uint)_sizeZ) return 0;
+        int i = x + z * _sizeX + y * _layer;
+        byte f = Valid;
+        int level = i == airIndex ? 0 : _water.GetLevelAt(i);
+        if (level > 0) f |= Wet;
+        bool standable = !SolidUnless(i, airIndex) && !_plants.IsOccupiedAt(i)
+            && (y + 1 >= _sizeY || !SolidUnless(i + _layer, airIndex))
+            && (y == 0 ? _world.IsSolid(x, -1, z) : SolidUnless(i - _layer, airIndex));
+        if (standable)
+        {
+            f |= Standable;
+            if (level < WaterGrid.Full / 2) f |= Walkable;   // WAT-14
+        }
+        return f;
+    }
+
+    private bool SolidUnless(int index, int airIndex) => index != airIndex && _world.IsSolidAt(index);
+
     /// <summary>PTH-01 evaluated directly (water never affects standability).</summary>
     private bool StandableAt(Int3 c, int i) =>
         !_world.IsSolidAt(i) && !_plants.IsOccupiedAt(i) && !_world.IsSolid(c + Int3.Up) && _world.IsSolid(c + Int3.Down);
 
+    /// <summary>Bumped on every shallow/deep crossing anywhere (also in cells that are not standable now, whose
+    /// depth matters to a what-if dig, M4-T14). Derived, not state.</summary>
+    public long DeepVersion { get; private set; }
+
     private void OnWaterClassChanged(int index, bool deepChanged)
     {
         InvalidateAround(index);
+        if (deepChanged) DeepVersion++;
         // Only a standable cell's walkability depends on its depth; deep crossings elsewhere (mid-column, no floor)
         // change nothing a move reads (ADR-025).
         if (deepChanged && StandableAt(_world.CellOf(index), index)) WalkabilityVersion++;

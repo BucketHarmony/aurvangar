@@ -998,3 +998,41 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
 - Q3 (log piles): **make them bigger.** Fixed-size marker plus a count label. Added M4-T16.
 - Q4 (full storage): **keep piles.** When storage is full, items stay in piles on the ground. No change.
 - Gate G2 closed (M4-GATE checked). Next: M4-T14, M4-T15, M4-T16, then M5-T1.
+
+## M4-T14 — Digs never strand the digger (2026-09-26)
+- Done: G2 answer 1b, new spec rule DSG-09 (JOB-09 cross-reference). A dig is never taken or finished from a stand
+  cell that it would cut off from the Great Hall. `Paths/DigTrial` answers "would digging block T cut stand S off
+  from the hall's reach cells?":
+  - It starts with a cached local test. Only the cell on top of T can be lost, so if that cell is not walkable, or
+    its move neighbors meet again within 512 cells on the what-if view, the dig cuts nothing.
+  - Otherwise an exact flood runs from both sides at once, so a stranded pocket is found in about twice its size.
+  - `PathMoves.Steps` is now generic over a struct `IMoveCells` view (`LiveCells` / `DigTrialCells`), so the
+    what-if flood uses the same move rules as A* and regions.
+  - `Jobs/DigStrand` supplies the anchors (the hall = the lowest-id complete `hub`; with no hall the rule is off).
+  - Dig goal cells drop stranding stand cells, so selection and GoTo never use them. `JobRunner` checks again at Work
+    start and at the Dig step; a dig that would now strand goes back to the board with a cooldown and no failure.
+  - `DesignationSystem` turns stranding digs DigUnreachable (and removes their jobs) once no dig is claimed and no
+    open dig has a safe stand cell in a living agent's region.
+- Review (sim-reviewer): three fixes applied.
+  - The MaySplit cache is also keyed on the new `PathGrid.DeepVersion`, which counts every shallow/deep crossing, so
+    a loaded game and a continuous run give the same answers.
+  - A safe stand cell in no agent's region no longer blocks the give-up.
+  - Mid-tick with stale regions, a live flood checks "apart already?" first.
+- Tests: `Scenarios/StrandScenarioTests` (4) and `DigTrialTests` (4).
+  - The three original scenarios failed first for the right reason: a dwarf in a region other than the hall's, at
+    tick 937 / 1235 / 1271.
+  - `UnreachableDigElsewhere_DoesNotBlockGiveUp` fails without the review fix.
+  - In the seed-1 10x7x5 pit (+ chop radius 24), all 5 dwarves stay in the hub region on every tick and every marked
+    tree outside the pit is felled. 347 of 350 cells are dug and 2 turn red.
+  - One tree inside the pit box is left on an undug pillar and cannot be reached; that is M4-T15 (tree floors).
+  - check.sh: 369 passed, 37 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-037.
+- Golden: unchanged (no script in the golden run). Headless seed 1, 24,000 ticks: hash `d8a1e43aeeb5d540`
+  (unchanged), 25,314 ticks/s. `--script digchop` 2400 ticks: hash `a182db6b82bdf66f` (unchanged; the 2-deep gate
+  pit never triggers the rule), 136 jobs, 1 failure, 92 logs stored.
+- Perf: perf.sh 6 passed, 2 skipped. PTH-P1 A* p95 0.77-0.81 ms (budget 1.5). PTH-P2 warm median 1.95-2.08 ms
+  (budget 25); one cold-JIT run read 4.1 ms. No Godot code changed, so no screenshots were taken.
+- Next: M4-T15 (tree floors). Dig marks under trees will make pit pillars go away. The pit test currently skips trees
+  inside the pit box, and could drop that exclusion once M4-T15 lands. Only the digger is protected (the human's
+  rule); another dwarf could still in principle be cut off by someone else's dig. New dig-like mutations (M5
+  construction footprints) should consider `DigStrand` if they remove floors.

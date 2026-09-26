@@ -28,6 +28,8 @@ public sealed class Simulation
     public PathGrid PathGrid { get; }
     public Pathfinder Pathfinder { get; }
     public Regions Regions { get; }
+    /// <summary>M4-T14 what-if connectivity for digs. Derived: not hashed, not saved.</summary>
+    public DigTrial DigTrial { get; }
     public AgentSystem Agents { get; }
     public BuildingSystem Buildings { get; }
     public ItemPiles Piles { get; }
@@ -56,6 +58,7 @@ public sealed class Simulation
         PathGrid = new PathGrid(World, Water, Plants);
         Pathfinder = new Pathfinder(PathGrid);
         Regions = new Regions(PathGrid);
+        DigTrial = new DigTrial(PathGrid);
         Agents = new AgentSystem(Events);
         Buildings = new BuildingSystem(World);
         Piles = new ItemPiles(World, Events);

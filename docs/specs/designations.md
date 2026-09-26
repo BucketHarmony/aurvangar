@@ -16,3 +16,6 @@
   agent goes idle).
 - **DSG-07** After a Dig completes the designation is cleared.
 - **DSG-08** A dig that would remove the block an agent is standing on is deferred while any agent stands there.
+- **DSG-09** (M4-T14, ADR-037) A dig is never taken or finished from a stand cell that the dig would cut off from
+  the Great Hall's region. Such a dig waits; once no dig is in progress and no open dig has a safe stand cell in a living agent's region, each
+  dig whose stand cells all strand is dropped and its mark turns `DigUnreachable`. No automatic stairs.

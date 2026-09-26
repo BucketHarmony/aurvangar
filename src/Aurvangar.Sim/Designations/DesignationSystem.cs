@@ -104,7 +104,11 @@ public static class DesignationSystem
             else if (j.Kind == JobKind.Chop) chopJobs.Add(ChopTree(j).Value);
         }
 
-        if (marks.Count > 0) PostDigs(sim, digJobs);
+        if (marks.Count > 0)
+        {
+            PostDigs(sim, digJobs);
+            GiveUpStrandingDigs(sim);
+        }
         foreach (var p in sim.Plants.All)
         {
             if (p.Kind != PlantKind.Tree || !p.MarkedForChop || p.ChopUnreachable || chopJobs.Contains(p.Id.Value)) continue;
@@ -147,6 +151,37 @@ public static class DesignationSystem
             sim.Jobs.Post(JobKind.Dig, c,
                 new[] { JobStep.GoTo(c, GoalMode.Dig), JobStep.Work(c, def.Hardness), JobStep.Dig(c) },
                 new[] { Reservation.OnCell(c) }, priority);
+        }
+    }
+
+    /// <summary>M4-T14 (G2 answer 1b): a dig whose every stand cell would be cut off from the Great Hall waits while
+    /// another dig can still change the ground (one is claimed, or one has a stand cell that is not cut off and is in
+    /// a living agent's region). Once
+    /// none can, each such dig is dropped from the board and its mark turns <c>DigUnreachable</c> (red). Jobs visited
+    /// in ascending id order.</summary>
+    private static void GiveUpStrandingDigs(Simulation sim)
+    {
+        List<Job>? digs = null;
+        foreach (var j in sim.Jobs.All)
+        {
+            if (j.Kind != JobKind.Dig) continue;
+            if (j.IsClaimed) return;
+            (digs ??= new List<Job>()).Add(j);
+        }
+        if (digs is null) return;
+        // A safe stand cell only counts if some living agent can get to it (PTH-13); a dig no one can reach never
+        // runs, so it cannot make anything safe.
+        var agentRegions = new SortedSet<int>();
+        foreach (var a in sim.Agents.All)
+            if (a.IsAlive && sim.Regions.RegionOf(a.Cell) is var r && r != Paths.Regions.None) agentRegions.Add(r);
+        foreach (var j in digs)
+            foreach (var g in JobGoals.For(sim, j.Steps[0]))
+                if (agentRegions.Contains(sim.Regions.RegionOf(g))) return;   // someone can still dig here safely
+        foreach (var j in digs)
+        {
+            if (!JobGoals.DigBlockedByStrand(sim, j.Target)) continue;
+            sim.Jobs.Remove(j);
+            sim.Designations.MarkUnreachable(j.Target);
         }
     }
 

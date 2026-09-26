@@ -42,6 +42,7 @@
   a job is cancelled and its designation is marked `Unreachable` (view shows it in red).
 - **JOB-09** Dig designations below the agent: an agent must not dig the cell it stands on or the cell directly
   below itself. Dig jobs choose an adjacent standable cell that stays standable after the dig when possible.
+  A stand cell the dig would cut off from the Great Hall is never used (DSG-09).
 
 ## Haul logic
 

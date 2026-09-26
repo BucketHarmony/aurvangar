@@ -628,3 +628,36 @@ prints per-report work stats and a final summary; "items hauled" is the rise in 
 Unknown names (including `survival`, until M5-T7) exit 2. Without `--script` the output and hash are unchanged.
 Consequences: a tool depends on view logic, but only on pure C# code; the sim still never references ViewCore.
 When M5-T7 adds `survival`, it must either move to a project the runner can reference or be added beside these.
+
+## ADR-037: Digs never strand the digger: what-if connectivity to the Great Hall (2026-09-26, M4-T14)
+Context: G2 answer 1b. A dwarf must not take or finish a dig after which its standing cell no longer connects to
+the Great Hall's region; such a dig waits, and turns DigUnreachable once no other open dig can make it safe. Regions
+(PTH-13) are only rebuilt at the end of the tick, so a trial region rebuild per candidate (~2 ms) is too slow for job
+selection.
+Decision:
+- Digging block `T` only adds cells and moves (T and the cell below it may become standable; PTH-05 headroom grows),
+  except for one loss: the cell on top of `T` (`U`) loses its floor. So the test is local first: if `U` is not
+  walkable the dig cuts nothing; if `U` has at most one move neighbor, or all of `U`'s move neighbors meet again in a
+  flood on the what-if view within 512 cells, it cuts nothing (`DigTrial.MaySplit`, cached per block until
+  `PathGrid.WalkabilityVersion` or `PathGrid.DeepVersion` moves; the latter counts every shallow/deep crossing,
+  because the what-if view reads the depth of cells that are not standable now, so a loaded game and a continuous
+  run give the same answers). Otherwise an exact alternating flood from the stand cell and from the hall's
+  reach cells on the what-if view decides; it stops when the sides meet or either runs out, so a stranded pocket is
+  found in about twice its size. The what-if view is `DigTrialCells`, an `IMoveCells` struct; `PathMoves.Steps` is
+  now generic over that view, so the what-if flood uses the same move rules as A* and regions (no copy).
+- The rule is about the digger's stand cell (the human answer), with the Great Hall = the lowest-id complete
+  building with def id `hub`. With no hall the rule is off (small test worlds without a hub behave as before). If
+  the regions are up to date and the stand is already apart from the hall, the dig is allowed (nothing to cut).
+  Mid-tick, after a change, regions are stale, so a two-sided flood on the live world answers "apart already?".
+- Where: dig goal cells (JOB-09) drop stranding stand cells, so the PTH-13 region filter in job selection never
+  takes a dig with no safe stand cell, and the GoTo never heads for one. At Work start and at the Dig step the agent
+  re-checks its own cell; if the dig would now strand it, the job goes back to the board with the JOB-08 cooldown but
+  no failure (it is not broken, it has to wait).
+- "No other open dig can make it safe": each tick with dig jobs on the board, if none is claimed and none has a
+  safe stand cell in a living agent's region (a dig no one can reach never runs), every dig whose stand cells all strand is removed and its mark turns DigUnreachable. A dig with
+  no stand cells at all is left as before. Re-designating turns the mark back into Dig (DSG-02), which re-tries.
+- The dug cell counts as dry in the what-if view (water has not flowed in yet).
+Consequences: a pit dug top-down keeps its last step out per level; in the 10x7x5 seed-1 pit 347 of 350 cells were
+dug and 2 turned red. Other dwarves are not protected by this rule (only the digger); in pits they stay connected
+through the digger's side in practice. The cost is a small flood per candidate dig whose top cell is walkable,
+cached until walkability changes; perf budgets and the golden hash are unchanged.

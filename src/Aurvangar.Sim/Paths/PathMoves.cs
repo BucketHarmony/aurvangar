@@ -12,6 +12,27 @@ internal readonly struct PathStep
     public PathStep(int x, int y, int z, int cost) { X = x; Y = y; Z = z; Cost = cost; }
 }
 
+/// <summary>What the move rules read: a cell's <see cref="PathGrid"/> flag byte (0 out of bounds) and whether a block
+/// is solid (WLD-04 out of bounds).</summary>
+internal interface IMoveCells
+{
+    byte FlagsAt(int x, int y, int z);
+    bool IsSolid(int x, int y, int z);
+}
+
+/// <summary>The world as it is (the grid's cached flags).</summary>
+internal readonly struct LiveCells : IMoveCells
+{
+    private readonly PathGrid _grid;
+    public LiveCells(PathGrid grid) { _grid = grid; }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    public byte FlagsAt(int x, int y, int z) => _grid.FlagsAt(x, y, z);
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    public bool IsSolid(int x, int y, int z) => _grid.World.IsSolid(x, y, z);
+}
+
 /// <summary>Neighbor and cost rules shared by A* and region flood fill. Spec: PTH-04..08.</summary>
 public static class PathMoves
 {
@@ -40,12 +61,17 @@ public static class PathMoves
 
     /// <summary>The rules of <see cref="From"/> on raw coordinates, for A* and region fill (M4-T12). The caller must
     /// have called <see cref="PathGrid.SyncWorldChanges"/> since the last block change. Same moves, same order.</summary>
-    internal static int Steps(PathGrid grid, int ax, int ay, int az, Span<PathStep> steps, bool swim = false)
+    internal static int Steps(PathGrid grid, int ax, int ay, int az, Span<PathStep> steps, bool swim = false) =>
+        Steps(new LiveCells(grid), ax, ay, az, steps, swim);
+
+    /// <summary>The move rules over any <see cref="IMoveCells"/> view: the live grid, or a what-if view such as
+    /// <see cref="DigTrialCells"/> (M4-T14). A struct type argument keeps the hot loop free of virtual calls.</summary>
+    internal static int Steps<TCells>(TCells cells, int ax, int ay, int az, Span<PathStep> steps, bool swim = false)
+        where TCells : struct, IMoveCells
     {
-        var world = grid.World;
         byte pass = swim ? PathGrid.StandableFlag : PathGrid.WalkableFlag;
         int n = 0;
-        bool headroomUp = !world.IsSolid(ax, ay + 2, az);           // PTH-05 climb headroom
+        bool headroomUp = !cells.IsSolid(ax, ay + 2, az);           // PTH-05 climb headroom
         for (int d = 0; d < 8; d++)
         {
             int dx = DirX[d], dz = DirZ[d];
@@ -53,9 +79,9 @@ public static class PathMoves
             int dy;
             byte fb;
             // PTH-04. Standable cells in one column at y-1, y, y+1 are mutually exclusive, so the first walkable wins.
-            if (((fb = grid.FlagsAt(fx, ay, fz)) & pass) != 0) dy = 0;
-            else if (headroomUp && ((fb = grid.FlagsAt(fx, ay + 1, fz)) & pass) != 0) dy = 1;
-            else if (((fb = grid.FlagsAt(fx, ay - 1, fz)) & pass) != 0 && !world.IsSolid(fx, ay + 1, fz)) dy = -1; // PTH-05: b+up+up = flat+up
+            if (((fb = cells.FlagsAt(fx, ay, fz)) & pass) != 0) dy = 0;
+            else if (headroomUp && ((fb = cells.FlagsAt(fx, ay + 1, fz)) & pass) != 0) dy = 1;
+            else if (((fb = cells.FlagsAt(fx, ay - 1, fz)) & pass) != 0 && !cells.IsSolid(fx, ay + 1, fz)) dy = -1; // PTH-05: b+up+up = flat+up
             else continue;                                          // PTH-08: nothing reachable within one step
 
             bool diagonal = dx != 0 && dz != 0;
@@ -63,7 +89,7 @@ public static class PathMoves
             {
                 // PTH-06: both orthogonal intermediates walkable at a.y (flat, down) or b.y (up).
                 int iy = dy == 1 ? ay + 1 : ay;
-                if ((grid.FlagsAt(fx, iy, az) & pass) == 0 || (grid.FlagsAt(ax, iy, fz) & pass) == 0) continue;
+                if ((cells.FlagsAt(fx, iy, az) & pass) == 0 || (cells.FlagsAt(ax, iy, fz) & pass) == 0) continue;
             }
 
             int cost = diagonal ? CostDiagonal : CostStraight;

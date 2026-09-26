@@ -134,7 +134,7 @@ Milestone order is by risk: world and water before anything that depends on them
     Switch `scripts/screenshot.sh` from `--rendering-driver opengl3` (Compatibility) to Forward+ on the default
     driver, drop the separate `artifacts/screens/forward_plus/` path, and update docs/testing.md. Render the four
     shots and look at them. Do NOT change vertex-color sRGB handling (see G2 early answers in PROGRESS.md).
-- [ ] **M4-T14** Digs never strand the digger · specs: DSG-03, DSG-08, JOB-09, PTH-13 · deps: M4-GATE
+- [x] **M4-T14** Digs never strand the digger · specs: DSG-03, DSG-08, JOB-09, PTH-13 · deps: M4-GATE
   - Gate G2 answer 1b: a dwarf does not take (or start) a dig if, after the block is removed, the dwarf's standing
     cell would no longer connect to the Great Hall's region. That dig waits, and turns DigUnreachable (red) once
     no other open dig can make it safe. No automatic stairs (option a) for now.

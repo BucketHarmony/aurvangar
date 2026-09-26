@@ -49,11 +49,19 @@ public static class JobGoals
     }
 
     /// <summary>JOB-09: reach cells of a dig target except the cell on top of it (its floor would vanish). When
-    /// possible only cells whose own floor is not designated for digging, so they stay standable after the next digs.</summary>
-    private static List<Int3> DigGoals(Simulation sim, Int3 target)
+    /// possible only cells whose own floor is not designated for digging, so they stay standable after the next digs.
+    /// M4-T14: never a cell the dig would cut off from the Great Hall (<see cref="DigStrand"/>).</summary>
+    private static List<Int3> DigGoals(Simulation sim, Int3 target) => DigStandCells(sim, target, strandFree: true);
+
+    /// <summary>M4-T14: true when the dig has stand cells but every one of them would be cut off from the hall.</summary>
+    public static bool DigBlockedByStrand(Simulation sim, Int3 target) =>
+        DigStandCells(sim, target, strandFree: false).Count > 0 && DigStandCells(sim, target, strandFree: true).Count == 0;
+
+    private static List<Int3> DigStandCells(Simulation sim, Int3 target, bool strandFree)
     {
         var grid = sim.PathGrid;
         var marks = sim.Designations;
+        bool check = strandFree && sim.DigTrial.MaySplit(target);
         var all = new List<Int3>();
         var safe = new List<Int3>();
         for (int dy = -1; dy <= 1; dy++)
@@ -63,6 +71,7 @@ public static class JobGoals
                     if (dy == 1 && dz == 0 && dx == 0) continue;
                     var c = target + new Int3(dx, dy, dz);
                     if (!grid.IsWalkable(c)) continue;
+                    if (check && DigStrand.Strands(sim, target, c)) continue;
                     all.Add(c);
                     if (marks.Get(c + Int3.Down) != DesignationMark.Dig) safe.Add(c);
                 }

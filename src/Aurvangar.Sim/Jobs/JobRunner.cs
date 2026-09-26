@@ -152,6 +152,11 @@ public static class JobRunner
                 else if (a.Move != MoveStatus.Moving) Fail(sim, a, job);   // PTH-16 step failure
                 return;
             case StepKind.Work:
+                if (job.Kind == JobKind.Dig && a.StepProgress == 0 && DigStrand.Strands(sim, step.Cell, a.Cell))
+                {
+                    StandDown(sim, a, job);   // M4-T14: the world changed on the way; do not start a stranding dig
+                    return;
+                }
                 var target = step.Goal == GoalMode.Building
                     ? WorkTarget.AtBuilding(new BuildingId(step.Target)) : WorkTarget.AtCell(step.Cell);
                 r = act.Work(a.Id, target);
@@ -165,6 +170,7 @@ public static class JobRunner
                     Fail(sim, a, job);
                     return;
                 }
+                if (DigStrand.Strands(sim, step.Cell, a.Cell)) { StandDown(sim, a, job); return; }   // M4-T14
                 r = act.Dig(a.Id, step.Cell);
                 break;
             case StepKind.Chop: r = act.Chop(a.Id, new PlantId(step.Target)); break;
@@ -209,6 +215,16 @@ public static class JobRunner
                 tree.ChopUnreachable = true;
         }
         else job.RetryAfterTick = sim.Clock.Tick + Job.RetryCooldown;
+    }
+
+    /// <summary>M4-T14: the dig would now cut this agent off from the Great Hall. The job goes back to the board
+    /// without a failure (it is not broken, it has to wait) and with the JOB-08 cooldown, so it is not re-taken at
+    /// once; <see cref="JobGoals"/> no longer offers this stand cell. DesignationSystem marks it unreachable once no
+    /// other dig can help.</summary>
+    private static void StandDown(Simulation sim, Agent a, Job job)
+    {
+        Unclaim(sim, a, job);
+        job.RetryAfterTick = sim.Clock.Tick + Job.RetryCooldown;
     }
 
     private static void Release(Simulation sim, Agent a, Job job)
