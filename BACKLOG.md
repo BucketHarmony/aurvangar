@@ -22,7 +22,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - `dotnet build src/Aurvangar.Godot` succeeds (Godot.NET.Sdk restores from NuGet; no Godot binary needed).
   - If `GODOT_BIN` is set: `$GODOT_BIN --headless --path src/Aurvangar.Godot --build-solutions --quit` exits 0.
   - Write PROGRESS.md entry listing tool versions found.
-- [ ] **M0-T2** CI · deps: M0-T1
+- [x] **M0-T2** CI · deps: M0-T1
   - `.github/workflows/ci.yml` (already present) passes locally via `act` if available; otherwise just confirm
     the steps mirror `check.sh`. Add `PERF_SCALE=2.0` perf job as non-blocking.
 
