@@ -350,3 +350,20 @@ Entry template:
   edition"). Screenshot.tscn / the runner are build-verified and statically checked only.
 - Next: M3-T7 (mesher perf, MESH-P1). The M3-GATE report needs the 4 PNGs; on this machine it can only list that
   they could not be produced (install Godot 4.6 .NET and set GODOT_BIN, then run `./scripts/screenshot.sh`).
+
+## M3-T7 — Mesher perf (2026-09-26)
+- Done: Moved the MESH-P1 placeholder out of `Perf/PerfTests.cs` into `Perf/MesherPerfTests.cs` with a real body:
+  mesh every seed-1 chunk at full slice, pick the one with the most quads ("busiest surface chunk"), time
+  `ChunkMesher.Build` on it (5 warmup, 50 iterations, median <= 6 ms * PERF_SCALE), and also assert the same budget
+  with the slice cutting through the middle of that chunk. No production code changes: the M3-T1/T2 mesher already
+  meets the budget, so the un-skipped test passed on first run (the placeholder it replaces throws by design).
+- Tests: `Perf/MesherPerfTests.Mesher_SurfaceChunk` (replaces the skipped placeholder). check.sh: 177 passed,
+  78 skipped, 0 failed (perf tests are not part of check.sh); Godot csproj builds with 0 warnings. perf.sh: 4 passed,
+  4 skipped (M4-T12 x2, M6-T1, M6-T7).
+- Decisions: none
+- Golden: unchanged
+- Perf (Release): MESH-P1 chunk (3,0,2), 581 quads: median 0.76 ms, p95 1.25 ms; sliced at y=16 (265 quads, 44 cut):
+  median 0.57 ms (budget 6 ms). WAT-P1 128x128 median 1.18 ms / p95 2.55 ms; 192x128 (>= 23k active) median 2.00 ms /
+  p95 3.95 ms (budget 4 ms on the median; the median has 50% headroom). WAT-P2 1602 active cells, step 0.086 ms.
+- Next: M3-GATE (HUMAN-GATE G1). Screenshots cannot be produced here (GODOT_BIN unset; only standard Godot 4.6.1
+  installed), so the gate report must say so and give the perf numbers above.

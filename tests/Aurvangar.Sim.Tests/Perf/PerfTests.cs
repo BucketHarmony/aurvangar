@@ -76,9 +76,6 @@ public class OtherPerfTests
     [Fact(Skip = "M4-T12")]
     public void RegionRebuild_Seed1() => Placeholder.Write("PTH-P2: Regions full rebuild on seed 1 median <= 25 ms * PERF_SCALE");
 
-    [Fact(Skip = "M3-T7")]
-    public void Mesher_SurfaceChunk() => Placeholder.Write("MESH-P1: ChunkMesher.Build on the busiest seed-1 surface chunk median <= 6 ms * PERF_SCALE");
-
     [Fact(Skip = "M6-T1")]
     public void Moisture_Recompute() => Placeholder.Write("ECO-16: MoistureMap recompute on seed 1 median <= 3 ms * PERF_SCALE");
 
