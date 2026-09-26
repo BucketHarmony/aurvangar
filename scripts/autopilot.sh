@@ -4,11 +4,13 @@
 #
 #   ./scripts/autopilot.sh            # up to 40 iterations
 #   MAX_ITER=10 MODEL=opus ./scripts/autopilot.sh
+#   PERMISSION_MODE=auto ./scripts/autopilot.sh   # classifier-approved commands instead of the allowlist only
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 MAX_ITER="${MAX_ITER:-40}"
 MAX_TURNS="${MAX_TURNS:-150}"
+PERMISSION_MODE="${PERMISSION_MODE:-acceptEdits}"
 MODEL_ARGS=()
 [ -n "${MODEL:-}" ] && MODEL_ARGS=(--model "$MODEL")
 mkdir -p artifacts/autopilot
@@ -18,9 +20,9 @@ PROMPT='Run exactly one iteration of the work loop in CLAUDE.md (the /next-task 
 for i in $(seq 1 "$MAX_ITER"); do
   log="artifacts/autopilot/iter-$(printf %03d "$i").log"
   echo "== autopilot iteration $i -> $log"
-  claude -p "$PROMPT" --permission-mode acceptEdits --max-turns "$MAX_TURNS" "${MODEL_ARGS[@]}" > "$log" 2>&1
+  claude -p "$PROMPT" --permission-mode "$PERMISSION_MODE" --max-turns "$MAX_TURNS" "${MODEL_ARGS[@]}" > "$log" 2>&1
   status=$(grep -oE 'AUTOPILOT: (GATE|BLOCKED|DONE|CONTINUE)' "$log" | tail -1 || true)
-  echo "   $status"
+  echo "   $status  ($(git log -1 --format='%h %s'))"
   case "$status" in
     "AUTOPILOT: CONTINUE") continue ;;
     "AUTOPILOT: GATE"|"AUTOPILOT: DONE") exit 0 ;;
