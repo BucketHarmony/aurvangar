@@ -17,14 +17,6 @@ namespace Aurvangar.Sim.Tests
         [Fact(Skip = "M4-T5")] public void Chop_UnmarkedTree_InvalidTarget() => Placeholder.Write("only MarkedForChop trees; chop drops 4 logs, frees trunk cells");
     }
 
-    public class AgentMovementTests
-    {
-        [Fact(Skip = "M4-T4")] public void MoveTicks_OrthogonalDiagonalStepUpWade() => Placeholder.Write("PTH-15: 4/6 ticks, +2 step up, +3 wadeable");
-        [Fact(Skip = "M4-T4")] public void BlockedNextCell_RepathsOnceThenFails() => Placeholder.Write("PTH-16");
-        [Fact(Skip = "M4-T4")] public void AgentsDoNotCollide() => Placeholder.Write("PTH-17: two agents may share a cell");
-        [Fact(Skip = "M4-T4")] public void Seed1_FiveColonistsSpawnStandable() => Placeholder.Write("WorldFactory spawns 5 agents on standable cells near the hub entrance");
-    }
-
     public class JobBoardTests
     {
         [Fact(Skip = "M4-T6")] public void OneJobTwoAgents_OnlyOneClaims() => Placeholder.Write("jobs-agents.md scenario 2");

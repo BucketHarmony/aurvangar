@@ -362,3 +362,26 @@ first and then checks that neither a quiet tick nor a repeat query recomputes th
 change recomputes it exactly once (same intent, the counter was a proxy).
 Consequences: seed 1 rebuilds about 14 times per 500 ticks (one drain-side bank cell oscillates around half depth);
 headless 24,000-tick median tick unchanged at ~0.03 ms. PTH-P2 (25 ms) has ~5x headroom; M4-T12 measures it.
+
+## ADR-026: Path following, one repath per move, colonist spawn (2026-09-26, M4-T4)
+Context: PTH-15/16 give step times and "re-check walkability before entering the next cell; repath once; if that
+fails the step fails", but not when the check runs, what "once" counts, how a job step learns the outcome, or where
+exactly the five colonists stand. The hub is placed without an event, and `RiverTests` requires a freshly created
+seed-1 world to have no pending events.
+Decision: `AgentMovement` (static, called by `AgentSystem`) follows `Agent.Path`. A segment starts when
+`MoveTotal == 0`: the step must still be a legal `PathMoves.From` move (walkable, headroom, no corner cutting), then
+`NextCell` and `MoveTotal` (PTH-15: 4 straight / 6 diagonal, +2 if `to` is higher, +3 if `to` is wet, matching the
+PTH-07 wading rule) are set; progress counts one per tick, and the step is checked again just before `Cell` changes,
+so an agent never enters a cell that was blocked mid-step. A blocked check repaths from `Cell` to the last path cell;
+the tick is spent on the repath and the new path starts next tick. The repath targets only the goal the first path chose, even for a multi-goal `MoveTo` (PTH-16 "same goal"). Dead agents cannot start a move. One repath per `MoveTo` (`Agent.Repathed`): a
+second block, or a repath that finds no path, sets `MoveStatus.Failed` and clears the path. `Agent.Move`
+(`None/Moving/Arrived/Failed`) is the outcome M4-T6 job steps read; `Move` and `Repathed` are hashed (and must be
+saved in M4-T10). `MoveTo` while mid-step abandons the step (the agent is still on `Cell`). Agents never block or
+see each other (PTH-17). `SimCounters.PathSearches` now mirrors `Pathfinder.Searches` at tick end (for VIEW-17).
+Colonists: after the river pre-settle, a breadth-first walk from the hub entrance with `PathMoves.From` (fixed
+neighbor order) takes the first five dry walkable cells, one dwarf each, named from the Dvergatal in ASCII
+(`Dvalinn, Althjofr, Nyradr, Reginn, Hanarr`, `WorldFactory.ColonistNames`). `AgentSpawned` is emitted by
+`AgentSystem.Spawn`, but `WorldFactory.Create` now drains events once at the very end (it used to drain after the
+pre-settle), so the initial world, like the hub, is read by the view rather than announced.
+Consequences: seed-1 golden regenerated (five agents in the state). A mid-step `MoveTo` snaps the view back up to
+one cell; acceptable for the POC.

@@ -1,4 +1,6 @@
 using Aurvangar.Sim.Content;
+using Aurvangar.Sim.Core;
+using Aurvangar.Sim.Paths;
 
 namespace Aurvangar.Sim.World;
 
@@ -12,13 +14,15 @@ public static class WorldFactory
         var sim = new Simulation(content, SizeX, SizeY, SizeZ, seed);
         var terrain = TerrainGenerator.Generate(sim.World, seed);   // M1-T3
         var hub = content.Building("hub");
-        sim.Buildings.PlacePrebuilt(hub, terrain.HubOrigin(hub.Footprint), 0);
+        var hall = sim.Buildings.PlacePrebuilt(hub, terrain.HubOrigin(hub.Footprint), 0);
         foreach (var t in terrain.TreeBases) sim.Plants.AddTree(t);
         foreach (var b in terrain.BushBases) sim.Plants.AddBush(b);
         PreSettleRiver(sim, terrain);
-        // M4-T4: spawn 5 colonists near the hub entrance. M5-T5: starting stock (40 berries, 30 water, 30 logs).
+        SpawnColonists(sim, hall.EntranceCell);
+        // M5-T5: starting stock (40 berries, 30 water, 30 logs).
         sim.World.ClearChangeLog();
         sim.World.MarkAllDirty();
+        sim.Events.Drain();   // the initial world (hub, colonists) is read by the view directly, not announced (ADR-026)
         return sim;
     }
 
@@ -26,7 +30,7 @@ public static class WorldFactory
     public const int PreSettleTicks = 600;
 
     /// <summary>GEN-08: register sources and drains, fill the channel, and run the full tick loop so the river is
-    /// settled at tick 0. The clock, water stats and pending events are reset afterwards (ADR-014).</summary>
+    /// settled at tick 0. The clock and water stats are reset afterwards (ADR-014); Create drains the events.</summary>
     private static void PreSettleRiver(Simulation sim, TerrainResult terrain)
     {
         foreach (var c in terrain.WaterSources) sim.Water.AddSource(c);
@@ -35,6 +39,37 @@ public static class WorldFactory
         sim.RunTicks(PreSettleTicks);
         sim.Clock.Tick = 0;
         sim.Water.ResetStats();
-        sim.Events.Drain();
+    }
+
+    /// <summary>The five starting dwarves, named from the Dvergatal (docs/00-overview.md). ASCII spellings.</summary>
+    public static readonly string[] ColonistNames = { "Dvalinn", "Althjofr", "Nyradr", "Reginn", "Hanarr" };
+
+    /// <summary>M4-T4 (ADR-026): one colonist per name on the first dry walkable cells met by a breadth-first walk from
+    /// the hub entrance using the PTH-04..08 move rules (fixed neighbor order, so the result is deterministic).</summary>
+    private static void SpawnColonists(Simulation sim, Int3 entrance)
+    {
+        var grid = sim.PathGrid;
+        var world = sim.World;
+        var seen = new bool[world.CellCount];
+        var queue = new Queue<Int3>();
+        var cells = new List<Int3>();
+        Span<PathMove> moves = stackalloc PathMove[PathMoves.MaxMoves];
+        if (grid.IsWalkable(entrance)) { queue.Enqueue(entrance); seen[world.Index(entrance)] = true; }
+        while (queue.Count > 0 && cells.Count < ColonistNames.Length)
+        {
+            var c = queue.Dequeue();
+            if (!grid.IsWet(c)) cells.Add(c);
+            int n = PathMoves.From(grid, c, moves);
+            for (int i = 0; i < n; i++)
+            {
+                int idx = world.Index(moves[i].To);
+                if (seen[idx]) continue;
+                seen[idx] = true;
+                queue.Enqueue(moves[i].To);
+            }
+        }
+        if (cells.Count < ColonistNames.Length)
+            throw new InvalidOperationException($"WorldFactory: only {cells.Count} spawn cells near the hub entrance {entrance}");
+        for (int i = 0; i < ColonistNames.Length; i++) sim.Agents.Spawn(cells[i], ColonistNames[i]);
     }
 }

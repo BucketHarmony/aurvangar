@@ -610,3 +610,24 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
 - Next: M4-T4 (agents and movement). JOB-06 region check: compare `Regions.RegionOf(agentCell)` against the target's
   adjacent cells; regions only update at tick end, so a same-tick dig is not visible until the next tick.
   M5-T2 construction blocking must bump `PathGrid.WalkabilityVersion` (via its invalidation feed).
+
+## M4-T4 — Agents and movement (2026-09-26)
+- Done: `AgentMovement` path following (PTH-15: 4 straight / 6 diagonal, +2 step up, +3 into a wet cell; the step is
+  re-checked with the full `PathMoves` rules at segment start and just before entering; one repath per `MoveTo` to
+  the chosen goal, then `MoveStatus.Failed`). `AgentSystem.MoveTo` (single/multi-goal) and `Tick` (ascending id,
+  dead skipped). New `Agent.Move` / `Agent.Repathed`, hashed. `WorldFactory` spawns 5 dwarves (Dvalinn, Althjofr,
+  Nyradr, Reginn, Hanarr) on the first dry walkable cells of a BFS from the hub entrance; `Create` now drains events
+  at the very end. `ScenarioBuilder.Agent` works. `SimCounters.PathSearches` mirrors `Pathfinder.Searches`.
+- Tests: moved the 4 M4-T4 placeholders into `AgentMovementTests` and wrote them, plus 4 more (whole path order and
+  tick total, unreachable MoveTo, blocked mid-step never entered, movement in the hash); 8 total, all failed first
+  on the missing API. Mutation check: dropping the entry re-check, the once-only repath limit, or the wade ticks
+  each fails one test. check.sh: 221 passed, 63 skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4 passed,
+  4 skipped. sim-reviewer: no required fixes; applied the dead-agent guard and an ADR note.
+- Decisions: ADR-026
+- Golden: regenerated (`UPDATE_GOLDEN=1`): five colonists are now part of the seed-1 state.
+- Perf: headless seed 1, 24,000 ticks: tick median 0.033 ms, p95 0.072 ms, 18,488 ticks/s, 5 agents alive,
+  hash `0c16a369fcd891de`. Water volume and active cells unchanged (agents are idle).
+- Next: M4-T5 (WorldActions). M4-T6 GoTo steps: call `Agents.MoveTo(sim, agent, goals)` and read `agent.Move`
+  (`Arrived`/`Failed`) each tick; `Failed` is the PTH-16 step failure. A mid-step `MoveTo` abandons the step.
+  M4-T5 `PlaceBlock` should refuse a cell an agent stands in (`CanStep` assumes the agent's own cell is standable).
+  M4-T10 must save `Move` and `Repathed`. Agents are not rendered yet (M4-T11).

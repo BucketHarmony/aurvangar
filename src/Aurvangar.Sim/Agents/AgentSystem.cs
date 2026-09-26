@@ -1,11 +1,17 @@
 using Aurvangar.Sim.Core;
+using Aurvangar.Sim.Events;
+using Aurvangar.Sim.Paths;
 
 namespace Aurvangar.Sim.Agents;
 
-/// <summary>Owns agents; runs job selection and step execution (JOB-01..09, PTH-15..17). M4-T4 onward.</summary>
+/// <summary>Owns agents; runs job selection and step execution (JOB-01..09, PTH-15..17).
+/// M4-T4: spawning and path following. M4-T6: job selection and steps.</summary>
 public sealed class AgentSystem
 {
     private readonly SortedDictionary<int, Agent> _agents = new();
+    private readonly EventBus _events;
+
+    public AgentSystem(EventBus events) { _events = events; }
 
     public IdAllocator Ids { get; } = new();
 
@@ -20,12 +26,25 @@ public sealed class AgentSystem
     {
         var a = new Agent { Id = new AgentId(Ids.Allocate()), Name = name, Cell = cell, NextCell = cell };
         _agents.Add(a.Id.Value, a);
+        _events.Emit(new AgentSpawned(a.Id));
         return a;
     }
 
+    /// <summary>Paths the agent to a goal and starts following it (PTH-15). See <see cref="AgentMovement.Start"/>.</summary>
+    public PathStatus MoveTo(Simulation sim, Agent a, Int3 goal) => MoveTo(sim, a, new[] { goal });
+
+    /// <summary>PTH-11: paths to the cheapest of several goals and starts following it.</summary>
+    public PathStatus MoveTo(Simulation sim, Agent a, IReadOnlyList<Int3> goals) =>
+        AgentMovement.Start(sim.Pathfinder, a, goals);
+
     public void Tick(Simulation sim)
     {
-        // M4-T4/M4-T6: for each agent in id order: pick job if idle, advance movement, run current step.
+        // JOB-02: ascending id; dead agents are skipped. M4-T6: pick a job if idle and run the current step here.
+        foreach (var a in _agents.Values)
+        {
+            if (!a.IsAlive) continue;
+            AgentMovement.Advance(sim.PathGrid, sim.Pathfinder, a);
+        }
     }
 
     public void AddToHash(ref StateHasher h)
@@ -42,6 +61,7 @@ public sealed class AgentSystem
             h.Add(a.Carried.Item.Value); h.Add(a.Carried.Count);
             h.Add((byte)a.State); h.Add(a.CurrentJob.Value); h.Add(a.StepIndex); h.Add(a.StepProgress);
             h.Add(a.PathPos); h.Add(a.Path.Length); foreach (var c in a.Path) h.Add(c);
+            h.Add((byte)a.Move); h.Add(a.Repathed);
             h.Add(a.NextJobSearchTick);
         }
     }

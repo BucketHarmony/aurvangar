@@ -87,7 +87,12 @@ public sealed class ScenarioBuilder
     public ScenarioBuilder Drain(Int3 cell) { _sim.Water.AddDrain(cell); return this; }
 
     /// <summary>M4-T4: spawn an agent standing at the cell.</summary>
-    public ScenarioBuilder Agent(Int3 at) => throw new NotImplementedException("M4-T4: ScenarioBuilder.Agent");
+    public ScenarioBuilder Agent(Int3 at)
+    {
+        if (!_sim.World.InBounds(at)) throw new ArgumentException($"ScenarioBuilder: agent at {at} out of bounds");
+        _sim.Agents.Spawn(at, $"Agent{_sim.Agents.Count + 1}");
+        return this;
+    }
 
     /// <summary>M4-T8: place a pre-built hub (storage) with its origin at the cell.</summary>
     public ScenarioBuilder Hub(Int3 origin) => throw new NotImplementedException("M4-T8: ScenarioBuilder.Hub");

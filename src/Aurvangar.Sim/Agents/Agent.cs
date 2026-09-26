@@ -37,6 +37,10 @@ public sealed class Agent
     public int StepProgress { get; set; }
     public Int3[] Path { get; set; } = Array.Empty<Int3>();
     public int PathPos { get; set; }
+    /// <summary>Path-following status (PTH-15/16). Path is non-empty only while Moving.</summary>
+    public MoveStatus Move { get; set; }
+    /// <summary>True once the current move has used its one PTH-16 repath.</summary>
+    public bool Repathed { get; set; }
 
     /// <summary>Tick before which the agent will not try to pick a job again (JOB-06 throttle).</summary>
     public long NextJobSearchTick { get; set; }

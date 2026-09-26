@@ -50,7 +50,7 @@ public sealed class Simulation
         PathGrid = new PathGrid(World, Water, Plants);
         Pathfinder = new Pathfinder(PathGrid);
         Regions = new Regions(PathGrid);
-        Agents = new AgentSystem();
+        Agents = new AgentSystem(Events);
         Buildings = new BuildingSystem(World);
         Actions = new WorldActions(this);
     }
@@ -77,6 +77,7 @@ public sealed class Simulation
         Profiler?.Begin(TickPhase.Regions);
         if (Regions.RebuildIfDirty()) Counters.RegionRebuilds++;   // 11
         Profiler?.End(TickPhase.Regions);
+        Counters.PathSearches = Pathfinder.Searches;
         foreach (var ci in World.TakeDirtyChunks()) Events.Emit(new ChunkDirty(ci));
         World.ClearChangeLog();
         Clock.Tick++;                            // 12
