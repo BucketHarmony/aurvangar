@@ -56,7 +56,7 @@ Milestone order is by risk: world and water before anything that depends on them
 
 - [x] **M2-T1** WaterGrid storage, active set, fall · specs: WAT-01..04, WAT-16 · deps: M1-T2
   - Un-skip `WaterGridTests.Fall_*`, `WaterGridTests.Conservation_SingleColumn`.
-- [ ] **M2-T2** Spread, minimum flow, evaporation · specs: WAT-05..08 · deps: M2-T1
+- [x] **M2-T2** Spread, minimum flow, evaporation · specs: WAT-05..08 · deps: M2-T1
   - Un-skip `WaterGridTests.Spread_*`, `WaterScenarioTests.SingleCellSpreadsAndEvaporates`,
     `WaterScenarioTests.ShaftFillsBottomUp`.
 - [ ] **M2-T3** Sources, drains, stats, conservation · specs: WAT-09..11 · deps: M2-T2

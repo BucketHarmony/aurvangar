@@ -11,7 +11,7 @@ public class WaterScenarioTests
 {
     private const int Full = WaterGrid.Full;
 
-    [Fact(Skip = "M2-T2")]
+    [Fact]
     public void SingleCellSpreadsAndEvaporates() // water.md scenario 1
     {
         var sim = new ScenarioBuilder().Ground(4).Water(new Int3(16, 5, 16), Full).Build();
@@ -20,21 +20,30 @@ public class WaterScenarioTests
         Assert.Equal(Full, sim.Water.Stats.Evaporated);
     }
 
-    [Fact(Skip = "M2-T2")]
+    [Fact]
     public void ShaftFillsBottomUp() // water.md scenario 3
     {
         var sim = new ScenarioBuilder().Ground(9)
             .FillBox(new Int3(5, 5, 5), new Int3(5, 9, 5), BlockId.Air)
             .Source(new Int3(5, 11, 5))
             .Build();
+        // Falling water moves one cell per step (WAT-04) and the double-buffered step (WAT-03) delivers the source's
+        // stream as separate Full slugs, so wet cells sit over empty ones while in transit. "Bottom up" therefore
+        // means (ADR-011): no water ever sits above a partially filled shaft cell, the bottom cell is Full from the
+        // step water first reaches it, and at the end the whole shaft is Full.
         for (int t = 0; t < 200; t++)
         {
             sim.Tick();
+            int bottom = sim.Water.GetLevel(new Int3(5, 5, 5));
+            Assert.True(bottom == 0 || bottom == Full, $"tick {t}: bottom cell partial ({bottom})");
             for (int y = 6; y <= 9; y++)
-                if (sim.Water.GetLevel(new Int3(5, y, 5)) > 0)
-                    Assert.Equal(Full, sim.Water.GetLevel(new Int3(5, y - 1, 5)));
+            {
+                if (sim.Water.GetLevel(new Int3(5, y, 5)) == 0) continue;
+                int below = sim.Water.GetLevel(new Int3(5, y - 1, 5));
+                Assert.True(below == 0 || below == Full, $"tick {t}: y={y} wet above partial cell ({below})");
+            }
         }
-        Assert.Equal(Full, sim.Water.GetLevel(new Int3(5, 9, 5)));
+        for (int y = 5; y <= 9; y++) Assert.Equal(Full, sim.Water.GetLevel(new Int3(5, y, 5)));
     }
 
     [Fact(Skip = "M2-T3")]

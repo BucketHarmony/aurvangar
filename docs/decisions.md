@@ -91,3 +91,23 @@ while already flagged stays in the set until the next step, which drops it.
 rather than recomputing it.
 Consequences: `ActiveCount` counts wet cells that may change. M2-T4 dig activation (WAT-13) works through the wet
 neighbors of the dug cell. Adding the (empty) set to the hash changed the seed-1 golden hashes.
+
+## ADR-011: Spread/film details, sources raise only, and the shaft test's "bottom up" (2026-09-26, M2-T2)
+Context: (1) WAT-06 does not say whether minimum flow competes with normal spread flows; WAT-07 does not say which
+level it tests or whether it runs before fall. (2) WAT-09 says sources are "set to" `Full * strength / 100`, but
+lowering a cell would remove volume that no `WaterStats` counter records, breaking WAT-11. (3)
+`WaterScenarioTests.ShaftFillsBottomUp` asserted every tick that each wet shaft cell has a Full cell below it. That
+cannot hold with WAT-04 (one cell per step, as `Fall_MovesOneCellPerStep` requires): the first water is over empty
+cells while it falls. The double-buffered step (WAT-03) also delivers a source's stream as separate Full slugs,
+because the source cell cannot fall into a cell that is Full in the snapshot.
+Decision: (1) All rules read the pre-step snapshot. WAT-07 is checked first, on the cell's snapshot level, and
+applies only when the floor is solid (so a falling film never evaporates); solid and out-of-world neighbors count
+as 0. Minimum flow sends 1 unit to the lowest neighbor whose flow rounded to 0 with a difference of ≥ 2 (ties: lowest
+index), even if other neighbors received normal flow that step. Out-of-world horizontal neighbors are walls.
+(2) Sources only raise a cell to the target (added volume to `SourceAdded`); they never lower it. Sources are applied
+in M2-T2 because `ShaftFillsBottomUp` needs them; drains stay in M2-T3. (3) The shaft test now asserts that no water
+ever sits over a partially filled shaft cell, the bottom cell is 0 or Full every tick, and the whole shaft is Full at
+the end.
+Consequences: Overfill (WAT-16) can occur from spread alone (four min-flow inflows of 1 into a cell 2 below Full);
+tests cover both the open-air push and the ceiling evaporation. In Drought (strength 0) sources add nothing and the
+river drains through drains and evaporation only.

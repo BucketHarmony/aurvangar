@@ -84,7 +84,7 @@ public class WaterGridTests
         Assert.Equal(1, sim.Water.ActiveCount);      // landed this step; leaves after a step with no change
     }
 
-    [Fact(Skip = "M2-T2")]
+    [Fact]
     public void Spread_NotWhileFalling() // WAT-05
     {
         var sim = new ScenarioBuilder().Ground(4).Water(new Int3(5, 10, 5), Full).Build();
@@ -92,7 +92,7 @@ public class WaterGridTests
         foreach (var d in Int3.Horizontal4) Assert.Equal(0, sim.Water.GetLevel(new Int3(5, 10, 5) + d));
     }
 
-    [Fact(Skip = "M2-T2")]
+    [Fact]
     public void Spread_EqualizesInChannel() // WAT-05, WAT-06
     {
         // 5-long enclosed channel at y=5, z=5, x=1..5
@@ -106,12 +106,111 @@ public class WaterGridTests
         Assert.True(levels.Max() - levels.Min() <= 4, $"not level: {string.Join(",", levels)}");
     }
 
-    [Fact(Skip = "M2-T2")]
+    [Fact]
     public void Spread_NeverFlowsUp() // WAT-08
     {
         var sim = Shaft().Water(new Int3(5, 5, 5), Full).Build();
         sim.RunTicks(50);
         Assert.Equal(0, sim.Water.GetLevel(new Int3(5, 6, 5)));
+    }
+
+    [Fact]
+    public void Spread_SettledChannelLeavesActiveSet() // WAT-02, WAT-05, WAT-06
+    {
+        var sim = new ScenarioBuilder().Ground(9)
+            .FillBox(new Int3(1, 5, 5), new Int3(5, 5, 5), BlockId.Air)
+            .Water(new Int3(1, 5, 5), Full)
+            .Build();
+        long before = sim.Water.TotalVolume();
+        for (int i = 0; i < 500; i++) { sim.Tick(); Assert.Equal(before, Accounted(sim)); }
+        Assert.Equal(0, sim.Water.ActiveCount);
+    }
+
+    /// <summary>Row of three open cells x=1..3 at y=5, z=2, enclosed by stone (floor at y=4, ceiling at y=6).</summary>
+    private static ScenarioBuilder Row3() =>
+        new ScenarioBuilder().Ground(9).FillBox(new Int3(1, 5, 2), new Int3(3, 5, 2), BlockId.Air);
+
+    [Fact]
+    public void MinimumFlow_TieGoesToLowestIndex() // WAT-06
+    {
+        var sim = Row3().Water(new Int3(1, 5, 2), 100).Water(new Int3(2, 5, 2), 103).Water(new Int3(3, 5, 2), 100)
+            .Build();
+        sim.Tick();
+        Assert.Equal(101, sim.Water.GetLevel(new Int3(1, 5, 2)));
+        Assert.Equal(102, sim.Water.GetLevel(new Int3(2, 5, 2)));
+        Assert.Equal(100, sim.Water.GetLevel(new Int3(3, 5, 2)));
+    }
+
+    [Fact]
+    public void MinimumFlow_GoesToLowestNeighborOnly() // WAT-06
+    {
+        var sim = Row3().Water(new Int3(1, 5, 2), 101).Water(new Int3(2, 5, 2), 104).Water(new Int3(3, 5, 2), 100)
+            .Build();
+        sim.Tick();
+        Assert.Equal(101, sim.Water.GetLevel(new Int3(1, 5, 2)));
+        Assert.Equal(103, sim.Water.GetLevel(new Int3(2, 5, 2)));
+        Assert.Equal(101, sim.Water.GetLevel(new Int3(3, 5, 2)));
+    }
+
+    [Fact]
+    public void Evaporation_IsolatedFilmOnFloor() // WAT-07
+    {
+        var sim = new ScenarioBuilder().Ground(4).Water(new Int3(5, 5, 5), 10).Build();
+        sim.Tick();
+        Assert.Equal(0, sim.Water.GetLevel(new Int3(5, 5, 5)));
+        Assert.Equal(10, sim.Water.Stats.Evaporated);
+        Assert.Equal(0, sim.Water.TotalVolume());
+    }
+
+    [Fact]
+    public void Evaporation_NotNextToDeeperWater_NorWhileFalling() // WAT-07
+    {
+        var sim = Row3().Water(new Int3(1, 5, 2), 10).Water(new Int3(2, 5, 2), 20)
+            .Water(new Int3(20, 20, 20), 10)                  // film in mid air: falls, does not evaporate
+            .Build();
+        sim.Tick();
+        Assert.Equal(0, sim.Water.Stats.Evaporated);
+        Assert.Equal(12, sim.Water.GetLevel(new Int3(1, 5, 2)));   // gains (20 - 10) / 5 = 2
+        Assert.Equal(10, sim.Water.GetLevel(new Int3(20, 19, 20)));
+    }
+
+    /// <summary>A plus of Full arms around a center at 1022 on a stone floor: each arm sends 1 unit by minimum
+    /// flow, so the center receives 4 and overfills by 2 (WAT-16).</summary>
+    private static ScenarioBuilder OverfillPlus(bool ceiling)
+    {
+        var b = new ScenarioBuilder().Ground(4)
+            .Layer(5,
+                "SSSSS",
+                "SSWSS",
+                "SW.WS",
+                "SSWSS",
+                "SSSSS")
+            .Water(new Int3(2, 5, 2), Full - 2);
+        if (ceiling) b.FillBox(new Int3(0, 6, 0), new Int3(4, 6, 4), BlockId.Stone);
+        return b;
+    }
+
+    [Fact]
+    public void Overfill_PushesExcessIntoOpenCellAbove() // WAT-16, WAT-11
+    {
+        var sim = OverfillPlus(ceiling: false).Build();
+        long before = sim.Water.TotalVolume();
+        sim.Tick();
+        Assert.Equal(Full, sim.Water.GetLevel(new Int3(2, 5, 2)));
+        Assert.Equal(2, sim.Water.GetLevel(new Int3(2, 6, 2)));
+        Assert.Equal(0, sim.Water.Stats.Evaporated);
+        for (int i = 0; i < 50; i++) { Assert.Equal(before, Accounted(sim)); sim.Tick(); }
+    }
+
+    [Fact]
+    public void Overfill_UnderSolidCeilingEvaporatesExcess() // WAT-16, WAT-11
+    {
+        var sim = OverfillPlus(ceiling: true).Build();
+        long before = sim.Water.TotalVolume();
+        sim.Tick();
+        Assert.Equal(Full, sim.Water.GetLevel(new Int3(2, 5, 2)));
+        Assert.Equal(2, sim.Water.Stats.Evaporated);
+        Assert.Equal(before, Accounted(sim));
     }
 
     [Fact(Skip = "M2-T3")]
