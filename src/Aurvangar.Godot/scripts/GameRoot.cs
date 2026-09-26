@@ -2,54 +2,73 @@ using Aurvangar.Sim;
 using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Events;
 using Aurvangar.Sim.World;
+using Aurvangar.ViewCore.Frame;
+using Aurvangar.ViewCore.Meshing;
 using Godot;
 
 namespace Aurvangar.Client;
 
-/// <summary>Root node. Owns the Simulation and runs the fixed-tick loop (VIEW-01, VIEW-02).
-/// M3-T4 adds ChunkRenderer and WaterRenderer children and routes events to them.</summary>
+/// <summary>Root node. Owns the Simulation and runs the fixed-tick loop (VIEW-01): ticks come from a
+/// <see cref="TickAccumulator"/>, events drained after each tick are routed by a <see cref="RemeshRouter"/> into the
+/// terrain and water remesh queues, and up to 4 + 4 chunks are remeshed per frame (VIEW-02).</summary>
 public partial class GameRoot : Node3D
 {
-    public const double TickSeconds = 0.1;
-    public const int MaxTicksPerFrame = 4;
-    public static readonly int[] Speeds = { 0, 1, 3, 6 };
-
     public Simulation Sim { get; private set; } = null!;
     public ContentDb Content { get; private set; } = null!;
+    public ChunkRenderer Terrain { get; private set; } = null!;
+    public WaterRenderer WaterView { get; private set; } = null!;
+    public RemeshRouter Remesh { get; private set; } = null!;
 
-    /// <summary>Index into Speeds. 1 = 1x.</summary>
+    /// <summary>Index into TickAccumulator.Speeds. 1 = 1x.</summary>
     public int SpeedIndex { get; set; } = 1;
 
-    private double _accumulator;
+    /// <summary>VIEW-04 view level; cells above it are hidden. Defaults to SizeY - 1 (no slicing). M3-T5 drives it.</summary>
+    public int SliceY { get; private set; }
+
+    private readonly TickAccumulator _clock = new();
     private readonly List<SimEvent> _frameEvents = new();
+    private readonly List<int> _batch = new();
 
     public override void _Ready()
     {
         Content = ContentDb.LoadEmbedded();
         ulong seed = ReadSeedFromCmdline() ?? 1UL;
         Sim = WorldFactory.Create(seed, Content);
-        GD.Print($"Aurvangar: seed {seed}, world {Sim.World.SizeX}x{Sim.World.SizeY}x{Sim.World.SizeZ}");
-        // M3-T4: create ChunkRenderer / WaterRenderer, enqueue all chunks for initial meshing.
+        var w = Sim.World;
+        GD.Print($"Aurvangar: seed {seed}, world {w.SizeX}x{w.SizeY}x{w.SizeZ}");
+        SliceY = w.SizeY - 1;
+
+        Terrain = new ChunkRenderer { Name = "Terrain" };
+        Terrain.Init(Sim, new BlockColors(Content));
+        AddChild(Terrain);
+        WaterView = new WaterRenderer { Name = "Water" };
+        WaterView.Init(Sim, new WaterColors(Content));
+        AddChild(WaterView);
+
+        Remesh = new RemeshRouter(w.ChunksX, w.ChunksY, w.ChunksZ);
+        Remesh.EnqueueAll();
+        Sim.Events.Drain(); // everything is queued; world-creation events carry nothing new
     }
 
     public override void _Process(double delta)
     {
-        _accumulator += delta * Speeds[SpeedIndex];
-        int ticks = 0;
-        while (_accumulator >= TickSeconds && ticks < MaxTicksPerFrame)
+        int ticks = _clock.Advance(delta, TickAccumulator.Speeds[SpeedIndex]);
+        for (int i = 0; i < ticks; i++)
         {
             Sim.Tick();
             _frameEvents.AddRange(Sim.Events.Drain());
-            _accumulator -= TickSeconds;
-            ticks++;
         }
-        if (ticks == MaxTicksPerFrame) _accumulator = Math.Min(_accumulator, TickSeconds); // no spiral of death
 
         if (_frameEvents.Count > 0)
         {
-            // M3-T4: dispatch ChunkDirty / WaterDirty to renderers' remesh queues (budgeted per frame, VIEW-02).
+            Remesh.Route(_frameEvents);
             _frameEvents.Clear();
         }
+
+        Remesh.Terrain.TakeBatch(RemeshRouter.TerrainBudget, _batch);
+        foreach (int ci in _batch) Terrain.Remesh(ci, SliceY);
+        Remesh.Water.TakeBatch(RemeshRouter.WaterBudget, _batch);
+        foreach (int ci in _batch) WaterView.Remesh(ci, SliceY);
     }
 
     public override void _UnhandledInput(InputEvent e)

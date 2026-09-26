@@ -206,3 +206,17 @@ Consequences: A lake bed step inside a body of water emits no faces (both sides 
 chunks are read from the world, so a chunk's water mesh depends on the one-cell border: M3-T4 must also remesh the
 water of a neighbor chunk when a border cell's water changes (M2-T4 note: WaterDirty is per chunk of the changed
 cell only).
+
+## ADR-018: View loop logic lives in ViewCore; WaterDirty remeshes the chunk and its 6 face neighbors (2026-09-26, M3-T4)
+Context: Godot cannot be run on the build machine, so the Godot layer can only be build-verified. WaterDirty
+(WAT-15) names only the chunk of the changed cell, but a chunk's water mesh reads its one-cell border (ADR-017).
+VIEW-03 asks for picking collision per chunk; VIEW-02 does not say how queues dedupe or order.
+Decision: The fixed-step clock (`ViewCore.Frame.TickAccumulator`), deduping FIFO remesh queues (`RemeshQueue`), the
+event router (`RemeshRouter`) and the CCW-to-CW winding flip (`Meshing.MeshWinding`) are engine-neutral and
+unit-tested; `GameRoot`, `ChunkRenderer`, `WaterRenderer` and `MeshConvert` only copy arrays into Godot nodes.
+`ChunkDirty` queues terrain and water of that chunk (a block change can add or remove water side faces; the world
+already dirties neighbor chunks). `WaterDirty` queues the water of the chunk and its 6 face neighbors (clipped to the
+world). Queues are FIFO, one entry per chunk; the world-creation events are discarded after `EnqueueAll`.
+`ChunkRenderer` builds the per-chunk `ConcavePolygonShape3D` (physics layer 1) now, used by M3-T5 picking.
+Consequences: Up to 7x more water remeshes than dirty chunks; the per-frame budget (4) bounds the cost, a busy river
+can lag a few frames behind. If that shows, WaterDirty could carry a border flag (sim change) instead.

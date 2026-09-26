@@ -81,7 +81,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - Un-skip `Meshing/SliceTests.*` (cells above slice treated as air; cut faces flagged).
 - [x] **M3-T3** Water surface builder · specs: water.md rendering contract, VIEW-07 · deps: M2-T4, M3-T1
   - `Aurvangar.ViewCore.Meshing.WaterMesher`. Un-skip `Meshing/WaterMesherTests.*`.
-- [ ] **M3-T4** Godot: GameRoot loop, ChunkRenderer, WaterRenderer · specs: VIEW-01, VIEW-02 · deps: M3-T3
+- [x] **M3-T4** Godot: GameRoot loop, ChunkRenderer, WaterRenderer · specs: VIEW-01, VIEW-02 · deps: M3-T3
   - Seed 1 renders with terrain and river. Remesh queue with per-frame budget.
 - [ ] **M3-T5** Godot: camera rig, slice controller, picking, debug overlay (F3) · specs: VIEW-04..06, VIEW-17 · deps: M3-T4
 - [ ] **M3-T6** Screenshot harness · specs: VIEW-20 · deps: M3-T5

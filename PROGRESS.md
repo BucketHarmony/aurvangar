@@ -280,3 +280,28 @@ Entry template:
   blending (vertex color alpha = `water.alpha`) and, like terrain, reversed index order or a cull-mode change for
   Godot's clockwise front faces. Godot cannot be run on this machine (standard 4.6.1, no GODOT_BIN), so M3-T4
   rendering can only be build-verified.
+
+## M3-T4 — Godot: GameRoot loop, ChunkRenderer, WaterRenderer (2026-09-26)
+- Done: New ViewCore `Frame/TickAccumulator` (VIEW-01 fixed step, speeds 0/1/3/6, max 4 ticks/frame, backlog
+  clamp), `Frame/RemeshQueue` (deduping FIFO), `Frame/RemeshRouter` (ChunkDirty → terrain + water; WaterDirty → water
+  of the chunk and its 6 face neighbors; budgets 4 + 4, VIEW-02) and `Meshing/MeshWinding` (CCW → Godot CW indices,
+  collision triangle soup). Godot: `GameRoot` uses them and creates `ChunkRenderer` (per-chunk MeshInstance3D with
+  vertex-color material + StaticBody3D/ConcavePolygonShape3D on layer 1 for M3-T5 picking) and `WaterRenderer`
+  (alpha-blended, cull disabled, no shadows); `MeshConvert` copies `MeshData` into `ArrayMesh`. All chunks are
+  queued on load. Main.tscn unchanged (renderers are created in code). No Sim changes.
+- Tests: added `View/FrameLoopTests.cs` (11 tests: accumulator, queue, router, winding, and
+  `SeedOneFrameLoopTests.InitialLoad_MeshesTerrainAndRiver_WithinBudgetedFrames`, which drives the seed-1 world through
+  the queues and meshers headless and asserts terrain and river quads). All failed first with the M3-T4
+  `NotImplementedException` stubs (budget constant test aside). check.sh: 138 passed, 78 skipped, 0 failed; Godot
+  csproj builds with 0 warnings.
+- Decisions: ADR-018 (view loop logic in ViewCore; WaterDirty neighbor remesh; collision built now).
+- Golden: unchanged
+- Perf: n/a (no budget for this task; MESH-P1 is M3-T7)
+- Godot run NOT verified: only the standard (non-.NET) Godot 4.6.1 is installed and GODOT_BIN is unset, so the scene
+  was not opened or played; "seed 1 renders with terrain and river" is verified only via the headless ViewCore test
+  and a successful `dotnet build` of the Godot project. First real run should check winding (faces not inside-out)
+  and water transparency sorting.
+- Next: M3-T5 (camera rig, slice controller, picking, F3). `GameRoot.SliceY` exists (private set, default SizeY-1);
+  on a slice change, queue terrain + water for chunks whose Y range contains the old or new slice (ADR-016) via
+  `Remesh.Terrain/Water.Enqueue`. Picking: ray against `ChunkRenderer.PickLayer`; the StaticBody3D has meta
+  "chunk". The scene's Camera node is still a fixed transform.
