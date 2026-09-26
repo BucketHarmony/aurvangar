@@ -85,7 +85,7 @@ public sealed class Simulation
         Water.Tick(Events);                      // 3
         Profiler?.End(TickPhase.Water);
         Moisture.Tick(Clock.Tick);               // 4
-        Plants.Tick(Clock);                      // 5
+        Plants.Tick(this);                       // 5  bush regrowth, bush Harvest jobs
         Farms.Tick(this);                        // 5  crop growth / wither, Plant and Harvest jobs
         NeedsSystem.Tick(this);                  // 6
         Buildings.Tick(this);                    // 7

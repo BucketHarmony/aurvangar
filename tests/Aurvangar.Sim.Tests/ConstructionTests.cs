@@ -164,4 +164,25 @@ public class ConstructionTests
         Assert.Equal(sim.Commands.Log, loaded.Commands.Log);
         Assert.Equal(1, loaded.Commands.PendingCount);
     }
+
+    /// <summary>ADR-048: a Deliver job released after its pickup (its StorageOut promise used up) gets its reservation
+    /// back when it is re-planned, so it is not claimed again without stock to take.</summary>
+    [Fact]
+    public void DeliverReleasedAfterPickup_GetsItsReservationBack()
+    {
+        var sim = Flat(b => b.Hub(new Int3(20, G, 20)).Stock("log", 40).Agent(new Int3(15, G, 15)));
+        sim.Enqueue(new PlaceBuilding("warehouse", WhOrigin, 0));
+        var a = sim.Agents.All.First();
+        RunUntil(sim, () => !a.Carried.IsEmpty && sim.Jobs.Get(a.CurrentJob) is { Kind: JobKind.Deliver }, 2000);
+        var job = sim.Jobs.Get(a.CurrentJob)!;
+        Assert.DoesNotContain(job.Reservations, r => r.Kind == ReservationKind.StorageOut);
+
+        JobRunner.ReleaseCurrent(sim, a);
+        Assert.False(job.IsClaimed);
+        sim.Tick();   // re-planned at step 7; the agent may take it again at step 10, from step 0
+        Assert.Same(job, sim.Jobs.Get(job.Id));
+        Assert.Contains(job.Reservations, r => r.Kind == ReservationKind.StorageOut);
+        Assert.All(sim.Jobs.All.Where(j => j.Kind == JobKind.Deliver && sim.Agents.Get(j.ClaimedBy) is not { StepIndex: > 1 }),
+            j => Assert.Contains(j.Reservations, r => r.Kind == ReservationKind.StorageOut));
+    }
 }

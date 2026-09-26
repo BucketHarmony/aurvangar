@@ -1,3 +1,4 @@
+using Aurvangar.Sim.Actions;
 using Aurvangar.Sim.Agents;
 using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Core;
@@ -320,5 +321,26 @@ public class JobBoardTests
         Assert.Equal(s1.StateHash(), s2.StateHash());
         s1.Designations.Set(new Int3(3, 3, 3), DesignationMark.Dig);
         Assert.NotEqual(s1.StateHash(), s2.StateHash());
+    }
+
+    /// <summary>BLD-10 (M6-T3 fix): a PickUpFromStorage step uses up its job's StorageOut promise, so the items still in
+    /// the building are free for other jobs while this one carries its stack on. Before the fix the promise stayed
+    /// until the job ended and a second job reserving the rest failed its pickup.</summary>
+    [Fact]
+    public void PickUpFromStorage_UsesUpItsStorageOutReservation()
+    {
+        var sim = new ScenarioBuilder().Ground(4).Hub(new Int3(2, 5, 20)).Stock("log", 4).Agent(new Int3(6, 5, 16)).Build();
+        var hub = sim.Buildings.All.First();
+        var log = TestContent.Db.Item("log");
+        var far = new Int3(20, 5, 10);
+        var job = sim.Jobs.Post(JobKind.Haul, hub.EntranceCell,
+            new[] { JobStep.GoToBuilding(hub.Id), JobStep.PickUpFromStorage(hub.Id, log, 2), JobStep.GoTo(far), JobStep.Work(far, 500) },
+            new[] { Reservation.OutOfStorage(hub.Id, log, 2) });
+        var a = AgentN(sim, 0);
+        RunUntil(sim, () => a.Carried.Count == 2, 300);
+        Assert.Equal(job.Id, a.CurrentJob);
+        Assert.Equal(2, WorldActions.StoredCount(hub, log));
+        Assert.DoesNotContain(job.Reservations, r => r.Kind == ReservationKind.StorageOut);
+        Assert.Equal(2, sim.Jobs.StorageStock(hub, log));
     }
 }

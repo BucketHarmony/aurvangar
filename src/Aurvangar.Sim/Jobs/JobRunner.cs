@@ -54,6 +54,7 @@ public static class JobRunner
             if (!Reachable(sim, job, region) || !sim.Jobs.CanReserve(sim, job)) continue;
             if (job.Kind == JobKind.Dig && sim.Agents.AnyHolds(job.Target + Int3.Up, a.Id)) continue;   // DSG-08
             if (!Farming.FarmSystem.StillWanted(sim, job)) continue;   // ADR-047: withdrawn at the next farm step
+            if (!Plants.BushHarvest.StillWanted(sim, job)) continue;   // ADR-048: withdrawn at the next plant step
             best = job;
             bestDist = dist;
         }
@@ -188,13 +189,22 @@ public static class JobRunner
                 break;
             case StepKind.Chop: r = act.Chop(a.Id, new PlantId(step.Target)); break;
             case StepKind.PickUp: r = act.PickUp(a.Id, step.Cell, step.Item, step.Count); break;
-            case StepKind.PickUpFromStorage: r = act.PickUpFromStorage(a.Id, new BuildingId(step.Target), step.Item, step.Count); break;
+            case StepKind.PickUpFromStorage:
+                r = act.PickUpFromStorage(a.Id, new BuildingId(step.Target), step.Item, step.Count);
+                // BLD-10: the promised items have left the building, so the promise goes too (M6-T3 fix: a held
+                // StorageOut would hide the building's remaining stock from other jobs until this one finished).
+                if (r == ActionResult.Ok) sim.Jobs.UseStorageOut(job, new BuildingId(step.Target), step.Item, step.Count);
+                break;
             case StepKind.DeliverTo: r = act.DeliverTo(a.Id, new BuildingId(step.Target)); break;
             case StepKind.Consume: ConsumeStep(sim, a, job, step); return;
             case StepKind.Drop: r = act.Drop(a.Id, step.Cell); break;
             case StepKind.Plant: r = act.Plant(a.Id, step.Cell); break;
             case StepKind.Harvest:
                 r = act.Harvest(a.Id, step.Cell);
+                if (r == ActionResult.Ok && a.StepIndex == job.Steps.Count - 1) Farming.FarmSystem.ChainDelivery(sim, a, job);   // JOB-11
+                break;
+            case StepKind.HarvestBush:
+                r = act.HarvestBush(a.Id, new PlantId(step.Target));
                 if (r == ActionResult.Ok && a.StepIndex == job.Steps.Count - 1) Farming.FarmSystem.ChainDelivery(sim, a, job);   // JOB-11
                 break;
             default: throw new InvalidOperationException($"unknown step kind {step.Kind}");

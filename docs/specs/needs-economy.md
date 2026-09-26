@@ -35,7 +35,8 @@
 
 - **ECO-09** Trees: entity with base cell and trunk height 4. Chop drops 4 logs at the base cell. No regrowth.
 - **ECO-10** Berry bushes: states `Ripe(2 berries)` → harvested → `Growing(1200 ticks)` → `Ripe`. Harvest posts
-  only while the colony's total food in storage < 60.
+  only while the colony's total food in storage < 60 (units of berries + potatoes in complete storage; M6-T3,
+  ADR-048). Growing lasts exactly 1200 ticks from the harvest tick.
 
 ## Farming
 

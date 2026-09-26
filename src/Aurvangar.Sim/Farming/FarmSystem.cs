@@ -151,7 +151,7 @@ public sealed class FarmSystem
     private static bool HasFarmJobs(Simulation sim)
     {
         foreach (var j in sim.Jobs.All)
-            if (j.Kind is JobKind.Plant or JobKind.Harvest) return true;
+            if (j.Kind is JobKind.Plant or JobKind.Harvest && !Plants.BushHarvest.Is(j)) return true;   // bush jobs belong to PlantSystem
         return false;
     }
 
@@ -165,7 +165,7 @@ public sealed class FarmSystem
         List<Job>? withdraw = null;
         foreach (var j in sim.Jobs.All)
         {
-            if (j.Kind is not (JobKind.Plant or JobKind.Harvest)) continue;
+            if (j.Kind is not (JobKind.Plant or JobKind.Harvest) || Plants.BushHarvest.Is(j)) continue;   // bush jobs: PlantSystem
             var want = j.Kind == JobKind.Plant ? CropState.Empty : CropState.Mature;
             var t = Get(j.Target);
             if (!j.IsClaimed && (t is null || t.State != want)) { (withdraw ??= new()).Add(j); continue; }
@@ -210,11 +210,11 @@ public sealed class FarmSystem
         sim.Jobs.SetReservations(job, res);
     }
 
-    /// <summary>False for a Plant / Harvest job whose tile is gone or no longer Empty / Mature (e.g. a harvest job
+    /// <summary>False for a farm Plant / Harvest job (not a bush harvest, ADR-048) whose tile is gone or no longer Empty / Mature (e.g. a harvest job
     /// released mid-delivery by a need). Such a job is withdrawn at the next farm step; until then it is not taken.</summary>
     public static bool StillWanted(Simulation sim, Job job)
     {
-        if (job.Kind is not (JobKind.Plant or JobKind.Harvest)) return true;
+        if (job.Kind is not (JobKind.Plant or JobKind.Harvest) || Plants.BushHarvest.Is(job)) return true;
         var want = job.Kind == JobKind.Plant ? CropState.Empty : CropState.Mature;
         return sim.Farms.Get(job.Target) is { } t && t.State == want;
     }

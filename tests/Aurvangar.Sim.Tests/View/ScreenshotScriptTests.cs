@@ -66,11 +66,12 @@ public class ScreenshotScriptTests
         Assert.Equal(PlacementResult.NotOnGround, new Aurvangar.ViewCore.Tools.BuildTool(TestContent.Db).Ghost(sim, pick)!.Value.Result);
         Assert.Null(ScreenshotScripts.GhostPick("digchop", sim));
 
-        // Part way (TICKS=500) the shots show several building states; by tick 1200 everything is built.
+        // Part way (TICKS=500) the shots show several building states; by tick 1600 everything is built. (It was 1200
+        // before M6-T3: the dwarves first pick berries (40 < 60 food), which delays the chops that supply logs; ADR-048.)
         sim.RunTicks(499);
         var states = sim.Buildings.All.Where(b => b.Def.Id != "hub").Select(b => b.State).Distinct().ToList();
         Assert.True(states.Count >= 2, $"states at tick 500: {string.Join(",", states)}");
-        sim.RunTicks(700);
+        sim.RunTicks(1100);
         Assert.All(sim.Buildings.All, b => Assert.Equal(BuildingState.Complete, b.State));
     }
 }

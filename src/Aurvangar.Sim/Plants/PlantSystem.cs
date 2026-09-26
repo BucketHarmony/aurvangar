@@ -28,10 +28,17 @@ public sealed class Plant
     public int RegrowTicks { get; set; }
 }
 
-/// <summary>Owns trees and bushes. SCAFFOLD: storage and occupancy work; growth logic is M6-T3.</summary>
+/// <summary>Owns trees and bushes. Ticked at ARCH-01 step 5: bushes regrow (ECO-10), then <see cref="BushHarvest"/>
+/// keeps the bush harvest jobs on the board.</summary>
 public sealed class PlantSystem
 {
     public const int TreeHeight = 4;
+
+    /// <summary>ECO-10: berries on a ripe bush, and per harvest.</summary>
+    public const int BushBerries = 2;
+
+    /// <summary>ECO-10: ticks a harvested bush grows before it is ripe again.</summary>
+    public const int BushRegrowTicks = 1200;
 
     private readonly VoxelWorld _world;
     private readonly SortedDictionary<int, Plant> _plants = new();
@@ -62,7 +69,7 @@ public sealed class PlantSystem
 
     public Plant AddTree(Int3 baseCell) => Add(PlantKind.Tree, baseCell, TreeHeight, berries: 0);
 
-    public Plant AddBush(Int3 baseCell) => Add(PlantKind.Bush, baseCell, 1, berries: 2);
+    public Plant AddBush(Int3 baseCell) => Add(PlantKind.Bush, baseCell, 1, berries: BushBerries);
 
     public void Remove(PlantId id)
     {
@@ -104,9 +111,24 @@ public sealed class PlantSystem
         OccupancyChanged?.Invoke(index);
     }
 
-    public void Tick(SimClock clock)
+    /// <summary>ARCH-01 step 5. ECO-10: a growing bush counts down and is ripe (<see cref="BushBerries"/>) on the tick
+    /// its countdown reaches 0, so it is ripe again exactly <see cref="BushRegrowTicks"/> ticks after the harvest.
+    /// Then the harvest jobs are synced. Crops (M6-T2) live in FarmSystem, not here.</summary>
+    public void Tick(Simulation sim)
     {
-        // M6-T3: bush regrowth. M6-T2 crops live in FarmSystem, not here.
+        foreach (var p in _plants.Values)
+        {
+            if (p.Kind != PlantKind.Bush || p.Berries > 0 || p.RegrowTicks <= 0) continue;
+            if (--p.RegrowTicks == 0) p.Berries = BushBerries;
+        }
+        BushHarvest.Sync(sim);
+    }
+
+    /// <summary>WorldActions support (ECO-10): the bush gives up its berries and starts growing.</summary>
+    internal static void Harvest(Plant bush)
+    {
+        bush.Berries = 0;
+        bush.RegrowTicks = BushRegrowTicks;
     }
 
     public void AddToHash(ref StateHasher h)

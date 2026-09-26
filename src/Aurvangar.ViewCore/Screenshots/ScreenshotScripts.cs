@@ -18,7 +18,7 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// line of <see cref="LeveeCount"/> levees, each at the nearest valid site at least <see cref="BuildGap"/> cells
 /// from the hub (<see cref="FindSite"/>). The pump needs no water to be placed (ADR-040); on seed 1 the nearest site
 /// is a dry terrace step, so the shots also show its no-water icon. With <c>--ticks 500</c> the shots show buildings in several states; by
-/// tick 1200 all of them are complete.</item>
+/// tick 1600 all of them are complete (1200 before the M6-T3 berry picking, ADR-048).</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {

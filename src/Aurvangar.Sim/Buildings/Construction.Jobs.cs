@@ -137,7 +137,9 @@ public static partial class Construction
 
     private static void Replan(Job job, Building site, ItemId item, BuildingId src, int count)
     {
-        if (job.Steps[0].Target == src.Value && job.Steps[1].Count == count) return;
+        // The reservation is compared too: a job released after its pickup has used up its StorageOut (ADR-048).
+        if (job.Steps[0].Target == src.Value && job.Steps[1].Count == count
+            && job.Reservations.SequenceEqual(DeliverRes(item, src, count))) return;
         job.Steps.Clear();
         job.Steps.AddRange(DeliverSteps(site.Id, item, src, count));
         job.Reservations.Clear();

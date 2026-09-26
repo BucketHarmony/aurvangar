@@ -109,7 +109,7 @@ public static class Pumps
         };
         var res = new[] { Reservation.OutOfStorage(b.Id, item, n), Reservation.IntoStorage(to.Id, item, n) };
         if (job is null) { sim.Jobs.Post(JobKind.Haul, b.EntranceCell, steps, res); return; }
-        if (job.Steps[1].Count == n && job.Steps[3].Target == to.Id.Value) return;
+        if (job.Steps[1].Count == n && job.Steps[3].Target == to.Id.Value && job.Reservations.SequenceEqual(res)) return;   // ADR-048
         job.Steps.Clear();
         job.Steps.AddRange(steps);
         job.Reservations.Clear();

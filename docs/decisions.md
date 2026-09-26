@@ -979,3 +979,33 @@ Decision:
 Consequences: a tile covered by a building or a placed block is lost silently (its crop too). Crops do not block
 walking or building placement. Crop numbers (7200, 2400, 3 potatoes, work ticks) are spec constants in `FarmSystem`,
 like `LogsPerTree`; the produce item is `potato`. v3 saves no longer load (SAV-04).
+
+## ADR-048: Berry bush harvest jobs; storage-out promises end at pickup (2026-09-26, M6-T3)
+Context: ECO-10 gives the bush cycle and "Harvest posts only while the colony's total food in storage < 60", but not
+what counts as food, how bush jobs differ from farm Harvest jobs (both `JobKind.Harvest`), or what happens to a posted
+job when the stock rises. Seed 1 starts with 40 berries, so from tick 0 all five dwarves pick berries (Harvest 35 beats
+Dig/Chop 25). That delayed the SurvivalScript's notch dig past the pump's tick and exposed a latent BLD-10 bug: a
+`PickUpFromStorage` step kept its job's StorageOut reservation after the items had left, so a second job reserving the
+building's remaining stock failed its pickup (seen as one failed levee Deliver job).
+Decision:
+- Food in storage = units (not food value) of items with a food value (berries, potatoes) stored in complete storage
+  buildings (`BushHarvest.FoodInStorage`). Carried items, piles and pending deliveries do not count.
+- Bushes: a harvest sets Berries 0 and RegrowTicks 1200; `PlantSystem.Tick` (ARCH-01 step 5) counts down and makes the
+  bush ripe (2 berries) on the tick the countdown reaches 0, exactly 1200 ticks after the harvest tick.
+- `Plants/BushHarvest.Sync` (end of the plant step): while food < 60, one Harvest job (35) per ripe bush:
+  `GoTo(reach) → Work(20) → HarvestBush(plant id)` with a cell reservation on the bush base. An unclaimed bush job is
+  withdrawn when food ≥ 60, the bush is not ripe, or the job already has delivery steps (released mid-delivery; its
+  berries were dropped and are hauled). Selection skips such jobs (`BushHarvest.StillWanted`). Claimed jobs run on.
+- Bush jobs are told apart by their third step being `HarvestBush` (`BushHarvest.Is`); FarmSystem ignores them.
+- New `WorldActions.HarvestBush`; the berries go to storage in the same job via `FarmSystem.ChainDelivery` (JOB-11).
+- BLD-10 fix: a successful `PickUpFromStorage` step uses up the matching StorageOut reservation
+  (`JobBoard.UseStorageOut`, as Consume already did). A Deliver or pump-buffer Haul job released after its pickup is
+  re-planned when its reservations differ from the ones it would be posted with (`Construction.Replan`,
+  `Pumps.KeepHaul`), so it gets its StorageOut back and is not claimed without stock (sim-reviewer finding).
+- Test/script updates caused by the earlier food gathering: `SurvivalScript` chops at the pump's tick (600) instead of
+  tick 0 (chops tie with the notch dig and held it up to tick 1136; now it is dug at 416);
+  `Seed1_FiveColonistsSpawnStandable` checks the idle spawn state before the first tick instead of after it; the
+  `build` screenshot script completes by tick 1600 instead of 1200 (`SCRIPT=build` shots need `TICKS=1600`).
+Consequences: no new state (Berries / RegrowTicks were already saved and hashed); no save version change. A ripe bush
+nobody can reach keeps a job on the board (region filtering keeps agents from trying it). Every stock drop below 60
+sends dwarves to the bushes ahead of digs and chops.

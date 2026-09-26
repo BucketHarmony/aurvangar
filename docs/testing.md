@@ -73,7 +73,7 @@ plays in, so they show the same lighting and colors as play (ADR-035). There is 
 On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env options: `SEED`, `TICKS` (1200),
 `SHOTS`, `OUT`, and `SCRIPT=digchop` (dig a pit and chop trees near the hub, so colonists are at work;
 `TICKS=400` shows the marks, 1200 shows the piles) or `SCRIPT=build` (chop plus a warehouse, a pump and a levee line
-near the hub; `TICKS=500` catches them mid-build, 1200 shows them complete).
+near the hub; `TICKS=500` catches them mid-build, 1600 shows them complete, ADR-048).
 
 ## Scripted play
 

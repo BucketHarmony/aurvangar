@@ -224,19 +224,23 @@ public class AgentMovementTests
         Assert.All(agents, a => Assert.False(string.IsNullOrWhiteSpace(a.Name)));
         Assert.Equal(5, agents.Select(a => a.Cell).Distinct().Count());
 
+        // Spawn state is checked before the first tick: from M6-T3 on, dwarves take bush harvest jobs on tick 0
+        // (seed 1 starts with 40 food < 60, ECO-10), so they are no longer idle after it (ADR-048).
+        Assert.All(agents, a => Assert.Equal(AgentState.Idle, a.State));
+        Assert.All(agents, a => Assert.Equal(a.Cell, a.NextCell));
+        var spawn = agents.Select(a => (a.Name, a.Cell)).ToArray();
+
         var entrance = sim.Buildings.All.Single(b => b.Def.Id == "hub").EntranceCell;
         sim.Tick();                                             // regions are built at tick end
         int hubRegion = sim.Regions.RegionOf(entrance);
         Assert.NotEqual(Regions.None, hubRegion);
-        foreach (var a in agents)
+        Assert.All(agents, a => Assert.True(a.IsAlive));
+        foreach (var (name, cell) in spawn)
         {
-            Assert.True(a.IsAlive);
-            Assert.Equal(AgentState.Idle, a.State);
-            Assert.Equal(a.Cell, a.NextCell);
-            Assert.True(sim.PathGrid.IsStandable(a.Cell) && sim.PathGrid.IsWalkable(a.Cell), $"{a.Name} at {a.Cell}");
-            Assert.False(sim.PathGrid.IsWet(a.Cell));
-            Assert.True(Math.Max(Math.Abs(a.Cell.X - entrance.X), Math.Abs(a.Cell.Z - entrance.Z)) <= 3, $"{a.Name} at {a.Cell}");
-            Assert.Equal(hubRegion, sim.Regions.RegionOf(a.Cell));
+            Assert.True(sim.PathGrid.IsStandable(cell) && sim.PathGrid.IsWalkable(cell), $"{name} at {cell}");
+            Assert.False(sim.PathGrid.IsWet(cell));
+            Assert.True(Math.Max(Math.Abs(cell.X - entrance.X), Math.Abs(cell.Z - entrance.Z)) <= 3, $"{name} at {cell}");
+            Assert.Equal(hubRegion, sim.Regions.RegionOf(cell));
         }
     }
 }

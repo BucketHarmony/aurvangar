@@ -1435,3 +1435,52 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   - M6-T5 renders crops from `sim.Farms.All` (state and Progress / `MatureTicks`). There is no farm view event.
   - M6-T6 adds `DesignateFarm` near the river to the SurvivalScript. A tile must be within 5 columns of water at
     [surfaceY - 2, surfaceY + 1] to grow.
+
+## M6-T3 — Berry bushes (2026-09-26)
+- Done: ECO-10. `PlantSystem.Tick(sim)` (ARCH-01 step 5) counts a harvested bush down from 1200 and makes it ripe
+  (2 berries) exactly 1200 ticks after the harvest tick. New `Plants/BushHarvest`:
+  - `Sync` runs at the end of the plant step. While food in storage is below 60, it keeps one Harvest job (35) per ripe
+    bush: `GoTo(reach) → Work(20) → HarvestBush(plant id)`, with a cell reservation on the bush.
+  - Food in storage = units of food items (berries + potatoes) in complete storage buildings (ADR-048).
+  - It withdraws unclaimed bush jobs when food is at least 60, when the bush is not ripe, or when the job already has
+    delivery steps (it was released mid-delivery). Job selection skips such jobs (`BushHarvest.StillWanted`).
+  - Bush jobs share `JobKind.Harvest` with crops. They are told apart by their third step, `HarvestBush`
+    (`BushHarvest.Is`), and FarmSystem ignores them.
+  - New `WorldActions.HarvestBush`. The berries go to storage in the same job through `FarmSystem.ChainDelivery`
+    (JOB-11).
+- Fix (BLD-10, latent since M5-T2): a successful `PickUpFromStorage` step now uses up its job's StorageOut reservation.
+  - Before, a Deliver job kept that promise until it finished, so a second job reserving the building's remaining logs
+    failed its pickup. That showed up as one failed levee Deliver once berry picking shifted the timings.
+  - Review follow-up: a Deliver or pump-buffer Haul job released after its pickup is re-planned when its reservations
+    differ from the posted ones, so it gets its StorageOut back.
+- Knock-on changes (ADR-048): seed 1 starts with 40 food, below 60, so from tick 0 all five dwarves pick berries for
+  about 500 ticks (Harvest 35 is above Dig/Chop 25).
+  - `SurvivalScript` now chops at tick 600, together with the pump, instead of tick 0. At tick 0 the chops tied with the
+    notch dig and held it until tick 1136, so the pump was rejected. The notch is now dug at tick 416.
+  - `AgentMovementTests.Seed1_FiveColonistsSpawnStandable` checks the Idle/NextCell spawn state before the first tick.
+  - `ScreenshotScriptTests` build: everything is complete by tick 1600 (was 1200). Docs in testing.md and
+    screenshot.sh are updated: `SCRIPT=build` needs `TICKS=1600` to show the buildings complete.
+- Tests: the 2 placeholders moved to `BushTests.cs` with bodies, plus 4 new tests (withdraw at 60 / repost below it,
+  action rules, save/load mid-regrowth, hash). They did not compile first (no `BushHarvest` or `HarvestBush` yet).
+  - New regression tests: `JobBoardTests.PickUpFromStorage_UsesUpItsStorageOutReservation` and
+    `ConstructionTests.DeliverReleasedAfterPickup_GetsItsReservationBack`. Each was mutation-checked: it fails without
+    its fix.
+  - check.sh: 473 passed, 4 skipped, 0 failed; Godot csproj 0 warnings.
+- Review (sim-reviewer): no hard-rule violations. Its one required fix, re-planning released Deliver / buffer Haul
+  jobs, is applied. Not applied (optional): computing food once per tick; the Sync scan over all plants (M6-T7 perf
+  pass); an assert for a hand-built bush with 0 berries and 0 regrow.
+- Decisions: ADR-048. ECO-10 is annotated.
+- Golden: regenerated with `UPDATE_GOLDEN=1` (intentional). Berry picking now starts at tick 0 and the script's chop
+  moved to tick 600. New hashes: 0 `2dce28cc9774b9be`, 1200 `278032913bfc4cea`, 3000 `ea48ace22f08bf21`, 6000
+  `9f3182b7787a6769`.
+- Headless seed 1, `--script survival`, 24,000 ticks: hash `6492794254d882eb`, about 11,500 ticks/s, 196 jobs done,
+  0 failed, stored log 80 / berries 71 / water 110, all 5 alive at day 10 (before: 4). No script: hash
+  `cc217e10d620371d`, colony lost at 15,009 (thirst).
+- Perf: perf.sh 7 passed, 1 skipped (SIM-P1). One earlier run, made while the reviewer agent was building, failed
+  PTH-P1 at p95 1.555 ms (known noise); the rerun passed. No path or water code changed.
+- Screenshots: none. No rendering code changed; the ViewCore changes are the script and doc comments.
+- Next: M6-T4 (weather). For M6-T6:
+  - The survival script already keeps all 5 alive to day 10 on berries plus the pump.
+  - `Seed1_NoCommands_ColonyLost` still holds: the colony dies of thirst at 15,009.
+  - Any new script command near tick 0 competes with berry picking for about 500 ticks.
+  - The M6-T5 HUD can show `BushHarvest.FoodInStorage`. Bush ripeness is `Plant.Berries` / `RegrowTicks`.

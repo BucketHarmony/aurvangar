@@ -10,9 +10,10 @@ namespace Aurvangar.ViewCore.Scripts;
 /// Built up by milestone; so far (M5-T7) it covers DoD steps 2, 4 and 5 plus a levee line:
 /// <list type="number">
 /// <item>Tick 0: dig the one-cell notch <see cref="PumpNotch"/> in the river bank (ADR-044: on seed 1 every wet pump
-/// site has its entrance inside the next bank step) and chop the trees around the Great Hall.</item>
-/// <item>Tick <see cref="PumpTick"/> (the notch is dug by tick ~485): the Water Pump on the bank at
-/// <see cref="PumpOrigin"/>, facing north, its intake in the river (level 1024).</item>
+/// site has its entrance inside the next bank step).</item>
+/// <item>Tick <see cref="PumpTick"/> (the notch is dug by tick ~416, after the first berry picking, M6-T3): the Water
+/// Pump on the bank at <see cref="PumpOrigin"/>, facing north, its intake in the river (level 1024). Then chop the
+/// trees around the Great Hall (<see cref="ChopTick"/>; at tick 0 the chops would hold up the notch dig, ADR-048).</item>
 /// <item>Tick <see cref="WarehouseTick"/>: a Warehouse west of the Great Hall.</item>
 /// <item>Tick <see cref="LeveeTick"/>: a line of <see cref="LeveeCount"/> levees along the top of the river bank
 /// south-west of the Great Hall (flood wall between the hall and the river).</item>
@@ -37,6 +38,8 @@ public static class SurvivalScript
 
     /// <summary>The chop area: every tree within 24 cells (X/Z) of the Great Hall's center.</summary>
     public static readonly DesignateChop Chop = new(16, 36, 64, 84);
+    /// <summary>After the pump (M6-T3, ADR-048): chops tie with the notch dig (both 25) and would hold it up.</summary>
+    public const long ChopTick = PumpTick;
 
     /// <summary>(tick, command) pairs in tick order; commands of one tick are enqueued in list order.</summary>
     public static IReadOnlyList<(long Tick, ICommand Command)> Commands { get; } = Build();
@@ -49,8 +52,8 @@ public static class SurvivalScript
         var list = new List<(long, ICommand)>
         {
             (0, new DesignateDig(PumpNotch, PumpNotch)),
-            (0, Chop),
             (PumpTick, new PlaceBuilding("pump", PumpOrigin, PumpRotation)),
+            (ChopTick, Chop),
             (WarehouseTick, new PlaceBuilding("warehouse", WarehouseOrigin, 0)),
         };
         for (int i = 0; i < LeveeCount; i++)
