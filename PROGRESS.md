@@ -1088,3 +1088,36 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
 - Perf: perf.sh 6 passed, 2 skipped (view-only change).
 - Next: M5-T1. Pile count labels are one `Label3D` per visible pile, rebuilt only on `ItemPileChanged` or a slice
   change; if M5+ produces hundreds of piles, consider hiding labels by distance per pile.
+
+## M5-T1 — Building definitions, rotation, placement validation (2026-09-26)
+- Done: `BuildingSystem.CanPlace` (new `BuildingSystem.Placement.cs`) returns a `PlacementResult` reason code. The
+  checks run in a fixed order: BadRotation, PrebuiltOnly, OutOfBounds, Overlaps, FootprintBlocked, NotOnGround,
+  EntranceBlocked, NeedsWaterEdge.
+  - New `BuildingShape` holds BLD-01 geometry: the footprint, bottom layer, entrance, and the pump's intake front and
+    intake cells, for any def/origin/rotation. `Building` delegates to it and gains `Covers`.
+  - `BuildingSystem` now takes `PlantSystem` and `PathGrid`. It gains `BuildingAt(cell)` (lowest id first) and
+    `TryPlaceBlueprint`, which adds a `Blueprint`-state building and writes no blocks. That is the state part of
+    BLD-05; the command, jobs and event come in M5-T2.
+  - New data field `stackable` in buildings.json (true for the levee only; `BuildingDef.Stackable`, default false).
+  - ContentDb now rejects an unknown `placement` value and an entrance that is inside the footprint or off y = 0.
+  - buildings.md BLD-02/03/04 and the schema are updated.
+- Tests: the 7 placeholders moved to `BuildingPlacementTests.cs` with real bodies, plus
+  `FootprintBlocked_BySolidOrPlant_WaterAllowed` and `Blueprints_SurviveSaveLoad_AndStillReserveTheirFootprint`
+  (9 in all). All failed first with NotImplementedException. check.sh: 383 passed, 30 skipped, 0 failed; Godot
+  csproj 0 warnings.
+- Review (sim-reviewer): no required fixes. Applied two of its suggestions:
+  - Stacking is allowed only on a same-type building in state Blueprint or Complete, and only a Complete stackable
+    building counts as ground.
+  - Added a save round-trip test for blueprints.
+- Decisions: ADR-040. It covers the check order and the `stackable` flag. A stacked levee may use the standable
+  cell one level below its entrance, so levees stack two high from open ground. For the pump edge, both the front
+  cell and the intake cell must be non-solid; water is not required at placement.
+- Golden: unchanged. Headless seed 1, 24,000 ticks: hash `d8a1e43aeeb5d540` (unchanged), 25,233 ticks/s.
+- Perf: perf.sh 6 passed, 2 skipped (no water/path code touched). No Godot code changed, so no screenshots.
+- Next (M5-T2):
+  - Add a `PlaceBuilding` command (plus its CommandCodec entry) that calls `TryPlaceBlueprint`, publishes
+    `BuildingPlaced`, or on failure publishes `CommandRejected` with the reason.
+  - When a stacked building's entrance cell is not standable, the builder stands one level below it (ADR-040).
+  - BLD-04 ordering (an upper levee waits for the one below) is not enforced yet.
+  - Placement ignores dig designations on the ground under a blueprint; M5-T2 may want to guard that.
+  - `BuildingAt` and `Covers` scan every building; add an index if they end up in per-tick code.

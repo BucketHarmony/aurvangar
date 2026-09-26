@@ -12,7 +12,8 @@
       "workers": 0,
       "producer": null,
       "setsBlocks": true,
-      "prebuiltOnly": true
+      "prebuiltOnly": true,
+      "stackable": false
     },
     {
       "id": "warehouse",
@@ -26,7 +27,8 @@
       "workers": 0,
       "producer": null,
       "setsBlocks": true,
-      "prebuiltOnly": false
+      "prebuiltOnly": false,
+      "stackable": false
     },
     {
       "id": "pump",
@@ -40,7 +42,8 @@
       "workers": 1,
       "producer": { "output": "water", "cycleTicks": 30, "minIntakeLevel": 256, "unitsPerCycle": 64, "buffer": 10, "haulAt": 5 },
       "setsBlocks": true,
-      "prebuiltOnly": false
+      "prebuiltOnly": false,
+      "stackable": false
     },
     {
       "id": "levee",
@@ -54,7 +57,8 @@
       "workers": 0,
       "producer": null,
       "setsBlocks": true,
-      "prebuiltOnly": false
+      "prebuiltOnly": false,
+      "stackable": true
     }
   ]
 }

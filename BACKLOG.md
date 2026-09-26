@@ -154,7 +154,7 @@ Milestone order is by risk: world and water before anything that depends on them
 
 ## M5 — Buildings and needs
 
-- [ ] **M5-T1** Building definitions, rotation, placement validation · specs: BLD-01..04 · deps: M4-T3
+- [x] **M5-T1** Building definitions, rotation, placement validation · specs: BLD-01..04 · deps: M4-T3
   - `BuildingSystem.CanPlace` returns a reason code. Un-skip `BuildingPlacementTests.*`.
 - [ ] **M5-T2** Construction flow · specs: BLD-05..09 · deps: M5-T1, M4-T8
   - Deliver, construct, complete, cancel, deconstruct. Un-skip `Scenarios/ConstructionScenarioTests.*`.

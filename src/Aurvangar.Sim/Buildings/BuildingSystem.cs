@@ -1,27 +1,30 @@
 using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Core;
+using Aurvangar.Sim.Paths;
+using Aurvangar.Sim.Plants;
 using Aurvangar.Sim.World;
 
 namespace Aurvangar.Sim.Buildings;
 
 /// <summary>Placement, construction, storage, production. Spec: docs/specs/buildings.md.
-/// SCAFFOLD: PlacePrebuilt (used by WorldFactory for the hub) works. Everything else is M5.</summary>
-public sealed class BuildingSystem
+/// Placement validation and blueprints: BuildingSystem.Placement.cs (M5-T1). Construction is M5-T2.</summary>
+public sealed partial class BuildingSystem
 {
     private readonly VoxelWorld _world;
+    private readonly PlantSystem _plants;
+    private readonly PathGrid _paths;
     private readonly SortedDictionary<int, Building> _buildings = new();
 
     public IdAllocator Ids { get; } = new();
 
-    public BuildingSystem(VoxelWorld world) { _world = world; }
+    public BuildingSystem(VoxelWorld world, PlantSystem plants, PathGrid paths)
+    {
+        _world = world; _plants = plants; _paths = paths;
+    }
 
     public IEnumerable<Building> All => _buildings.Values;
 
     public Building? Get(BuildingId id) => _buildings.TryGetValue(id.Value, out var b) ? b : null;
-
-    /// <summary>BLD-01..04. M5-T1.</summary>
-    public PlacementResult CanPlace(BuildingDef def, Int3 origin, int rotation) =>
-        throw new NotImplementedException("M5-T1: placement validation (BLD-01..04)");
 
     /// <summary>Place a complete building without construction (the hub at world creation). Writes BuildingSolid.</summary>
     public Building PlacePrebuilt(BuildingDef def, Int3 origin, int rotation)

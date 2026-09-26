@@ -7,17 +7,6 @@ using Xunit;
 
 namespace Aurvangar.Sim.Tests
 {
-    public class BuildingPlacementTests
-    {
-        [Fact(Skip = "M5-T1")] public void Overlap_Rejected() => Placeholder.Write("BLD-02 / buildings.md scenario 1");
-        [Fact(Skip = "M5-T1")] public void Floating_Rejected() => Placeholder.Write("BLD-02");
-        [Fact(Skip = "M5-T1")] public void EntranceBlocked_Rejected() => Placeholder.Write("BLD-02");
-        [Fact(Skip = "M5-T1")] public void PumpAwayFromWater_Rejected() => Placeholder.Write("BLD-03");
-        [Fact(Skip = "M5-T1")] public void Rotation_RotatesFootprintAndEntrance() => Placeholder.Write("BLD-01 for all 4 rotations of warehouse");
-        [Fact(Skip = "M5-T1")] public void Levee_StacksOnLevee() => Placeholder.Write("BLD-04");
-        [Fact(Skip = "M5-T1")] public void Hub_NotPlaceableByPlayer() => Placeholder.Write("prebuiltOnly → PrebuiltOnly");
-    }
-
     public class NeedsTests
     {
         [Fact(Skip = "M5-T5")] public void Decay_Rates() => Placeholder.Write("ECO-03");

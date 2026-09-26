@@ -60,7 +60,7 @@ public sealed class Simulation
         Regions = new Regions(PathGrid);
         DigTrial = new DigTrial(PathGrid);
         Agents = new AgentSystem(Events);
-        Buildings = new BuildingSystem(World);
+        Buildings = new BuildingSystem(World, Plants, PathGrid);
         Piles = new ItemPiles(World, Events);
         Jobs = new JobBoard(World);
         Designations = new DesignationMap(World);

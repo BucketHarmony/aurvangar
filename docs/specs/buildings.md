@@ -19,7 +19,8 @@ materials, are built by colonists, then operate. Definitions live in `data/build
   "workers": 0,
   "producer": null,                // pump: { output, cycleTicks, minIntakeLevel, unitsPerCycle, buffer, haulAt }
   "setsBlocks": true,              // footprint cells become BuildingSolid on completion
-  "prebuiltOnly": false            // true for the hub: cannot be placed by the player
+  "prebuiltOnly": false,           // true for the hub: cannot be placed by the player
+  "stackable": false               // true for the levee: may sit on the same type (BLD-04, ADR-040)
 }
 ```
 
@@ -36,14 +37,19 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 
 - **BLD-01** Rotation ∈ {0, 90, 180, 270}. Footprint and entrance offset rotate about the origin cell.
 - **BLD-02** `ground` placement: every footprint cell is Air and has no plant, no building, no agent-reserved
-  construction; every cell directly below the bottom layer is solid (natural block or BuildingSolid of a levee);
-  the entrance cell is standable (PTH-01). Water in footprint cells is allowed at blueprint time; it is pushed out
+  construction, and is not another building's entrance; every cell directly below the bottom layer is solid
+  (natural block or BuildingSolid of a complete `stackable` building such as the levee);
+  the entrance cell is standable (PTH-01) and outside every building. `CanPlace` checks in a fixed order and
+  returns the first failure (ADR-040). Water in footprint cells is allowed at blueprint time; it is pushed out
   on completion (WAT-12).
 - **BLD-03** `waterEdge` placement (pump): as `ground`, plus the cell in front of the pump's intake side
-  (the side opposite the entrance) must be non-solid; the intake cell is that cell one level down. The pump
-  reads `Water.GetLevel(intake)` when producing.
+  (the side opposite the entrance) must be non-solid; the intake cell is that cell one level down and must also
+  be non-solid (a bank edge; water is not required at placement, ADR-040). The pump reads
+  `Water.GetLevel(intake)` when producing.
 - **BLD-04** Levee may be placed on top of a completed or blueprinted levee (placement checks the stack
-  ordering: construction of an upper levee cannot start until the one below is complete).
+  ordering: construction of an upper levee cannot start until the one below is complete). Data: `stackable`.
+  A stacked building whose entrance cell is not standable may use the standable cell one level below it
+  (ADR-040), so levees stack two high from open ground.
 
 ## Construction (BLD-05..09)
 

@@ -37,14 +37,15 @@ public sealed class Building
     public bool NoWater { get; set; }
 
     /// <summary>Footprint cells in world space, deterministic order (y, z, x).</summary>
-    public IEnumerable<Int3> FootprintCells()
-    {
-        int fx = Def.Footprint[0], fy = Def.Footprint[1], fz = Def.Footprint[2];
-        for (int y = 0; y < fy; y++)
-            for (int z = 0; z < fz; z++)
-                for (int x = 0; x < fx; x++)
-                    yield return Origin + new Int3(x, y, z).RotateY(Rotation);
-    }
+    public IEnumerable<Int3> FootprintCells() => BuildingShape.Footprint(Def, Origin, Rotation);
 
-    public Int3 EntranceCell => Origin + new Int3(Def.Entrance[0], Def.Entrance[1], Def.Entrance[2]).RotateY(Rotation);
+    public Int3 EntranceCell => BuildingShape.Entrance(Def, Origin, Rotation);
+
+    /// <summary>True when the cell is one of this building's footprint cells.</summary>
+    public bool Covers(Int3 c)
+    {
+        foreach (var f in FootprintCells())
+            if (f == c) return true;
+        return false;
+    }
 }

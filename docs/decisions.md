@@ -703,3 +703,32 @@ Decision:
   cube-per-5-items look the human replaced; they are replaced by `View/PileViewTests` (fixed size for 1 and 500
   items, colors, label text and anchor, slice, post depth and cap, hover through the post, label zoom rule).
 Consequences: the pile count is readable at a glance; item type is by color (plus hover). No sim change.
+
+## ADR-040: Placement validation details: check order, stackable flag, entrance of stacked levees, pump edge (2026-09-26, M5-T1)
+Context: BLD-01..04 leave several points open. BLD-04 names the levee specifically, which would hard-code a
+building id in C#. A levee placed on another levee on open ground has its entrance cell in mid-air, so the literal
+BLD-02 entrance rule would forbid all stacking except next to raised ground. BLD-03 says only the cell in front of
+the intake must be non-solid, which a pump on flat dry ground also satisfies, yet "pump away from water" must be
+rejected. Blueprints do not exist yet (BLD-05 is M5-T2), but overlap between blueprints must be tested now.
+Decision:
+- `BuildingSystem.CanPlace` returns the first failure in this order: `BadRotation` (only 0/90/180/270), `PrebuiltOnly`,
+  `OutOfBounds` (any footprint cell or the entrance), `Overlaps` (a footprint cell is in any building's footprint,
+  whatever its state, or is another building's entrance), `FootprintBlocked` (a footprint cell is not Air or holds a
+  plant; water is allowed), `NotOnGround`, `EntranceBlocked`, `NeedsWaterEdge`.
+- New data field `stackable` (buildings.json, default false; true for the levee only). A stackable building may sit on
+  a building of the same type in state Blueprint or Complete (not while under construction or being deconstructed). Ground under the bottom layer is a solid block that is not
+  part of a building, or part of a complete stackable building; a warehouse roof is not ground. A blueprint is air,
+  so only the same stackable type can stand on it.
+- Entrance (BLD-02): standable (PTH-01) and not inside any building's footprint. A stacked building may instead use
+  the standable cell one level below its entrance; the upper footprint cell is in reach from there (ARCH-07, 26
+  neighbors). So levees stack two high from open ground, and higher only next to raised ground or other levees.
+  M5-T2 must use that lower cell as the builder's stand cell when the entrance cell is not standable.
+- Pump edge (BLD-03): the front cell is on the side opposite the entrance, level with the bottom layer, found at
+  rotation 0 by moving the entrance across the footprint along the axis it lies outside (`BuildingShape.IntakeFront`),
+  then rotated. Both the front cell and the intake cell (one down) must be in bounds and non-solid. Water is not
+  required at placement; a pump on a dry bank is allowed and flags `NoWater` when it runs (BLD-13).
+- ContentDb now rejects an unknown `placement` value and an entrance that lies inside the footprint or off y = 0.
+- `BuildingSystem.TryPlaceBlueprint` creates the `Blueprint` building (state part of BLD-05, no blocks written) so
+  overlap can be tested; the `PlaceBuilding` command, jobs and the `BuildingPlaced` event come in M5-T2.
+Consequences: every placement reason is data-driven except the two placement kinds. Overlap and lookups scan all
+buildings (a few dozen in the POC); an index can be added if building counts grow.
