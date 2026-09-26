@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Aurvangar.Sim.Tests.View;
 
-/// <summary>M4-T11: agent, pile and designation render data (VIEW-08, VIEW-10, VIEW-11).</summary>
+/// <summary>M4-T11: agent and designation render data (VIEW-08, VIEW-11). Piles (VIEW-10): PileViewTests.</summary>
 [Trait("Category", "Unit")]
 public class EntityViewTests
 {
@@ -71,41 +71,6 @@ public class EntityViewTests
         Assert.False(AgentVisuals.Build(sim, 4, Colors)[0].Visible);
     }
 
-    [Theory]
-    [InlineData(1, 1)]
-    [InlineData(5, 1)]
-    [InlineData(6, 2)]
-    [InlineData(40, 8)]
-    [InlineData(500, 8)]
-    public void PileCubes_OnePerFiveItems_Capped(int count, int cubes) => Assert.Equal(cubes, PileMesher.CubesFor(count));
-
-    [Fact]
-    public void Piles_CubeStackInItemColor_HiddenAboveSlice()
-    {
-        var sim = new ScenarioBuilder().Ground(4)
-            .Pile(new Int3(2, 5, 2), "stone", 12).Pile(new Int3(6, 5, 2), "log", 1).Build();
-        var mesh = PileMesher.Build(sim.Piles, 15, Colors);
-        Assert.Equal((3 + 1) * 6, mesh.QuadCount);
-        Assert.Contains(Colors.Item(TestContent.Db.Item("stone")), mesh.Colors);
-        Assert.Contains(Colors.Item(TestContent.Db.Item("log")), mesh.Colors);
-        AssertOutwardWinding(mesh);
-        // Cubes sit on the floor of the pile's cell, inside it.
-        Assert.All(mesh.Positions, p => Assert.InRange(p.Y, 5f, 6f));
-        Assert.True(PileMesher.Build(sim.Piles, 4, Colors).IsEmpty);
-    }
-
-    [Fact]
-    public void PileHover_FindsPileOnTopOfPickedBlock_WithLabel()
-    {
-        var sim = new ScenarioBuilder().Ground(4).Pile(new Int3(2, 5, 2), "stone", 12).Build();
-        var hit = PileMesher.AtPick(sim.Piles, new PickHit(new Int3(2, 4, 2), Int3.Up), 15);
-        Assert.NotNull(hit);
-        Assert.Equal(new Int3(2, 5, 2), hit!.Value.Cell);
-        Assert.Equal("Stone ×12", PileMesher.Label(TestContent.Db, hit.Value.Stack));
-        Assert.Null(PileMesher.AtPick(sim.Piles, new PickHit(new Int3(3, 4, 2), Int3.Up), 15));
-        Assert.Null(PileMesher.AtPick(sim.Piles, new PickHit(new Int3(2, 4, 2), Int3.Up), 4));
-    }
-
     [Fact]
     public void Designations_DigCubes_ChopRings_UnreachableRed()
     {
@@ -152,7 +117,7 @@ public class EntityViewTests
     }
 
     /// <summary>Every quad is counter-clockwise seen from its normal side (the MeshData contract).</summary>
-    private static void AssertOutwardWinding(MeshData m)
+    internal static void AssertOutwardWinding(MeshData m)
     {
         for (int q = 0; q < m.QuadCount; q++)
         {

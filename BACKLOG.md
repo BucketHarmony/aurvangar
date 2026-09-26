@@ -144,7 +144,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - Gate G2 answer 2: `DesignateDig` also marks cells under plants. The dig job for such a cell is not posted
     until the plant is gone (felled or removed); it then digs normally. Update DSG-02 and record an ADR.
   - Scenario test: dig + chop over a wooded box leaves no one-cell pillars.
-- [ ] **M4-T16** Bigger, readable item piles · specs: VIEW-10 · deps: M4-GATE
+- [x] **M4-T16** Bigger, readable item piles · specs: VIEW-10 · deps: M4-GATE
   - Gate G2 answer 3: piles get a fixed-size marker readable at the default hub zoom, plus a count label.
     Keep the logic in ViewCore with unit tests. Render `SCRIPT=digchop` shots and look at them.
   - Gate G2 answer 4: when storage is full, logs stay in piles (current behavior). No change needed.

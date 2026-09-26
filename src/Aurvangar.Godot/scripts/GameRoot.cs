@@ -159,6 +159,7 @@ public partial class GameRoot : Node3D
             camera.Rig.Update(0f, SliceY);
             camera.ApplyNow();
         }
+        UpdatePileLabels();
     }
 
     private void RouteEvents()
@@ -183,13 +184,20 @@ public partial class GameRoot : Node3D
             _pilesBuiltSlice = SliceY;
         }
         DesignationView.Refresh(SliceY);
+        UpdatePileLabels();
+    }
+
+    /// <summary>Pile count labels show at the default and closer zooms, not at the overview (VIEW-10).</summary>
+    private void UpdatePileLabels()
+    {
+        if (GetNode<CameraRig>("Camera").Rig is { } rig) PileView.SetLabelsVisible(PileMesher.LabelsVisible(rig.Distance));
     }
 
     private void UpdateHud()
     {
         _hud.Colonists.SetRows(ColonistPanelModel.Build(Sim));
         string? label = null;
-        if (Hover is { } h && PileMesher.AtPick(Sim.Piles, h, SliceY) is { } pile)
+        if (Hover is { } h && PileMesher.AtPick(Sim, h, SliceY) is { } pile)
             label = PileMesher.Label(Content, pile.Stack);
         _hud.SetHoverLabel(label, GetViewport().GetMousePosition());
     }

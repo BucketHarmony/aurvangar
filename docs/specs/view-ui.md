@@ -36,7 +36,10 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   state (idle grey, working white, dead red). A tiny carried-item cube in the item's palette color.
 - **VIEW-09** Buildings: box of footprint size. Blueprint = translucent wire color; under construction = semi
   opaque with progress bar label; complete = solid palette color. Pump shows a `NoWater` icon when flagged.
-- **VIEW-10** Item piles: small stack of cubes, count label on hover.
+- **VIEW-10** Item piles: one fixed-size marker per pile whatever its count (a crate most of a cell wide in the
+  item's color with a lighter cap), readable at the default zoom, with a count label above it shown at camera
+  distances up to 80 (hidden at the overview). A pile over a dug floor stays in its cell and gets a thin post down
+  to the floor below (at most 8 cells); hovering that floor finds the pile. Item name and count on hover (M4-T16).
 - **VIEW-11** Designations: dig = translucent orange cube per cell; chop = orange ring on tree; farm = brown
   overlay; unreachable = red tint.
 

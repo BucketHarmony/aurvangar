@@ -1065,3 +1065,26 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
 - Next: M4-T16 (bigger piles). A log pile at a felled tree's base stays in place when the floor below is dug
   (loose piles do not fall, as with stone drops); it is still hauled from a neighbouring cell. A chop is not
   prioritised over digs; the holds keep the order safe.
+
+## M4-T16 — Bigger, readable item piles (2026-09-26)
+- Done: G2 answer 3, VIEW-10 updated. `PileMesher` (ViewCore) now builds `PileMarker`s: one fixed-size marker per pile
+  whatever its count (a 0.74 x 0.45 box in the item color with a lighter cap), a count label text + anchor, and a
+  post depth. A pile over a dug floor (piles do not fall) gets a thin darker post down to the floor below (max 8
+  cells), and hovering that floor finds the pile. Godot: `PileRenderer` draws the mesh plus pooled fixed-size
+  `Label3D` count labels ("4"); GameRoot shows them while camera distance <= 80 (default 60, hub preset 40) and
+  hides them at the overview (120). Answer 4 (full storage: piles stay) needed no change.
+- Tests: new `View/PileViewTests` (9): fixed size for 1 vs 500 items, item + cap colors and winding, label text and
+  anchor, slice hiding, post to the floor below, post cap over a deep shaft, hover on a pile, hover through a
+  floating pile's post, label zoom rule. They failed first (API missing). Replaced the two old cube-per-5-items tests
+  in `EntityViewTests` (they encoded the look the human changed; ADR-039). check.sh: 374 passed, 37 skipped, 0
+  failed; Godot csproj 0 warnings.
+- Screenshots (Forward+, looked at): `SCRIPT=digchop TICKS=1200 OUT=artifacts/screens/t16/digchop1200`. In `hub.png`
+  and `river.png` every felled tree's log pile is a clearly visible tan crate with a white "4" above it; the pile
+  left over the dug pit (the M4-T15 tree floor) floats at ground level on a thin post down to the pit floor.
+  `overview.png` has no labels, piles are small dots. `slice.png` hides piles above the slice and labels the one at
+  the slice level. Default shots (`artifacts/screens/*.png`, no script) are unchanged: no piles, 5 idle dwarves.
+- Decisions: ADR-039.
+- Golden: unchanged (no sim change). No headless rerun needed (view only).
+- Perf: perf.sh 6 passed, 2 skipped (view-only change).
+- Next: M5-T1. Pile count labels are one `Label3D` per visible pile, rebuilt only on `ItemPileChanged` or a slice
+  change; if M5+ produces hundreds of piles, consider hiding labels by distance per pile.

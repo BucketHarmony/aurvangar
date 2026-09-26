@@ -685,3 +685,21 @@ Consequences: a drag over woods is dug completely once the trees are down. In de
 a marked tree are dug last. A chop is not prioritised over digs; the holds make the order safe instead. The
 DSG-09 give-up can still turn a held-back region's digs red if every posted dig strands while a chop is pending;
 re-designating retries them.
+
+## ADR-039: Item piles draw as a fixed-size marker with a count label and a post over dug floors (2026-09-26, M4-T16)
+Context: G2 answer 3. Piles were drawn as 0.3-cell cubes, one per 5 items, which read as brown specks at the hub
+zoom. The human asked for a fixed-size marker readable at the default hub zoom plus a count label. Piles also do not
+fall when their floor is dug (ADR-038), so a pile can hang over air.
+Decision:
+- VIEW-10 updated. Every pile is one marker whatever its count: a 0.74 x 0.45 box in the item's palette color with a
+  lighter 0.52 x 0.1 cap (40% toward white), on the floor of the pile's cell (`PileMesher`, ViewCore).
+- The count label is the bare number ("12") on a Godot `Label3D` billboard in fixed-size mode (about 20 px), anchored
+  0.9 above the cell floor. It shows while the camera distance is <= 80 (default 60, hub preset 40); the 120-distance
+  overview hides it to avoid clutter. The hover label ("Stone ×12") stays.
+- A pile over non-solid cells gets a thin post (0.16 wide, darkened item color) down to the first solid block,
+  capped at 8 cells, so it reads as "at this height" rather than being drawn somewhere it is not. `AtPick` walks up
+  the air column above a picked floor (same cap) so hovering the floor under a floating pile finds it.
+- The old tests `PileCubes_OnePerFiveItems_Capped` and `Piles_CubeStackInItemColor_HiddenAboveSlice` encoded the
+  cube-per-5-items look the human replaced; they are replaced by `View/PileViewTests` (fixed size for 1 and 500
+  items, colors, label text and anchor, slice, post depth and cap, hover through the post, label zoom rule).
+Consequences: the pile count is readable at a glance; item type is by color (plus hover). No sim change.
