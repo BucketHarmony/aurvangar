@@ -36,6 +36,9 @@ public sealed class Simulation
     /// <summary>Wall-clock-free perf counters. Never read by gameplay code.</summary>
     public SimCounters Counters { get; } = new();
 
+    /// <summary>Optional phase timing hook for the debug overlay (VIEW-17, ADR-019). Not state; never hashed or saved.</summary>
+    public ITickProfiler? Profiler { get; set; }
+
     public Simulation(ContentDb content, int sizeX, int sizeY, int sizeZ, ulong seed)
     {
         Seed = seed;
@@ -59,7 +62,9 @@ public sealed class Simulation
     {
         Commands.ApplyAll(this);                 // 1
         // 2  WeatherSystem.Tick                  (M6-T4)
+        Profiler?.Begin(TickPhase.Water);
         Water.Tick(Events);                      // 3
+        Profiler?.End(TickPhase.Water);
         // 4  MoistureMap.Tick                    (M6-T1)
         Plants.Tick(Clock);                      // 5
         // 6  NeedsSystem.Tick                    (M5-T5)
@@ -69,7 +74,9 @@ public sealed class Simulation
         Agents.Tick(this);                       // 10
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)
         PathGrid.Invalidate(World.ChangedCells);
+        Profiler?.Begin(TickPhase.Regions);
         Regions.RebuildIfDirty();                // 11
+        Profiler?.End(TickPhase.Regions);
         foreach (var ci in World.TakeDirtyChunks()) Events.Emit(new ChunkDirty(ci));
         World.ClearChangeLog();
         Clock.Tick++;                            // 12

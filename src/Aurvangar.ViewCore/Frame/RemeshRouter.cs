@@ -1,4 +1,5 @@
 using Aurvangar.Sim.Events;
+using Aurvangar.Sim.World;
 
 namespace Aurvangar.ViewCore.Frame;
 
@@ -36,6 +37,21 @@ public sealed class RemeshRouter
     public void EnqueueAll()
     {
         for (int i = 0; i < ChunkCount; i++) { Terrain.Enqueue(i); Water.Enqueue(i); }
+    }
+
+    /// <summary>VIEW-04: a slice change remeshes terrain and water of the chunk layers that contain the old or the
+    /// new slice level, and nothing else (ADR-016).</summary>
+    public void EnqueueSliceChange(int oldSliceY, int newSliceY)
+    {
+        EnqueueLayer(oldSliceY >> VoxelWorld.ChunkShift);
+        if (newSliceY >> VoxelWorld.ChunkShift != oldSliceY >> VoxelWorld.ChunkShift) EnqueueLayer(newSliceY >> VoxelWorld.ChunkShift);
+    }
+
+    private void EnqueueLayer(int cy)
+    {
+        if (cy < 0 || cy >= _cy) return;
+        int layer = _cx * _cz;
+        for (int i = cy * layer; i < (cy + 1) * layer; i++) { Terrain.Enqueue(i); Water.Enqueue(i); }
     }
 
     public void Route(IReadOnlyList<SimEvent> events)

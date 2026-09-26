@@ -305,3 +305,25 @@ Entry template:
   on a slice change, queue terrain + water for chunks whose Y range contains the old or new slice (ADR-016) via
   `Remesh.Terrain/Water.Enqueue`. Picking: ray against `ChunkRenderer.PickLayer`; the StaticBody3D has meta
   "chunk". The scene's Camera node is still a fixed transform.
+
+## M3-T5 — Godot: camera rig, slice controller, picking, debug overlay (F3) (2026-09-26)
+- Done: New ViewCore `Camera/OrbitRig` (VIEW-06: pan relative to yaw, Q/E 90 degree steps tweened over 0.2 s, zoom
+  10-120, drag pitch 25-80, focus height follows the slice), `Frame/SliceController` + `RemeshRouter.EnqueueSliceChange`
+  (VIEW-04: clamp 0..SizeY-1, remesh terrain + water of the old and new slice chunk layers only),
+  `Picking/PickResolver` (VIEW-05: hit point + normal -> cell and face, ignored above the slice / out of world),
+  `Diagnostics/{RollingAverage, RateMeter, PhaseTimer, DebugOverlayText}` (VIEW-17). Sim: optional
+  `ITickProfiler` hook (`Simulation.Profiler`) bracketing the water step and region rebuild; not state, hash unchanged.
+  Godot: `CameraRig` (Camera3D script, attached in Main.tscn), `DebugOverlay` (F3, CanvasLayer + Label),
+  `HoverMarker` (box on the picked cell), GameRoot handles PageUp/PageDown/[/] and F3, raycasts layer 1 in
+  `_PhysicsProcess`, times `Sim.Tick()`.
+- Tests: added `View/CameraSliceTests.cs` (6 OrbitRig, 5 slice/pick) and `View/DebugOverlayTests.cs` (6: rolling
+  average, rate, phase timer on a real tick, profiler does not change the hash, overlay text fields). All failed first
+  to compile (types missing). check.sh: 155 passed, 78 skipped, 0 failed; Godot csproj builds with 0 warnings.
+- Decisions: ADR-019 (focus height rule, profiler hook, pick/slice/rotate details).
+- Golden: unchanged
+- Perf: n/a (no budget for this task; the profiler hook is two null checks per tick when unset)
+- Godot run NOT verified: only the standard (non-.NET) Godot 4.6.1 is installed and GODOT_BIN is unset. Camera
+  controls, picking, F3 and the edited Main.tscn (CameraRig script on the Camera node) are build-verified only.
+- Next: M3-T6 (screenshot harness) can position the camera with `OrbitRig` (focus/yaw/pitch/distance, `SetYaw`) and
+  set the slice with `SliceController.Set`. It needs a Godot .NET binary to actually render; without GODOT_BIN it can
+  only be build-verified. Open jobs in F3 are wired as `OpenJobsByKind = null` in `GameRoot.Snapshot()` (M4-T6).

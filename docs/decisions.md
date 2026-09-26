@@ -220,3 +220,24 @@ world). Queues are FIFO, one entry per chunk; the world-creation events are disc
 `ChunkRenderer` builds the per-chunk `ConcavePolygonShape3D` (physics layer 1) now, used by M3-T5 picking.
 Consequences: Up to 7x more water remeshes than dirty chunks; the per-frame budget (4) bounds the cost, a busy river
 can lag a few frames behind. If that shows, WaterDirty could carry a border flag (sim change) instead.
+
+## ADR-019: Camera focus height, phase timing hook, picking and slice-key details (2026-09-26, M3-T5)
+Context: VIEW-06 says "camera focus follows slice level height" without saying what happens when nothing is sliced.
+VIEW-17 asks for water step ms and region rebuild ms, but the sim must never read wall-clock time, and the view only
+sees `Simulation.Tick()` as a whole. VIEW-05 does not say what an ignored pick above the slice does, and VIEW-06 does
+not define Q/E direction or what middle-drag does to yaw. Godot cannot be run on the build machine.
+Decision: `ViewCore.Camera.OrbitRig` holds the camera math. Its focus height eases (rate 8/s) toward
+`min(SliceY + 1, BaseFocusY)`, where `BaseFocusY` is the hub origin height (spawn flat surface), so the focus drops
+onto the slice when slicing below the colony and stays at the colony otherwise. Start: focus on the hub, yaw 45,
+pitch 45, distance 60. Q/E turn the yaw target by -90/+90 and yaw moves toward it linearly (90 degrees per 0.2 s).
+Middle-drag turns yaw freely (and resets the target) and changes pitch, clamped 25-80. Wheel zooms by x0.9 per step,
+clamped 10-120. Pan speed is `distance` cells/s, focus clamped to the world XZ box. The sim gets an optional
+`ITickProfiler` (`Simulation.Profiler`, phases `Water` and `Regions`): the sim only calls `Begin`/`End`, the view's
+`ViewCore.Diagnostics.PhaseTimer` does the Stopwatch timing (60-tick rolling average). It is not state, not hashed,
+not saved. Picking snaps the hit normal to the dominant axis and steps half a cell back into the solid cell
+(`ViewCore.Picking.PickResolver`); a hit above `SliceY` or outside the world yields no pick (the ray is not
+continued). `SliceController` owns `SliceY`; slice keys auto-repeat while held; each change queues terrain and water
+of the chunk layers containing the old and new slice. Open jobs by kind shows "none" until the job board (M4-T6).
+Consequences: Later tasks that want more overlay timings add a `TickPhase` value and bracket the call in `Tick()`.
+The Godot layer (CameraRig, DebugOverlay, HoverMarker, GameRoot input) is build-verified only until a Godot .NET
+binary is available.
