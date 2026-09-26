@@ -204,3 +204,22 @@ Entry template:
   worlds are slower. Anything that acts in `Tick` and is added to `WorldFactory` (colonists M4-T4, starting stock
   M5-T5) must be added after `PreSettleRiver` (ADR-014). Active count creeps up after 1200 ticks (2319 at 6000);
   watch it in M6-T7 full-tick perf.
+
+## M2-T6 — Water perf (2026-09-26)
+- Done: New `Core/IndexSort` (LSD radix sort for cell indices) replaces `List.Sort` in `WaterActiveSet.Sorted` and
+  `WaterGrid.ApplyDeltas`. Profiling showed those two sorts took about 1 ms of a ~3 ms step. The hot water methods are
+  marked `AggressiveOptimization`, so short perf runs do not measure tier-0 JIT code. Water results are
+  identical (same sort order).
+- Tests: un-skipped `WaterPerfTests.Step_20kActiveCells_Under4ms`, which passed before the change at ~2.5 ms median
+  but only has ~16k active cells. Added `Step_Sustained20kActiveCells_Under4ms` (192x128 layer, asserts at least 20,000
+  active cells on every measured step; before the fix a 160x128 layer ran 3.1-4.0 ms median, within 20% of budget).
+  Added `Seed1_SettledRiver_ActiveCellsAndStep` (WAT-P2 in the perf run) and `CoreTests.IndexSort_MatchesListSort`
+  (5 cases). check.sh: 103 passed, 90 skipped, 0 failed. perf.sh: 3 passed, 5 skipped. The Sim diff is ~60 lines, so
+  I did not run the sim-reviewer.
+- Decisions: ADR-015 (radix index sort, AggressiveOptimization, sustained-20k test sizing).
+- Golden: unchanged (the golden test passes; the sort output is identical).
+- Perf (Release, this machine): WAT-P1 128x128 median 1.24-1.28 ms (p95 1.8-2.3); WAT-P1 192x128 (23k active)
+  median 1.89-1.92 ms (p95 3.0-3.8) against a 4 ms budget; WAT-P2 1602/3000 active cells at tick 1200, with a settled
+  river step median ~0.09 ms.
+- Next: M2 is complete except the milestone check. Next unchecked task is M3-T1 (greedy chunk mesher, ViewCore).
+  Reuse `IndexSort` for other hot index sorts. p95 on the 23k load reaches ~3.8 ms (the budget is on the median).

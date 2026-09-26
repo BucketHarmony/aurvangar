@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Events;
 
 namespace Aurvangar.Sim.Water;
@@ -10,6 +12,7 @@ public sealed partial class WaterGrid
     private readonly int[] _delta;
     private readonly bool[] _touchedFlag;
     private readonly List<int> _touched = new();
+    private readonly IndexSort _sorter = new();
     private readonly List<int> _stepCells = new();
     private readonly List<int> _changed = new();
     private readonly int[] _nbr = new int[4];
@@ -19,6 +22,7 @@ public sealed partial class WaterGrid
 
     /// <summary>One CA step (WAT-02..16). World changes made before the step are applied first (WAT-12, WAT-13);
     /// WaterDirty events (WAT-15) are emitted at the end.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]   // hot path: skip tier-0 JIT (WAT-P1)
     public void Tick(EventBus events)
     {
         ConsumeWorldChanges();
@@ -66,6 +70,7 @@ public sealed partial class WaterGrid
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]   // hot path: skip tier-0 JIT (WAT-P1)
     private void ComputeFlows(int c)
     {
         int level = _level[c];
@@ -162,9 +167,10 @@ public sealed partial class WaterGrid
     /// <summary>Apply deltas in ascending index order. WAT-16: excess over Full is pushed into the cell above
     /// (which has a higher index, so it is resolved later in the same walk) or evaporated if that cell is solid
     /// or outside the world. Working values are ints so nothing wraps.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]   // hot path: skip tier-0 JIT (WAT-P1)
     private void ApplyDeltas()
     {
-        _touched.Sort();
+        _sorter.Sort(_touched);
         int layer = _world.SizeX * _world.SizeZ;
         int count = _touched.Count;
         for (int k = 0; k < count; k++)
@@ -203,6 +209,7 @@ public sealed partial class WaterGrid
 
     /// <summary>Activate a cell and its 6 face neighbors. Only wet cells join: a dry cell has no step rule, and it
     /// is activated through its own level change when water reaches it (ADR-010).</summary>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]   // hot path: skip tier-0 JIT (WAT-P1)
     private void ActivateAround(int index)
     {
         int sx = _world.SizeX, sz = _world.SizeZ, layer = sx * sz;

@@ -67,7 +67,7 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M2-T5** River on seed 1 · specs: GEN-08, WAT-P2 · deps: M2-T4, M1-T3
   - Sources/drains from terrain gen, pre-settle 600 ticks in `WorldFactory`.
   - Un-skip `RiverTests.*`. Regenerate golden (note in PROGRESS).
-- [ ] **M2-T6** Water perf · specs: WAT-P1, WAT-P2 · deps: M2-T5
+- [x] **M2-T6** Water perf · specs: WAT-P1, WAT-P2 · deps: M2-T5
   - Un-skip `Perf/WaterPerfTests.*`. `./scripts/perf.sh` green for water. If over budget, use the
     `perf-auditor` agent before changing the algorithm.
 

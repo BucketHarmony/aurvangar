@@ -161,3 +161,16 @@ Consequences: Conservation is measured from the tick-0 total. The view gets no W
 it builds everything from `MarkAllDirty`. Systems added later that act in `Tick` (plants growth, weather) will also run
 for the 600 settle ticks unless they are registered after `PreSettleRiver`; keep colonists, stock and anything
 time-dependent after it.
+
+## ADR-015: Water step uses a radix index sort and skips tier-0 JIT; WAT-P1 measured at a sustained 20k+ load (2026-09-26, M2-T6)
+Context: With the 128x128 test in `WaterPerfTests` passing at ~2.5 ms, a load that stays at 20,000 active cells
+(WAT-P1) measured 3.1-4.0 ms median, within 20% of the 4 ms budget. Profiling showed about 1 ms per step in the two
+`List<int>.Sort` calls (the active set, WAT-03, and the touched-cell list in `ApplyDeltas`). The rest of the cost was
+tier-0 JIT code, because a perf test lasts only about 150 ms.
+Decision: Add `Core/IndexSort`, an LSD radix sort with 11-bit digits for non-negative indices. Lists shorter than
+256 still use `List.Sort`. The output is the same ascending order, so hashes and golden files do not change.
+`WaterGrid.Tick`, `ComputeFlows`, `ApplyDeltas` and `ActivateAround` are marked
+`[MethodImpl(AggressiveOptimization)]`. Add `Step_Sustained20kActiveCells_Under4ms`, which uses a 192x128 layer
+(world sizes must be multiples of 32; 160x128 drops to 19,306 active cells). It asserts that at least 20,000 cells
+stay active for every measured step, so it tests a heavier load than the spec (about 23k cells).
+Consequences: Other hot paths (A*, regions, mesher) can reuse `IndexSort`. Budgets are unchanged.

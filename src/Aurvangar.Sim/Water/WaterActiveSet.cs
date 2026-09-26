@@ -1,3 +1,5 @@
+using Aurvangar.Sim.Core;
+
 namespace Aurvangar.Sim.Water;
 
 /// <summary>WAT-02 active set: a flag per cell plus a list of flagged indices. The list order carries no meaning;
@@ -6,6 +8,7 @@ internal sealed class WaterActiveSet
 {
     private readonly bool[] _flag;
     private readonly List<int> _list = new();
+    private readonly IndexSort _sorter = new();
 
     public WaterActiveSet(int cellCount) => _flag = new bool[cellCount];
 
@@ -21,7 +24,7 @@ internal sealed class WaterActiveSet
     /// <summary>The active indices, sorted ascending.</summary>
     public List<int> Sorted()
     {
-        _list.Sort();
+        _sorter.Sort(_list);
         return _list;
     }
 

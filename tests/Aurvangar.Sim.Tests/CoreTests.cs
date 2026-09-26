@@ -71,4 +71,25 @@ public class CoreTests
         var b = StateHasher.Create(); b.Add(2); b.Add(1);
         Assert.NotEqual(a.Value, b.Value);
     }
+
+    [Theory]
+    [InlineData(0, 10)]
+    [InlineData(255, 100)]
+    [InlineData(5_000, 2_000)]
+    [InlineData(40_000, 1_048_576)]
+    [InlineData(40_000, 50_000_000)]
+    public void IndexSort_MatchesListSort(int count, int maxExclusive)
+    {
+        var rng = new Rng(7);
+        var sorter = new IndexSort();
+        for (int round = 0; round < 3; round++)                // reuse: scratch buffer and counts carry over
+        {
+            var list = new List<int>();
+            for (int k = 0; k < count; k++) list.Add(rng.NextInt(0, maxExclusive));
+            var expected = new List<int>(list);
+            expected.Sort();
+            sorter.Sort(list);
+            Assert.Equal(expected, list);
+        }
+    }
 }
