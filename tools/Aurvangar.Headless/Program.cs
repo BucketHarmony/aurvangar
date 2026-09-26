@@ -1,12 +1,13 @@
 using System.Diagnostics;
 using Aurvangar.Sim;
 using Aurvangar.Sim.Content;
+using Aurvangar.Sim.Plants;
 using Aurvangar.Sim.World;
 
 // Headless runner. Usage:
 //   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script survival]
 // Prints world stats, per-interval sim stats and the final StateHash. Exit code 0 on success.
-// M1-T5 fills in world stats; later milestones extend the per-interval report (agents alive, jobs, storage, water).
+// Later milestones extend the per-interval report (agents alive, jobs, storage, water).
 
 var opts = Options.Parse(args);
 var content = ContentDb.LoadEmbedded();
@@ -24,6 +25,7 @@ if (opts.Script is not null)
 }
 
 var tickTimes = new List<double>(opts.Ticks);
+var runClock = Stopwatch.StartNew();
 for (int t = 0; t < opts.Ticks; t++)
 {
     long start = Stopwatch.GetTimestamp();
@@ -33,7 +35,11 @@ for (int t = 0; t < opts.Ticks; t++)
     if (opts.ReportEvery > 0 && (t + 1) % opts.ReportEvery == 0) PrintInterval(sim, tickTimes);
 }
 
+runClock.Stop();
 PrintInterval(sim, tickTimes);
+double seconds = runClock.Elapsed.TotalSeconds;
+double tps = seconds > 0 ? opts.Ticks / seconds : 0;
+Console.WriteLine($"run: ticks={opts.Ticks} elapsed={seconds:F3} s ticks_per_sec={tps:F0}");
 Console.WriteLine($"hash: {sim.StateHash():x16}");
 return 0;
 
@@ -43,7 +49,10 @@ static void PrintWorldStats(Simulation sim)
     foreach (var b in sim.World.Blocks) counts[b]++;
     foreach (BlockId id in Enum.GetValues<BlockId>())
         Console.WriteLine($"  blocks.{id,-14} {counts[(int)id],9}");
-    Console.WriteLine($"  plants           {sim.Plants.Count,9}");
+    int trees = sim.Plants.All.Count(p => p.Kind == PlantKind.Tree);
+    int bushes = sim.Plants.All.Count(p => p.Kind == PlantKind.Bush);
+    Console.WriteLine($"  plants.trees     {trees,9}");
+    Console.WriteLine($"  plants.bushes    {bushes,9}");
     Console.WriteLine($"  buildings        {sim.Buildings.All.Count(),9}");
     Console.WriteLine($"  agents           {sim.Agents.Count,9}");
     Console.WriteLine($"  water.volume     {sim.Water.TotalVolume(),9}");

@@ -93,3 +93,16 @@ Entry template:
 - Perf: n/a
 - Next: M1-T5 (headless runner). Any new sim state must be added to the owning system's `AddToHash` and to the
   `StateMutations` list in `SimulationTests`.
+
+## M1-T5 — Headless runner (2026-09-26)
+- Done: `tools/Aurvangar.Headless/Program.cs` (scaffolded) now prints trees and bushes separately
+  (`plants.trees`, `plants.bushes`) and a `run:` line with elapsed seconds and ticks/sec, alongside the existing
+  block counts by type, buildings, agents, water volume, per-interval tick_ms and final hash.
+  `./scripts/run-headless.sh --seed 1 --ticks 1000`: 150 trees, 24 bushes, world created in ~18 ms,
+  ~1.5M ticks/sec (sim is still mostly inert), hash `26ece79b4c0278b8`, identical across two runs.
+- Tests: none un-skipped (task has no acceptance tests). check.sh: 62 passed, 108 skipped, 0 failed.
+- Decisions: none
+- Golden: unchanged
+- Perf: n/a
+- Next: M1 complete. Next is M2-T1 (WaterGrid storage, active set, fall). `--script` still returns exit 2 until
+  M5-T7/M6-T6.
