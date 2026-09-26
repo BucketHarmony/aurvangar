@@ -15,6 +15,11 @@ MODEL_ARGS=()
 [ -n "${MODEL:-}" ] && MODEL_ARGS=(--model "$MODEL")
 mkdir -p artifacts/autopilot
 
+# Preflight: fail loudly instead of burning an iteration.
+command -v claude >/dev/null || { echo "autopilot: 'claude' not on PATH in this shell ($(uname -s)). On Windows run this from Git Bash, not WSL." >&2; exit 1; }
+command -v dotnet >/dev/null || { echo "autopilot: 'dotnet' not on PATH in this shell ($(uname -s))." >&2; exit 1; }
+[ -n "${GODOT_BIN:-}" ] || echo "autopilot: GODOT_BIN not set; screenshot steps will be skipped." >&2
+
 PROMPT='Run exactly one iteration of the work loop in CLAUDE.md (the /next-task procedure): pick the next task from BACKLOG.md, implement it test-first, make ./scripts/check.sh green, update BACKLOG.md and PROGRESS.md, and commit. If the next task is a HUMAN-GATE, write the gate report and end your reply with the line AUTOPILOT: GATE. If you are blocked per CLAUDE.md, end with AUTOPILOT: BLOCKED. If the backlog is empty, end with AUTOPILOT: DONE. Otherwise end with AUTOPILOT: CONTINUE.'
 
 for i in $(seq 1 "$MAX_ITER"); do
@@ -26,7 +31,7 @@ for i in $(seq 1 "$MAX_ITER"); do
   case "$status" in
     "AUTOPILOT: CONTINUE") continue ;;
     "AUTOPILOT: GATE"|"AUTOPILOT: DONE") exit 0 ;;
-    *) echo "Stopping: $status (see $log)"; exit 1 ;;
+    *) echo "Stopping: ${status:-no AUTOPILOT status line} (see $log). Last lines:"; tail -20 "$log"; exit 1 ;;
   esac
 done
 echo "Iteration cap reached."
