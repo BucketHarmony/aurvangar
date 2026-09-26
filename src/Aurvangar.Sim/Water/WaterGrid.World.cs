@@ -51,6 +51,7 @@ public sealed partial class WaterGrid
     {
         int rest = _level[c];
         _level[c] = 0;
+        NoteWalkClass(c, rest);
         NoteLevelChange(c);
 
         int n = HorizontalNeighbors(c);
@@ -74,7 +75,9 @@ public sealed partial class WaterGrid
     {
         int give = Math.Min(amount, Full - _level[cell]);
         if (give <= 0) return 0;
-        _level[cell] = (ushort)(_level[cell] + give);
+        int old = _level[cell];
+        _level[cell] = (ushort)(old + give);
+        NoteWalkClass(cell, old);
         NoteLevelChange(cell);
         ActivateAround(cell);
         return give;

@@ -48,8 +48,10 @@ public sealed partial class WaterGrid
         foreach (var s in _sources)
         {
             if (_world.IsSolidAt(s) || _level[s] >= target) continue;
-            Stats.SourceAdded += target - _level[s];
+            int old = _level[s];
+            Stats.SourceAdded += target - old;
             _level[s] = (ushort)target;
+            NoteWalkClass(s, old);
             NoteLevelChange(s);
             ActivateAround(s);
         }
@@ -66,6 +68,7 @@ public sealed partial class WaterGrid
             if (v == 0) continue;
             Stats.Drained += v;
             _level[d] = 0;
+            NoteWalkClass(d, v);
             _changed.Add(d);
         }
     }
@@ -182,7 +185,13 @@ public sealed partial class WaterGrid
                 _delta[i] = 0;
                 int excess = 0;
                 if (v > Full) { excess = v - Full; v = Full; }
-                if (v != _level[i]) { _level[i] = (ushort)v; _changed.Add(i); }
+                int old = _level[i];
+                if (v != old)
+                {
+                    _level[i] = (ushort)v;
+                    _changed.Add(i);
+                    NoteWalkClass(i, old);
+                }
                 if (excess == 0) break;
 
                 int above = i + layer;

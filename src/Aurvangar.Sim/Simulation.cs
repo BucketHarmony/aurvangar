@@ -73,7 +73,7 @@ public sealed class Simulation
         // 9  HaulSystem.Tick                     (M4-T8)
         Agents.Tick(this);                       // 10
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)
-        PathGrid.Invalidate(World.ChangedCells);
+        PathGrid.SyncWorldChanges();             // PTH-03: before the change log is cleared
         Profiler?.Begin(TickPhase.Regions);
         Regions.RebuildIfDirty();                // 11
         Profiler?.End(TickPhase.Regions);

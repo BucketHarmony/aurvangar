@@ -302,3 +302,22 @@ not fixed here (it would change how the palette looks in play); it is flagged fo
 Consequences: `SceneLightingTests` guards the environment and the unchanged sun. Compatibility screenshots
 (`artifacts/screens/*.png`) look brighter than play (lit grass 85,125,59 -> 122,187,84); Forward+ renders are in
 `artifacts/screens/forward_plus/` for comparison.
+
+## ADR-023: PathGrid flag cache: world log cursor, water and plant hooks, sync on every query (2026-09-26, M4-T1)
+Context: PTH-03 asks for a lazy `byte[]` flag cache invalidated by block and water changes. The existing
+`PathGridTests` (and later systems) change blocks or water outside `Simulation.Tick` and query at once, so an
+invalidation that runs only at tick end would serve stale flags. `VoxelWorld.ChangedCells` is cleared every tick
+(and by WorldFactory/ScenarioBuilder), water levels change inside the CA step without any log, and plant
+occupancy (WLD-07) also feeds PTH-01. Generators and ScenarioBuilder write blocks raw, without the log.
+Decision: One flag byte per cell: `Valid | Standable | Walkable | Wet` (Wet = level > 0, for the PTH-07 wading
+cost). Flags are computed on first query. Invalidation clears the cell and its 3x3x3 neighborhood (PTH-03) and
+comes from three feeds: (1) blocks: `VoxelWorld.ChangeLogBase` (count of cleared log entries) plus a PathGrid
+cursor; every query and `Simulation.Tick` (before `ClearChangeLog`) call `SyncWorldChanges()`, and if entries were
+cleared unseen the whole cache is dropped; (2) water: `WaterGrid.WalkClassChanged(index)`, fired only when a
+cell's level crosses dry/wet (0) or shallow/deep (`Full / 2`), at every level write site (SetLevel, sources,
+deltas, drains, push-out); (3) plants: `PlantSystem.OccupancyChanged(index)` on trunk/bush add/remove.
+`InvalidateAll()` is for raw writers (ScenarioBuilder.Build calls it; M4-T10 load must too). The cache and the
+hooks are derived data: not hashed, not saved. `FlagComputations` is a diagnostic counter.
+Consequences: Queries are correct mid-tick, which the job pipeline needs. The state hash is unchanged (seed-1
+24,000-tick hash still `0f27c8ee613dd61c`). Anything that later affects walkability (M5-T2 construction sites)
+must also invalidate through PathGrid. Regions (M4-T3) can hook the same invalidation points to mark itself dirty.

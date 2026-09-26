@@ -58,8 +58,10 @@ public sealed partial class WaterGrid
         if (!_world.InBounds(c)) return;
         int i = _world.Index(c);
         ushort v = _world.IsSolidAt(i) ? (ushort)0 : (ushort)Math.Clamp(level, 0, Full);
-        if (_level[i] == v) return;
+        int old = _level[i];
+        if (old == v) return;
         _level[i] = v;
+        NoteWalkClass(i, old);
         NoteLevelChange(i);
         ActivateAround(i);
     }
@@ -105,4 +107,18 @@ public sealed partial class WaterGrid
 
     /// <summary>A cell is deep (not walkable) at or above half a block (WAT-14).</summary>
     public bool IsDeep(Int3 c) => GetLevel(c) >= Full / 2;
+
+    /// <summary>PTH-03 hook: called with a cell index whenever that cell's level crosses dry/wet (0) or shallow/deep
+    /// (<c>Full / 2</c>). PathGrid sets it. Not state: never hashed or saved.</summary>
+    public Action<int>? WalkClassChanged { get; set; }
+
+    /// <summary>0 dry, 1 wet but wadeable, 2 deep (WAT-14).</summary>
+    private static int WalkClass(int level) => level == 0 ? 0 : level < Full / 2 ? 1 : 2;
+
+    /// <summary>Notify <see cref="WalkClassChanged"/> if cell <paramref name="i"/> changed class since
+    /// <paramref name="oldLevel"/>. Call after writing the new level.</summary>
+    private void NoteWalkClass(int i, int oldLevel)
+    {
+        if (WalkClassChanged != null && WalkClass(oldLevel) != WalkClass(_level[i])) WalkClassChanged(i);
+    }
 }

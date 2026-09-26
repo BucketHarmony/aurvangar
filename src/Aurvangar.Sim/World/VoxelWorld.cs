@@ -131,7 +131,16 @@ public sealed class VoxelWorld
         return result;
     }
 
-    public void ClearChangeLog() => _changedCells.Clear();
+    /// <summary>Number of changes cleared from the log so far. <c>ChangeLogBase + ChangedCells.Count</c> is the total
+    /// number of logged changes ever, so a reader with its own cursor (PathGrid, PTH-03) can tell whether entries it
+    /// has not seen were cleared.</summary>
+    public long ChangeLogBase { get; private set; }
+
+    public void ClearChangeLog()
+    {
+        ChangeLogBase += _changedCells.Count;
+        _changedCells.Clear();
+    }
 
     public void MarkAllDirty()
     {

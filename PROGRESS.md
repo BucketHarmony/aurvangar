@@ -549,3 +549,22 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   ambient) because the materials do not set `VertexColorIsSrgb`. Fixing (2) would make play match the palette but
   darken everything; worth a human decision at the next gate.
 - Next: M4-T1 (PathGrid flag cache).
+
+## M4-T1 — PathGrid flag cache (2026-09-26)
+- Done: `PathGrid` caches one flag byte per cell (Valid, Standable, Walkable, Wet), computed lazily; a change
+  clears the cell's 3x3x3 neighborhood. Feeds: world change log via a cursor + new `VoxelWorld.ChangeLogBase`
+  (synced on every query and at tick end), `WaterGrid.WalkClassChanged` (dry/wet and shallow/deep crossings at
+  every level write, including `SetLevel`), `PlantSystem.OccupancyChanged`. New `IsWet`, `InvalidateAll`,
+  `SyncWorldChanges` (replaces the no-op `Invalidate`). `ScenarioBuilder.Build` calls `InvalidateAll` (raw writes).
+- Tests: added `PathGridCacheTests` (compute-once counter, cached cell after dig incl. after the log is cleared,
+  after water rises through shallow to deep in a sourced pool, after plant add/remove, a 120-tick random churn
+  comparing every cell to the direct PTH-01/02 rules mid-tick and per tick, raw writes + InvalidateAll). First run
+  failed to compile on the missing API; a mutation check (each of the three feeds disabled in turn) makes 2-4 of
+  these tests fail. `PathGridTests` unchanged and green. check.sh: 186 passed, 78 skipped, 0 failed; Godot csproj
+  0 warnings. perf.sh: 4 passed, 4 skipped (water budgets green after touching the water step).
+- Decisions: ADR-023
+- Golden: unchanged (the cache is not state).
+- Perf: headless seed 1, 24,000 ticks: tick median 0.035 ms, p95 0.084 ms, 21,446 ticks/s, hash `0f27c8ee613dd61c`
+  (same as M3-T8).
+- Next: M4-T2 (A*). Query PathGrid freely; it syncs itself. M4-T10 load must call `PathGrid.InvalidateAll()`;
+  M5-T2 construction-site blocking must add its own invalidation feed.

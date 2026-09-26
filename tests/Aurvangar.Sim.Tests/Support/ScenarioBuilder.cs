@@ -100,6 +100,7 @@ public sealed class ScenarioBuilder
         foreach (var (cell, level) in _water) _sim.Water.SetLevel(cell, level);
         _sim.World.ClearChangeLog();
         _sim.World.TakeDirtyChunks();
+        _sim.PathGrid.InvalidateAll();   // Set() writes raw, bypassing the change log (PTH-03)
         return _sim;
     }
 

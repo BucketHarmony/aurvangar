@@ -35,6 +35,10 @@ public sealed class PlantSystem
 
     public IdAllocator Ids { get; } = new();
 
+    /// <summary>PTH-03 hook: called with a cell index whenever a trunk or bush starts or stops occupying it.
+    /// PathGrid sets it. Not state: never hashed or saved.</summary>
+    public Action<int>? OccupancyChanged { get; set; }
+
     public PlantSystem(VoxelWorld world)
     {
         _world = world;
@@ -62,7 +66,7 @@ public sealed class PlantSystem
         for (int h = 0; h < p.Height; h++)
         {
             var c = p.Base + Int3.Up * h;
-            if (_world.InBounds(c)) _occupied[_world.Index(c)] = false;
+            if (_world.InBounds(c)) SetOccupied(_world.Index(c), false);
         }
     }
 
@@ -73,9 +77,16 @@ public sealed class PlantSystem
         for (int h = 0; h < height; h++)
         {
             var c = baseCell + Int3.Up * h;
-            if (_world.InBounds(c)) _occupied[_world.Index(c)] = true;
+            if (_world.InBounds(c)) SetOccupied(_world.Index(c), true);
         }
         return p;
+    }
+
+    private void SetOccupied(int index, bool value)
+    {
+        if (_occupied[index] == value) return;
+        _occupied[index] = value;
+        OccupancyChanged?.Invoke(index);
     }
 
     public void Tick(SimClock clock)
