@@ -990,3 +990,11 @@ Tick cost while working: median 0.07-0.15 ms, but **p95 2.3-3.0 ms**. Each dig o
 
 Next after approval: M5-T1 (building definitions, rotation, placement validation), plus any tasks the answers add
 (for example, a pit-exit rule before M5).
+
+### G2 answers (human, 2026-09-26)
+- Q1 (pit trap): **(b) refuse stranding digs.** A dwarf does not take a dig that would cut it off from the Great
+  Hall; the dig waits or turns unreachable. Added M4-T14.
+- Q2 (tree floors): **yes.** Dig drags also mark cells under trees; the dig waits until the tree is gone. Added M4-T15.
+- Q3 (log piles): **make them bigger.** Fixed-size marker plus a count label. Added M4-T16.
+- Q4 (full storage): **keep piles.** When storage is full, items stay in piles on the ground. No change.
+- Gate G2 closed (M4-GATE checked). Next: M4-T14, M4-T15, M4-T16, then M5-T1.

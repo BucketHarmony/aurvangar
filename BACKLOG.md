@@ -134,7 +134,21 @@ Milestone order is by risk: world and water before anything that depends on them
     Switch `scripts/screenshot.sh` from `--rendering-driver opengl3` (Compatibility) to Forward+ on the default
     driver, drop the separate `artifacts/screens/forward_plus/` path, and update docs/testing.md. Render the four
     shots and look at them. Do NOT change vertex-color sRGB handling (see G2 early answers in PROGRESS.md).
-- [ ] **M4-GATE HUMAN-GATE G2: colonists at work** · deps: M4-T11, M4-T12, M4-T13
+- [ ] **M4-T14** Digs never strand the digger · specs: DSG-03, DSG-08, JOB-09, PTH-13 · deps: M4-GATE
+  - Gate G2 answer 1b: a dwarf does not take (or start) a dig if, after the block is removed, the dwarf's standing
+    cell would no longer connect to the Great Hall's region. That dig waits, and turns DigUnreachable (red) once
+    no other open dig can make it safe. No automatic stairs (option a) for now.
+  - Scenario test: the 10x7x5 pit from M4-T11 no longer traps any dwarf; all 5 stay in the hub region and keep
+    taking chop jobs. Regenerate golden only if behavior on the gate script changes; record why.
+- [ ] **M4-T15** Dig drags mark tree floors · specs: DSG-02, DSG-03 · deps: M4-GATE
+  - Gate G2 answer 2: `DesignateDig` also marks cells under plants. The dig job for such a cell is not posted
+    until the plant is gone (felled or removed); it then digs normally. Update DSG-02 and record an ADR.
+  - Scenario test: dig + chop over a wooded box leaves no one-cell pillars.
+- [ ] **M4-T16** Bigger, readable item piles · specs: VIEW-10 · deps: M4-GATE
+  - Gate G2 answer 3: piles get a fixed-size marker readable at the default hub zoom, plus a count label.
+    Keep the logic in ViewCore with unit tests. Render `SCRIPT=digchop` shots and look at them.
+  - Gate G2 answer 4: when storage is full, logs stay in piles (current behavior). No change needed.
+- [x] **M4-GATE HUMAN-GATE G2: colonists at work** · deps: M4-T11, M4-T12, M4-T13
   - Gate report: screenshots, a headless run of seed 1 with a dig + chop script (stats: jobs completed, items
     hauled, path searches, failures), perf table, open issues. Stop.
 
