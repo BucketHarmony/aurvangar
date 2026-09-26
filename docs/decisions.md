@@ -284,3 +284,21 @@ asserts the spring layout instead of "all sources at x=0".
 Consequences: Seed-1 volume after pre-settle is 4,914,791 at tick 0 and 4,905,846 at day 10 (-0.2%). Active water
 cells drop from ~1,900-2,460 to ~670-720 (WAT-P2 budget 3,000). A pump or dig next to a spring column is refilled
 at up to `Full` per cell per tick; that is the intended "river keeps flowing" behavior. Golden regenerated.
+
+## ADR-022: Flat-color ambient light in Main.tscn; screenshots use a different renderer than play (2026-09-26, M3-T9)
+Context: Main.tscn had only the sun (DirectionalLight3D), so faces turned away from it and cast shadows rendered
+pure black. The human asked for "ambient up some", with the sun, water colors and palette unchanged. While tuning,
+two renderer facts showed up: `screenshot.sh` renders with `--rendering-driver opengl3` (Compatibility), which
+lights in gamma space, so any ambient brightens lit faces a lot there; the game plays with Forward+ (Vulkan),
+which lights in linear space and also shows the vertex colors lighter/desaturated than the palette, because the
+materials do not set `VertexColorIsSrgb`.
+Decision: A `WorldEnvironment` with an `Environment` sub-resource in Main.tscn (so Screenshot.tscn inherits it):
+`ambient_light_source = Color`, `ambient_light_color = (0.75, 0.78, 0.85)` (neutral, slightly cool, so shadows
+stay the hue of the block), `ambient_light_energy = 0.3`; `reflected_light_source = Disabled` so the water gets no
+background reflection it did not have before. Background stays the default clear color; no sky, tonemap, glow or
+SSAO. The energy is tuned for Forward+, the renderer the human plays with: lit grass moves 143,171,119 -> 156,188,133
+(about +9%), shadowed grass 0,0,0 -> 68,87,63. 0.5 washed the scene out in Forward+. The sRGB vertex-color issue is
+not fixed here (it would change how the palette looks in play); it is flagged for the human.
+Consequences: `SceneLightingTests` guards the environment and the unchanged sun. Compatibility screenshots
+(`artifacts/screens/*.png`) look brighter than play (lit grass 85,125,59 -> 122,187,84); Forward+ renders are in
+`artifacts/screens/forward_plus/` for comparison.

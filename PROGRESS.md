@@ -525,3 +525,27 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
 - Screenshots: rendered overview/river with Godot 4.6.2 .NET; the river is full width along the whole course and
   narrows only in the last ~15 cells before the drains. Shaded faces are still black (M3-T9).
 - Next: M3-T9 (ambient lighting). M6-T4 drought: springs follow `SourceStrength`, so strength 0 stops all inflow.
+
+## M3-T9 — Ambient lighting (2026-09-26)
+- Done: `Main.tscn` gets a `WorldEnvironment` (flat-color ambient `(0.75, 0.78, 0.85)` x 0.3, reflected light
+  disabled, default clear-color background). Sun, water colors, palette and materials unchanged.
+- Tests: added `View/SceneLightingTests` (WorldEnvironment with color ambient and energy 0.2-1.0; sun transform
+  unchanged, no sun energy override); failed first on the missing WorldEnvironment. check.sh: 180 passed, 78
+  skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4 passed, 4 skipped.
+- Decisions: ADR-022
+- Golden: unchanged (view only).
+- Perf: n/a.
+- Screenshots (Godot 4.6.2 .NET, seed 1, 1200 ticks): before in `artifacts/screens/before/`, after in
+  `artifacts/screens/` (Compatibility/opengl3, as screenshot.sh renders) and `artifacts/screens/forward_plus/`
+  (Forward+, as the game plays). Before: tree shadows, shaded tree faces and the far faces of the hill steps were
+  pure black (0,0,0). After (Forward+ pixel samples, river shot): shadowed grass 68,87,63 vs lit 156,188,133
+  (lit was 143,171,119), so shaded faces are about half as bright as lit ones, never black, and the grass and cones
+  keep their shape in shadow. Water mid-channel 132,152,161 -> 145,168,181 and deep 104,143,163 -> 120,163,185:
+  same shallow-to-deep tint, same transparency, slightly lighter; tree shadows on the water are now blue-grey
+  instead of black. Slice cut faces are unchanged in relative darkness.
+- Found for the human (not changed): (1) screenshot.sh uses the Compatibility renderer, which lights in gamma space,
+  so its shots look brighter and more saturated than play (lit grass 122,187,84 there). (2) In Forward+ the vertex
+  colors show lighter and greyer than `data/palette.json` (grass `#5f8f3e` shows as ~143,171,119 even without
+  ambient) because the materials do not set `VertexColorIsSrgb`. Fixing (2) would make play match the palette but
+  darken everything; worth a human decision at the next gate.
+- Next: M4-T1 (PathGrid flag cache).

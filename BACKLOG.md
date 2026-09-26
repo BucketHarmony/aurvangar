@@ -92,7 +92,7 @@ Milestone order is by risk: world and water before anything that depends on them
     stronger inflow (source strength and/or more source cells), not by shrinking the fill or weakening drains.
   - New scenario test: seed-1 river volume stays within ±10% of its tick-0 value from tick 0 through day 10.
     `Seed1_RiverSettles` (WAT-P2 active-cell budget) must stay green. Regenerate golden; record why.
-- [ ] **M3-T9** Ambient lighting · specs: VIEW-20 · deps: M3-GATE
+- [x] **M3-T9** Ambient lighting · specs: VIEW-20 · deps: M3-GATE
   - Screenshots show faces turned away from the sun rendering pure black (only a DirectionalLight3D in
     `Main.tscn`). Add a `WorldEnvironment` with ambient light / sky so shaded faces stay readable.
   - Human (after play): shadows are a little harsh, so raise the ambient light some. Soften shadows by raising
