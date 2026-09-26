@@ -416,3 +416,37 @@ delivery and construction progress (BLD-06..08) and pump cycles (BLD-13) extend 
 Consequences: seed-1 golden regenerated (the hash now includes the empty pile set). `Dig`/`Chop` put their drop on the
 dug cell / tree base (always pile-free), so a dig in an overhang, or under an existing pile, can leave a pile without
 a floor; acceptable for the POC. The spiral ignores regions, so a fallback pile can land where haulers cannot reach.
+
+## ADR-028: Job board, step runner, reservations, failure handling (2026-09-26, M4-T6)
+Context: JOB-03..08 define the board, priorities, selection order, reservations and the 5-failure rule, but not
+the step representation, what "preconditions" are, when a step starts, what happens to a carried stack when a job
+fails or the drop is blocked, or where the "Unreachable" mark lives before M4-T7 adds designations.
+Decision: `JobBoard` (`Simulation.Jobs`) is storage only: `SortedDictionary<JobId, Job>`, monotonic ids, and four
+reservation tables (cell → job, pile cell → reserved count, storage in/out by (building, item)) derived from the
+claimed jobs (not hashed; a load calls `RebuildReservations`). A `Job` holds plain-data `JobStep`s (GoTo with goal
+mode Exact / Reach / Building, Work(ticks), and one step per `WorldActions` call) and its declared `Reservation`s;
+it is hashed in full. `JobRunner` (called from `AgentSystem.Tick`, ascending id) does one thing per agent per tick:
+an idle agent (at most once per 5 ticks, `Agent.NextJobSearchTick`) first drops any leftover stack, then selects;
+a claimed job's current step runs the same tick. Selection (JOB-06): open, unclaimed, non-need jobs past
+`RetryAfterTick`, best by (priority desc, 3D Manhattan distance to `Job.Target` asc, id asc); the region filter
+(some goal cell of the job's first GoTo in the agent's region, no A*) and the preconditions run only for a job that
+would beat the current best. Preconditions are the job's reservations: `CanReserve` (cell free of other jobs, pile
+has the unreserved count, storage has the unreserved stock / free capacity). GoTo goals are walkable cells within
+ARCH-07 reach of the target (ascending index); the step starts a `MoveTo` on its first tick and advances movement on
+later ticks; Arrived → next step, anything else → failure. Work calls `WorldActions.Work` each tick for `Ticks`
+ticks. Any non-Ok action result, or a GoTo with no goals / a failed move, fails the job (JOB-08): failure counted
+(`Counters.JobsFailed`), reservations released, agent halted and idle, carried stack dropped on its cell (ECO-08
+spiral); at the fifth failure the job is removed and, for Dig, the designation cell becomes `DigUnreachable`; else
+`RetryAfterTick = now + 50`. If the drop is `Blocked` the agent keeps the stack and retries the drop before each job
+search (it takes no work until it succeeds). Completion releases reservations, removes the job, clears a Dig mark
+(DSG-07), counts `JobsCompleted`. JOB-07 `JobRunner.AssignNeed` posts a need job and claims it at once, releasing a
+current non-need job (no failure, no cooldown, stack dropped); it refuses (posts nothing) when the agent already runs
+a need job or the reservations cannot be taken. `JobRunner.Cancel` (DSG-06) releases and removes. A minimal
+`DesignationMap` (`Simulation.Designations`, DSG-01 byte per cell, hashed as non-None entries) exists now for the
+JOB-08 mark; M4-T7 adds the commands and posting.
+Consequences: seed-1 golden regenerated (board and designation state in the hash). Pile reservations are held until
+the job ends, even after the pick-up, so a partly taken pile looks more reserved than it is for the rest of that
+job; acceptable until M4-T8 refines hauling. A dead agent's claimed job is not released yet (M5-T5 death must call
+`JobRunner.Cancel`-like release). Chop give-up has no mark yet (M4-T7). A job returned to the board restarts at step 0. The region filter
+requires every GoTo leg to have a goal in the agent's region. A haul that fails after its pick-up drops the stack,
+so its pile reservation may never fit again: M4-T8 must re-post or cancel such jobs.

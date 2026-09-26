@@ -116,7 +116,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - Spawn 5 agents at the hub entrance area in `WorldFactory`. Movement with progress; view interpolation data.
 - [x] **M4-T5** WorldActions · specs: ARCH-07 · deps: M4-T4
   - All methods with reach validation and results. Un-skip `WorldActionsTests.*`.
-- [ ] **M4-T6** JobBoard, job steps, selection, reservations, failure/retry · specs: JOB-03..08 · deps: M4-T5, M4-T3
+- [x] **M4-T6** JobBoard, job steps, selection, reservations, failure/retry · specs: JOB-03..08 · deps: M4-T5, M4-T3
   - Un-skip `JobBoardTests.*`.
 - [ ] **M4-T7** Designations: dig and chop · specs: DSG-01..08, JOB-09, ECO-09 · deps: M4-T6
   - Commands `DesignateDig`, `DesignateChop`, `CancelDesignation`. Un-skip `Scenarios/DigScenarioTests.*`.

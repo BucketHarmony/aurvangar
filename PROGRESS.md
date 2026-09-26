@@ -657,3 +657,31 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   fallback. `Work` only checks reach; step progress lives on `Agent.StepProgress`. M4-T8: add BLD-10 reservations
   to storage actions and `ScenarioBuilder.Hub/Stock` (tests currently use `Buildings.PlacePrebuilt` + `Stored`).
   M4-T10: save `ItemPiles`. M5-T2 extends `DeliverTo` (sites, BLD-07 state change) and `Work` (construct progress).
+
+## M4-T6 — JobBoard, job steps, selection, reservations, failure/retry (2026-09-26)
+- Done: `JobBoard` (`Simulation.Jobs`: sorted jobs, monotonic ids, derived reservation tables for cells, pile items,
+  storage in/out), `Job`/`JobStep`/`Reservation` plain data with JOB-05 priorities, `JobGoals` (GoTo goals: Exact /
+  Reach / Building, ascending index), `JobRunner` called from `AgentSystem.Tick` (JOB-06 selection every 5 ticks while
+  idle by priority → Manhattan → id, with region filter on every GoTo leg and reservations as preconditions; steps
+  GoTo/Work/one per `WorldActions` call; JOB-08 failure → release, drop carried, 50-tick cooldown, cancel +
+  `DigUnreachable` at 5; JOB-07 `AssignNeed` preemption; `Cancel` for DSG-06). Minimal `DesignationMap`
+  (`Simulation.Designations`, DSG-01) for the unreachable mark; DSG-07 clear on dig completion. `AgentMovement.Halt`.
+  `WorldActions.StoredCount/FreeCapacity` public. F3 overlay now shows open jobs by kind.
+- Tests: moved the 6 M4-T6 placeholders into `JobBoardTests` with bodies, plus 6 more (cell reservation one claim at
+  a time, pile/storage reservations as preconditions, need-job preemption drops cargo without a failure, cancel of a
+  claimed job, 5-tick search throttle, board and designations in the hash). With the runner disabled 10 of 12 fail
+  (the two API-level ones pass). check.sh: 261 passed, 51 skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4
+  passed, 4 skipped. sim-reviewer: required fixes were the ADR (written) and this golden note; applied suggestions:
+  need-kind check before posting, region check on every GoTo leg, `StoredCount` reuse.
+- Decisions: ADR-028
+- Golden: regenerated (`UPDATE_GOLDEN=1`): `StateHash` now includes the job board and the designation map (both empty
+  on seed 1), so all four checkpoint hashes changed.
+- Perf: headless seed 1, 24,000 ticks: tick median 0.032 ms, p95 0.053 ms, 23,233 ticks/s, jobs 0/0 (no posters yet),
+  hash `a4f9af139f7155c6`. Screenshots re-rendered (Godot 4.6.2 .NET): unchanged, as expected (overlay is not shot).
+- Next: M4-T7 (designations). Post dig jobs with `sim.Jobs.Post(JobKind.Dig, cell, [GoTo(cell), Work(cell, hardness),
+  Dig(cell)], [Reservation.OnCell(cell)], priority 25 + DSG-04 bonus)`; Reach goals include the cell above the
+  target, so JOB-09 needs a Dig-specific goal filter (e.g. a new GoalMode). Chop give-up needs a mark. DSG-06 cancel:
+  `JobRunner.Cancel`. M4-T8: pile/storage reservations are held until the job ends; a haul failing after pick-up can
+  leave an unclaimable job (re-post or cancel it). M4-T10: save the board (`Ids.Next`, all job fields), designation
+  marks, agent `NextJobSearchTick/CurrentJob/StepIndex/StepProgress`, then `Jobs.RebuildReservations()`. M5-T5: a
+  dead agent's claimed job must be released.

@@ -73,7 +73,7 @@ public sealed partial class WorldActions
         return b is { State: BuildingState.Complete, Def.Storage: not null } ? b : null;
     }
 
-    private static int StoredCount(Building b, ItemId item) => b.Stored.TryGetValue(item.Value, out var n) ? n : 0;
+    public static int StoredCount(Building b, ItemId item) => b.Stored.TryGetValue(item.Value, out var n) ? n : 0;
 
     /// <summary>Removes items; an emptied entry is removed so the hash does not depend on history.</summary>
     private static void RemoveStored(Building b, ItemId item, int count)
@@ -92,7 +92,7 @@ public sealed partial class WorldActions
     }
 
     /// <summary>Room for <paramref name="item"/> under the per-item cap and the total cap (0 = no cap).</summary>
-    private static int FreeCapacity(Building b, ItemId item)
+    public static int FreeCapacity(Building b, ItemId item)
     {
         var s = b.Def.Storage!;
         int free = int.MaxValue;

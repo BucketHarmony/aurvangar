@@ -61,6 +61,9 @@ public static class AgentMovement
         if (a.PathPos == a.Path.Length - 1) Stop(a, MoveStatus.Arrived);
     }
 
+    /// <summary>Stops any move at once (a released job): the agent stays on <see cref="Agent.Cell"/>, status None.</summary>
+    public static void Halt(Agent a) => Stop(a, MoveStatus.None);
+
     /// <summary>True if <paramref name="to"/> is one legal PTH-04..08 move from <paramref name="from"/> right now.</summary>
     public static bool CanStep(PathGrid grid, Int3 from, Int3 to)
     {

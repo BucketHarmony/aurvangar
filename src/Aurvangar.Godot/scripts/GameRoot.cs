@@ -199,7 +199,7 @@ public partial class GameRoot : Node3D
         WaterStepMs = _phases.For(TickPhase.Water).Average,
         PathSearchesPerSecond = _pathRate.PerSecond,
         RegionRebuildMs = _phases.For(TickPhase.Regions).Average,
-        OpenJobsByKind = null, // M4-T6: job board
+        OpenJobsByKind = Sim.Jobs.OpenCountsByKind(),
         Tick = Sim.Clock.Tick,
         SliceY = SliceY,
         MaxSliceY = Slice.MaxY,

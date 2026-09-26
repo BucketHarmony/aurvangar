@@ -1,11 +1,12 @@
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Events;
+using Aurvangar.Sim.Jobs;
 using Aurvangar.Sim.Paths;
 
 namespace Aurvangar.Sim.Agents;
 
 /// <summary>Owns agents; runs job selection and step execution (JOB-01..09, PTH-15..17).
-/// M4-T4: spawning and path following. M4-T6: job selection and steps.</summary>
+/// Spawning and path following (M4-T4); job selection and steps run in <see cref="JobRunner"/> (M4-T6).</summary>
 public sealed class AgentSystem
 {
     private readonly SortedDictionary<int, Agent> _agents = new();
@@ -39,11 +40,11 @@ public sealed class AgentSystem
 
     public void Tick(Simulation sim)
     {
-        // JOB-02: ascending id; dead agents are skipped. M4-T6: pick a job if idle and run the current step here.
+        // JOB-02: ascending id; dead agents are skipped. Pick a job if idle, then run the current step (JOB-06..08).
         foreach (var a in _agents.Values)
         {
             if (!a.IsAlive) continue;
-            AgentMovement.Advance(sim.PathGrid, sim.Pathfinder, a);
+            JobRunner.Tick(sim, a);
         }
     }
 

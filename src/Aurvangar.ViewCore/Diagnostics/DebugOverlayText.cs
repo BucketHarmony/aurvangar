@@ -15,7 +15,7 @@ public sealed class DebugSnapshot
     public double WaterStepMs { get; init; }
     public double PathSearchesPerSecond { get; init; }
     public double RegionRebuildMs { get; init; }
-    /// <summary>Open jobs per kind; null or empty until the job board exists (M4-T6).</summary>
+    /// <summary>Open (unclaimed) jobs per kind; null or empty shows "none".</summary>
     public IReadOnlyList<KeyValuePair<string, int>>? OpenJobsByKind { get; init; }
     public long Tick { get; init; }
     public int SliceY { get; init; }

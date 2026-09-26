@@ -7,16 +7,6 @@ using Xunit;
 
 namespace Aurvangar.Sim.Tests
 {
-    public class JobBoardTests
-    {
-        [Fact(Skip = "M4-T6")] public void OneJobTwoAgents_OnlyOneClaims() => Placeholder.Write("jobs-agents.md scenario 2");
-        [Fact(Skip = "M4-T6")] public void Priority_ConstructBeforeHaul() => Placeholder.Write("jobs-agents.md scenario 3");
-        [Fact(Skip = "M4-T6")] public void TieBreak_DistanceThenJobId() => Placeholder.Write("JOB-06");
-        [Fact(Skip = "M4-T6")] public void UnreachableJob_NoAStarRun() => Placeholder.Write("jobs-agents.md scenario 5: Pathfinder.Searches unchanged");
-        [Fact(Skip = "M4-T6")] public void FailedStep_ReleasesAndRetriesAfterCooldown() => Placeholder.Write("JOB-08 and scenario 6");
-        [Fact(Skip = "M4-T6")] public void FiveFailures_CancelsAndMarksUnreachable() => Placeholder.Write("JOB-08");
-    }
-
     public class SaveLoadTests
     {
         [Fact(Skip = "M4-T10")] public void RoundTrip_HashEqual() => Placeholder.Write("SAV-03 part 1 on seed 1 after 1000 ticks with a dig designation active");
