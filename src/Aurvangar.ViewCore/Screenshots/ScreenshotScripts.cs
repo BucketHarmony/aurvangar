@@ -3,6 +3,8 @@ using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Commands;
 using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Core;
+using Aurvangar.Sim.Water;
+using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Picking;
 
 namespace Aurvangar.ViewCore.Screenshots;
@@ -19,14 +21,19 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// from the hub (<see cref="FindSite"/>). The pump needs no water to be placed (ADR-040); on seed 1 the nearest site
 /// is a dry terrace step, so the shots also show its no-water icon. With <c>--ticks 500</c> the shots show buildings in several states; by
 /// tick 1600 all of them are complete (1200 before the M6-T3 berry picking, ADR-048).</item>
+/// <item><c>farm</c> (M6-T5): a <see cref="FarmSize"/>×<see cref="FarmSize"/> field (<see cref="FindFarm"/>) on the
+/// nearest moist ground to the hub. <c>--ticks 4000</c> shows growing crops; by 9000 (before the day-5 drought) the
+/// first are mature and harvested. The <c>farm</c> camera preset looks at it.</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
     public const int SiteSearchRadius = 64;
+
+    public const int FarmSize = 5;
 
     public const int PitGap = 3;
     public const int PitLength = 14;
@@ -57,6 +64,8 @@ public static class ScreenshotScripts
             }
             case "build":
                 return BuildScript(sim);
+            case "farm":
+                return FindFarm(sim) is { } farm ? new ICommand[] { farm } : Array.Empty<ICommand>();
             default:
                 throw new ArgumentException($"unknown screenshot script '{name}' (known: {string.Join(",", Names)})");
         }
@@ -71,6 +80,44 @@ public static class ScreenshotScripts
         var focus = ScreenshotPresets.HubFocus(sim);
         int top = hub.FootprintCells().Max(c => c.Y);
         return new PickHit(new Int3((int)focus.X, top, (int)focus.Z), Int3.Up);
+    }
+
+    /// <summary>The nearest <see cref="FarmSize"/>-square field to the hub (ring by ring on its min corner, like
+    /// <see cref="FindSite"/>) whose every column would become a farm tile (ECO-11: top block Grass or Dirt with
+    /// standable air above, no building) and is moist. Moisture is not computed before the first tick, so it is
+    /// evaluated on a private <see cref="MoistureMap"/> over the sim's world and water (read only). Null if none.</summary>
+    public static DesignateFarm? FindFarm(Simulation sim)
+    {
+        var moisture = new MoistureMap(sim.World, sim.Water);
+        moisture.Recompute();
+        var focus = ScreenshotPresets.HubFocus(sim);
+        int cx = (int)focus.X, cz = (int)focus.Z;
+        for (int r = BuildGap + 2; r <= SiteSearchRadius; r++)
+            for (int dz = -r; dz <= r; dz++)
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dz)) != r) continue;
+                    int x0 = cx + dx, z0 = cz + dz;
+                    if (FieldOk(sim, moisture, x0, z0))
+                        return new DesignateFarm(x0, z0, x0 + FarmSize - 1, z0 + FarmSize - 1);
+                }
+        return null;
+    }
+
+    private static bool FieldOk(Simulation sim, MoistureMap moisture, int x0, int z0)
+    {
+        for (int z = z0; z < z0 + FarmSize; z++)
+            for (int x = x0; x < x0 + FarmSize; x++)
+            {
+                if (x < 0 || z < 0 || x >= sim.World.SizeX || z >= sim.World.SizeZ || !moisture.IsMoist(x, z)) return false;
+                int y = moisture.SurfaceY(x, z);
+                if (y < 0) return false;
+                var c = new Int3(x, y, z);
+                if (sim.World.GetBlock(c) is not (BlockId.Grass or BlockId.Dirt)) return false;
+                if (!sim.PathGrid.IsStandable(c + Int3.Up)) return false;
+                if (sim.Buildings.BuildingAt(c) is not null || sim.Buildings.BuildingAt(c + Int3.Up) is not null) return false;
+            }
+        return true;
     }
 
     private static DesignateChop ChopNearHub(Simulation sim)

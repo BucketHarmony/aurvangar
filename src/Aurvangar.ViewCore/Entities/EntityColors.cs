@@ -23,6 +23,8 @@ public sealed class EntityColors
     public Vector4 Trapped { get; }
     public Vector4 Dig { get; }
     public Vector4 Chop { get; }
+    /// <summary>Farm tile furrows (VIEW-11, `designations.farm`).</summary>
+    public Vector4 Farm { get; }
     public Vector4 Unreachable { get; }
     /// <summary>Blueprint color of any building (VIEW-09, `buildings.blueprint`).</summary>
     public Vector4 Blueprint { get; }
@@ -36,6 +38,7 @@ public sealed class EntityColors
         Trapped = Get(p.Agents, "trapped");
         Dig = Get(p.Designations, "dig");
         Chop = Get(p.Designations, "chop");
+        Farm = Get(p.Designations, "farm");
         Unreachable = Get(p.Designations, "unreachable");
         _buildings = p.Buildings;
         Blueprint = Get(p.Buildings, "blueprint");

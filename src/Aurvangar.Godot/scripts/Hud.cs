@@ -5,8 +5,8 @@ namespace Aurvangar.Client;
 
 /// <summary>Player HUD: the tool bar (VIEW-12) with the Build menu (Warehouse / Pump / Levee), the top bar (VIEW-15),
 /// the colonist panel (VIEW-16), a short-lived message line (quick save / load results, refused commands) and the
-/// label that follows the mouse (pile counts VIEW-10, build and deconstruct tooltips VIEW-14). The Farm button is
-/// shown disabled until farming exists (M6-T5).</summary>
+/// label that follows the mouse (pile counts VIEW-10, build and deconstruct tooltips VIEW-14, farm tiles and the farm
+/// tool's moisture hint, M6-T5).</summary>
 public partial class Hud : CanvasLayer
 {
     public const double ToastSeconds = 3.0;
@@ -36,7 +36,7 @@ public partial class Hud : CanvasLayer
         AddTool(bar, ToolKind.Select, "Select (Esc)");
         AddTool(bar, ToolKind.Dig, "Dig (G)");
         AddTool(bar, ToolKind.Chop, "Chop (C)");
-        AddDisabled(bar, "Farm (F)");
+        AddTool(bar, ToolKind.Farm, "Farm (F)");
         AddBuildMenu(bar);
         AddTool(bar, ToolKind.Deconstruct, "Deconstruct (X)");
         AddTool(bar, ToolKind.Cancel, "Cancel (Z)");
@@ -112,7 +112,4 @@ public partial class Hud : CanvasLayer
         bar.AddChild(_buildButton);
         _toolButtons[ToolKind.Build] = _buildButton;
     }
-
-    private static void AddDisabled(HBoxContainer bar, string text) =>
-        bar.AddChild(new Button { Text = text, Disabled = true, FocusMode = Control.FocusModeEnum.None, TooltipText = "Not yet" });
 }

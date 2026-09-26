@@ -30,6 +30,7 @@ public partial class GameRoot : Node3D
     public ChunkRenderer Terrain { get; private set; } = null!;
     public WaterRenderer WaterView { get; private set; } = null!;
     public PlantRenderer PlantView { get; private set; } = null!;
+    public CropRenderer CropView { get; private set; } = null!;
     public AgentRenderer AgentView { get; private set; } = null!;
     public PileRenderer PileView { get; private set; } = null!;
     public DesignationRenderer DesignationView { get; private set; } = null!;
@@ -129,7 +130,12 @@ public partial class GameRoot : Node3D
         _tool.Move(Hover);
         if (!ToolController.IsDragTool(_tool.Tool) && _tool.Tool != ToolKind.Select) UpdateClickToolPreview();
         else if (_tool.PreviewBox(SliceY) is var (min, max))
-            _toolPreview.Show(min, max, _tool.Tool == ToolKind.Cancel ? new Color(1f, 0.25f, 0.2f, 0.3f) : new Color(1f, 0.6f, 0.24f, 0.3f));
+            _toolPreview.Show(min, max, _tool.Tool switch
+            {
+                ToolKind.Cancel => new Color(1f, 0.25f, 0.2f, 0.3f),
+                ToolKind.Farm => new Color(0.55f, 0.85f, 0.3f, 0.3f),
+                _ => new Color(1f, 0.6f, 0.24f, 0.3f),
+            });
         else _toolPreview.Visible = false;
     }
 
@@ -183,11 +189,12 @@ public partial class GameRoot : Node3D
         _frameEvents.Clear();
     }
 
-    /// <summary>Agents every frame (they move); piles on a pile event or a slice change; designations and plants
-    /// when their own change checks say so.</summary>
+    /// <summary>Agents every frame (they move); piles on a pile event or a slice change; designations, plants and
+    /// crops when their own change checks say so.</summary>
     private void RefreshEntities(float tickFraction)
     {
         PlantView.Refresh(SliceY);
+        CropView.Refresh(SliceY);
         AgentView.Refresh(AgentVisuals.Build(Sim, SliceY, _entityColors, tickFraction));
         if (_pilesDirty || _pilesBuiltSlice != SliceY)
         {
@@ -211,8 +218,10 @@ public partial class GameRoot : Node3D
         _hud.Colonists.SetRows(ColonistPanelModel.Build(Sim));
         _hud.TopBar.Show(TopBarModel.Build(Sim, TickAccumulator.Speeds[SpeedIndex]));
         string? label = ClickToolTooltip();
+        if (label == null && _tool.Tool == ToolKind.Farm) label = FarmTool.Tooltip(Sim, Hover, _tool.PreviewBox(SliceY));
         if (label == null && Hover is { } h && PileMesher.AtPick(Sim, h, SliceY) is { } pile)
             label = PileMesher.Label(Content, pile.Stack);
+        if (label == null && Hover is { } fh) label = CropMesher.Label(Sim, fh);
         _hud.SetHoverLabel(label, LabelPoint());
     }
 

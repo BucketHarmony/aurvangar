@@ -41,7 +41,8 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   distances up to 80 (hidden at the overview). A pile over a dug floor stays in its cell and gets a thin post down
   to the floor below (at most 8 cells); hovering that floor finds the pile. Item name and count on hover (M4-T16).
 - **VIEW-11** Designations: dig = translucent orange cube per cell; chop = orange ring on tree; farm = brown
-  overlay; unreachable = red tint.
+  overlay (raised furrows; crops on them grow in 8 stages, straw colored when dry, potato caps when mature; M6-T5,
+  ADR-050); unreachable = red tint.
 
 ## Tools and input
 
@@ -56,7 +57,8 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 
 ## HUD
 
-- **VIEW-15** Top bar: day, season + days left, speed, totals for log/stone/berries/potato/water.
+- **VIEW-15** Top bar: day, season + days left ("Wet season, 4 days left", orange in a drought, toast on change;
+  ADR-050), speed, totals for log/stone/berries/potato/water.
 - **VIEW-16** Colonist panel (left): name, hunger/thirst/health bars, current job label. Click centers camera.
 - **VIEW-17** F3 debug overlay: FPS, sim ms per tick (avg over 60), water active cells, water step ms,
   path searches/s, region rebuild ms, open jobs by kind.

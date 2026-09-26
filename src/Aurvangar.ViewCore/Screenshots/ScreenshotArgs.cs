@@ -17,7 +17,7 @@ public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string>
     {
         ulong seed = DefaultSeed;
         int ticks = DefaultTicks;
-        IReadOnlyList<string> shots = ScreenshotPresets.Names;
+        IReadOnlyList<string> shots = ScreenshotPresets.DefaultShots;
         string outDir = DefaultOutDir;
         string script = DefaultScript;
 

@@ -1,15 +1,25 @@
 using System.Numerics;
 using Aurvangar.Sim.Content;
+using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Plants;
 
 namespace Aurvangar.ViewCore.Meshing;
 
-/// <summary>Plant colors from palette.json (`plants.trunk`, `plants.canopy`, `plants.bush`).</summary>
+/// <summary>Plant colors from palette.json (`plants.trunk`, `plants.canopy`, `plants.bush`, `plants.berries`, and for
+/// crops `plants.crop`, `plants.cropDry` and `items.potato`).</summary>
 public sealed class PlantColors
 {
     public Vector4 Trunk { get; }
     public Vector4 Canopy { get; }
     public Vector4 Bush { get; }
+    /// <summary>Berries on a ripe bush (ECO-10).</summary>
+    public Vector4 Berries { get; }
+    /// <summary>A growing crop on a moist tile (ECO-12).</summary>
+    public Vector4 Crop { get; }
+    /// <summary>A growing crop on a dry tile: it makes no progress and withers after a day (ECO-13).</summary>
+    public Vector4 CropDry { get; }
+    /// <summary>The potatoes showing on a mature crop.</summary>
+    public Vector4 Potato { get; }
 
     public PlantColors(ContentDb content)
     {
@@ -17,6 +27,10 @@ public sealed class PlantColors
         Trunk = Get(p, "trunk");
         Canopy = Get(p, "canopy");
         Bush = Get(p, "bush");
+        Berries = Get(p, "berries");
+        Crop = Get(p, "crop");
+        CropDry = Get(p, "cropDry");
+        Potato = Get(content.Palette.Items, "potato");
     }
 
     private static Vector4 Get(Dictionary<string, string> p, string key) =>
@@ -26,7 +40,8 @@ public sealed class PlantColors
 /// <summary>Placeholder plant meshes (M3-T6): a tree is a thin trunk box over its trunk cells plus a four-sided
 /// canopy cone; a bush is a small cone inside its cell. All plants go into one mesh in world coordinates.
 /// Slicing (VIEW-04): plants whose base is above the slice are hidden, trunks are cut at the top of the slice
-/// layer, and a canopy is shown only when the whole trunk is at or below the slice (ADR-020).</summary>
+/// layer, and a canopy is shown only when the whole trunk is at or below the slice (ADR-020). A ripe bush (ECO-10) shows
+/// <see cref="BerryCount"/> berry cubes on its sides (M6-T5).</summary>
 public static class PlantMesher
 {
     public const int TrunkQuads = 6;
@@ -41,6 +56,12 @@ public static class PlantMesher
     public const float CanopyOvershoot = 1.5f;
     public const float BushHalfWidth = 0.4f;
     public const float BushHeight = 0.9f;
+    public const int BerryCount = 4;
+    public const float BerryHalfSize = 0.08f;
+    /// <summary>Height of the berries above the bush base.</summary>
+    public const float BerryHeight = 0.3f;
+    /// <summary>How far from the bush center the berries sit (on the cone's sides at <see cref="BerryHeight"/>).</summary>
+    public const float BerryOffset = 0.3f;
 
     public static MeshData Build(PlantSystem plants, int sliceY, PlantColors colors)
     {
@@ -53,6 +74,7 @@ public static class PlantMesher
             if (p.Kind == PlantKind.Bush)
             {
                 AddCone(mesh, new Vector3(cx, b.Y, cz), BushHalfWidth, BushHeight, colors.Bush);
+                if (p.Berries > 0) AddBerries(mesh, cx, b.Y + BerryHeight, cz, colors.Berries);
                 continue;
             }
             int visible = Math.Min(p.Height, sliceY + 1 - b.Y);
@@ -66,6 +88,25 @@ public static class PlantMesher
             }
         }
         return mesh;
+    }
+
+    /// <summary>Cheap fingerprint of what <see cref="Build"/> draws besides the slice: the plants and which bushes are
+    /// ripe. Berries change without an event, so the renderer compares this each frame.</summary>
+    public static ulong Signature(PlantSystem plants)
+    {
+        var h = StateHasher.Create();
+        h.Add(plants.Count);
+        foreach (var p in plants.All)
+            if (p.Kind == PlantKind.Bush) { h.Add(p.Id.Value); h.Add(p.Berries > 0); }
+        return h.Value;
+    }
+
+    /// <summary>Four berry cubes, one on each side of the bush.</summary>
+    private static void AddBerries(MeshData m, float cx, float y, float cz, Vector4 color)
+    {
+        float o = BerryOffset, s = BerryHalfSize;
+        foreach (var (dx, dz) in new[] { (o, 0f), (-o, 0f), (0f, o), (0f, -o) })
+            AddBox(m, new Vector3(cx + dx - s, y - s, cz + dz - s), new Vector3(cx + dx + s, y + s, cz + dz + s), color);
     }
 
     private static void AddBox(MeshData m, Vector3 lo, Vector3 hi, Vector4 color) => MeshShapes.AddBox(m, lo, hi, color);

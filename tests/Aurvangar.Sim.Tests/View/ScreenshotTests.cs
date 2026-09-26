@@ -186,14 +186,16 @@ public class PlantMesherTests
         var plants = Plants(out _);
         plants.AddBush(new Int3(5, 3, 5));
         var mesh = PlantMesher.Build(plants, sliceY: 31, Colors);
-        Assert.Equal(PlantMesher.ConeQuads, mesh.QuadCount);
+        // A new bush is ripe: the cone plus its berry cubes (M6-T5).
+        Assert.Equal(PlantMesher.ConeQuads + PlantMesher.BerryCount * 6, mesh.QuadCount);
         Assert.All(mesh.Positions, p =>
         {
             Assert.InRange(p.X, 5f, 6f);
             Assert.InRange(p.Y, 3f, 4f);
             Assert.InRange(p.Z, 5f, 6f);
         });
-        Assert.All(mesh.Colors, c => Assert.Equal(Colors.Bush, c));
+        Assert.All(mesh.Colors, c => Assert.True(c == Colors.Bush || c == Colors.Berries));
+        Assert.Equal(PlantMesher.ConeQuads * 4, mesh.Colors.Count(c => c == Colors.Bush));
     }
 
     [Fact]
@@ -238,8 +240,9 @@ public class PlantMesherTests
         int bushes = sim.Plants.All.Count(p => p.Kind == PlantKind.Bush);
         Assert.True(trees > 0 && bushes > 0);
         var mesh = PlantMesher.Build(sim.Plants, sim.World.SizeY - 1, Colors);
-        Assert.Equal(trees * (PlantMesher.TrunkQuads + PlantMesher.ConeQuads) + bushes * PlantMesher.ConeQuads,
-            mesh.QuadCount);
+        int ripe = sim.Plants.All.Count(p => p.Kind == PlantKind.Bush && p.Berries > 0);
+        Assert.Equal(trees * (PlantMesher.TrunkQuads + PlantMesher.ConeQuads) + bushes * PlantMesher.ConeQuads
+            + ripe * PlantMesher.BerryCount * 6, mesh.QuadCount);
     }
 }
 

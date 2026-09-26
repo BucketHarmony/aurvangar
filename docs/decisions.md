@@ -1037,3 +1037,31 @@ pump runs dry unless water is stored (the DoD's "colonies that stored water surv
 refills, active water cells peak near 3,500 and regions rebuild often (the whole bed becomes walkable), so drought
 ticks cost more (headless survival run: 4,400 ticks/s over 10 days vs ~9,000 before day 5; median tick 0.063 ms,
 p95 1.0 ms; SIM-P1 is measured at day 5, M6-T7).
+
+## ADR-050: Farm tool, crop and berry look, season readout (2026-09-26, M6-T5)
+Context: VIEW-11 says only "farm = brown overlay", VIEW-12 lists a Farm (F) tool, VIEW-15 / ECO-18 ask for the season
+and days left. Farms and bush ripeness emit no events, the moisture map has no event either, and crops grow only on
+moist tiles, which the player cannot see. Moisture is not computed before the first tick.
+Decision:
+- Farm (F) is a drag tool like Chop: the XZ rectangle of the two picks sends `DesignateFarm`; the preview is the box
+  of the picked cells in green. Its mouse label (`Tools/FarmTool`) says "Moist: crops grow here" / "Dry: crops will
+  not grow here" for the hovered column, and "m of n columns moist" during a drag, from `sim.Moisture`.
+- Farm overlay (VIEW-11): two raised furrows per tile in `designations.farm` in the designation mesh. Crops
+  (`Entities/CropMesher`, own opaque shaded `CropRenderer`): a 2×2 cluster of stalks on the furrows whose height
+  steps through 8 growth stages; green (`plants.crop`) on a moist tile, straw (`plants.cropDry`, new palette key) on
+  a dry one; a mature crop gets potato-colored caps (`items.potato`). Empty tiles show furrows only. The renderer
+  polls a signature (cell, state, stage, moisture per tile), so a remesh happens at most 8 times per crop.
+- Ripe bushes (ECO-10) show 4 berry cubes (`plants.berries`); `PlantRenderer` now rebuilds on a signature that
+  includes ripeness, not only the plant count. Two `PlantMesherTests` that counted bush quads as a bare cone were
+  updated for the berries (the change is intended).
+- Hover label on a farm tile: "Farm tile: waiting for planting", "Potatoes n% (moist)", "Potatoes n% (dry, withers
+  in t ticks)", "Potatoes ready to harvest".
+- Top bar (ECO-18): "Wet season, N days left" / "Drought, N day(s) left" from `WeatherSystem.SeasonAt` and
+  `DaysUntilChange` (rounded up, so day 2 of the wet season shows 4), orange in a drought. `SeasonChanged` shows a
+  toast. The top bar is now anchored top-right and grows to the left.
+- Screenshot harness: script `farm` designates a 5×5 field on the nearest moist ground to the hub, found on a
+  private `MoistureMap` built from the sim's world and water (read only; the sim's own map is empty until tick 0).
+  Preset `farm` is a close-up of the farm tiles (hub if none). It is opt-in: the default shots stay the four gate
+  presets (`ScreenshotPresets.DefaultShots`).
+Consequences: no sim changes; golden unchanged. The view reads `sim.Farms`, `sim.Moisture`, `Plant.Berries` each frame
+for signatures (a few hundred entries on seed 1).

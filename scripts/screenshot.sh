@@ -4,7 +4,8 @@
 # and on Windows Git Bash (runs Godot directly; prefer the *_console.exe binary to see its output).
 # Env overrides: SEED (1), TICKS (1200), SHOTS (overview,river,hub,slice), OUT (artifacts/screens),
 # SCRIPT (none; digchop = dig a pit and chop trees near the hub so colonists are at work in the shots;
-# build = chop plus a warehouse, a pump and a levee line near the hub, use TICKS=500 to catch them mid-build, TICKS=1600 to see them complete).
+# build = chop plus a warehouse, a pump and a levee line near the hub, use TICKS=500 to catch them mid-build, TICKS=1600 to see them complete;
+# farm = a 5x5 field on moist ground near the hub, TICKS=4000 for growing crops, 9000 for mature ones; add ",farm" to SHOTS for its close-up).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -1,18 +1,21 @@
 using Aurvangar.Sim;
 using Aurvangar.Sim.Agents;
 using Aurvangar.Sim.Buildings;
+using Aurvangar.Sim.Water;
 
 namespace Aurvangar.ViewCore.Hud;
 
 /// <summary>One item total of the top bar.</summary>
 public readonly record struct ItemTotal(string Name, int Count);
 
-/// <summary>The HUD top bar (VIEW-15): day (1-based for the player), speed, stored totals per item, alerts, and whether
-/// the colony is lost (VIEW-18). The season and days until it changes (ECO-18) arrive with the weather system
-/// (M6-T4, M6-T5; ADR-044).</summary>
-public sealed record TopBar(int Day, string Speed, IReadOnlyList<ItemTotal> Totals, IReadOnlyList<string> Alerts, bool ColonyLost)
+/// <summary>The HUD top bar (VIEW-15): day (1-based for the player), season and whole days until it changes (ECO-18,
+/// M6-T5), speed, stored totals per item, alerts, and whether the colony is lost (VIEW-18).</summary>
+public sealed record TopBar(int Day, Season Season, int DaysLeft, string Speed, IReadOnlyList<ItemTotal> Totals,
+    IReadOnlyList<string> Alerts, bool ColonyLost)
 {
     public string DayText => $"Day {Day}";
+
+    public string SeasonText => TopBarModel.SeasonText(Season, DaysLeft);
 
     public string TotalsText => string.Join("   ", Totals.Select(t => $"{t.Name} {t.Count}"));
 }
@@ -31,8 +34,19 @@ public static class TopBarModel
         if (NeedsSystem.NoWater(sim)) alerts.Add(NoWater);
         if (sim.Buildings.All.Any(b => b.State == BuildingState.Complete && b.Def.Producer is not null && b.NoWater))
             alerts.Add(PumpDry);
-        return new TopBar(sim.Clock.Day + 1, SpeedText(speedMultiplier), Totals(sim), alerts, sim.Agents.ColonyLost);
+        long tick = sim.Clock.Tick;
+        return new TopBar(sim.Clock.Day + 1, WeatherSystem.SeasonAt(tick), WeatherSystem.DaysUntilChange(tick),
+            SpeedText(speedMultiplier), Totals(sim), alerts, sim.Agents.ColonyLost);
     }
+
+    /// <summary>ECO-18: "Wet season, 5 days left" / "Drought, 1 day left".</summary>
+    public static string SeasonText(Season season, int daysLeft) =>
+        $"{(season == Season.Drought ? "Drought" : "Wet season")}, {daysLeft} day{(daysLeft == 1 ? "" : "s")} left";
+
+    /// <summary>The toast shown on <c>SeasonChanged</c>.</summary>
+    public static string SeasonMessage(Season season) => season == Season.Drought
+        ? $"Drought: the springs stop for {WeatherSystem.DroughtDays} days and the river drains"
+        : $"Wet season: the springs flow again for {WeatherSystem.WetDays} days";
 
     public static string SpeedText(int multiplier) => multiplier <= 0 ? "Paused" : $"{multiplier}x";
 

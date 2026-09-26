@@ -66,14 +66,16 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
 ## Screenshot presets
 
 `overview` (whole map, 45° pitch), `river` (hub-to-river close-up), `hub` (colony close-up), `slice` (slice at
-y=20 over the hill). Output to `artifacts/screens/<preset>.png`. Human gates review them.
+y=20 over the hill); these four are the default `SHOTS`. `farm` (close-up on the farm tiles, the hub when there are
+none; M6-T5) is available with `SHOTS=...,farm`. Output to `artifacts/screens/<preset>.png`. Human gates review them.
 
 Shots render with Forward+ (`--rendering-method forward_plus` on the default Vulkan driver), the renderer the game
 plays in, so they show the same lighting and colors as play (ADR-035). There is no separate Compatibility render.
 On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env options: `SEED`, `TICKS` (1200),
 `SHOTS`, `OUT`, and `SCRIPT=digchop` (dig a pit and chop trees near the hub, so colonists are at work;
 `TICKS=400` shows the marks, 1200 shows the piles) or `SCRIPT=build` (chop plus a warehouse, a pump and a levee line
-near the hub; `TICKS=500` catches them mid-build, 1600 shows them complete, ADR-048).
+near the hub; `TICKS=500` catches them mid-build, 1600 shows them complete, ADR-048) or `SCRIPT=farm` (a 5×5 field on
+the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the first mature ones and harvests).
 
 ## Scripted play
 
@@ -84,7 +86,7 @@ bank at tick N, levee line at tick N+300. It is a fixed list of `(tick, command)
 the survival scenario, and `run-headless.sh --script survival`. Build it incrementally: each milestone that adds a
 command type extends the script. So far (M5-T7): pump-entrance notch + chop, pump, warehouse, a levee line.
 
-`run-headless.sh --script digchop` (also `none`, `build` and `survival`) runs the screenshot harness's `ScreenshotScripts` command list
+`run-headless.sh --script digchop` (also `none`, `build`, `farm` and `survival`) runs the screenshot harness's `ScreenshotScripts` command list
 (ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a
 `work:` line per report (marks left, piles, stored items, path searches, trapped agents) and a final `summary:`
 (jobs completed/failed, cells dug, trees felled, items hauled into storage).

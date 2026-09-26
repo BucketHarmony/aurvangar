@@ -1524,3 +1524,42 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   - M6-T6: farm crops wither during every drought unless they stay moist.
   - M6-T7: the region rebuild churn and active-cell peak during drain/refill are the main new tick cost. SIM-P1 is
     measured at day 5, the first drought tick.
+
+## M6-T5 — Godot: farm tool, crop rendering, season HUD (2026-09-26)
+- Done: view side of M6 (ADR-050). No sim code changed.
+  - Farm tool (F, toolbar button now enabled): drag an XZ rectangle, sends `DesignateFarm`; green preview box. Its mouse
+    label says whether the hovered column is moist, or "m of n columns moist" during a drag (`ViewCore/Tools/FarmTool`).
+  - Farm tiles: two raised furrows each in `designations.farm` (VIEW-11 overlay, in `DesignationMesher`).
+  - Crops (`ViewCore/Entities/CropMesher` + new `CropRenderer`): 2×2 stalks that grow in 8 stages; green when moist,
+    straw (`plants.cropDry`, new palette key with `plants.crop`) when dry; potato caps when mature. Polled by a
+    signature (no farm event). Hover label on a tile gives the state, percent, moisture and ticks until it withers.
+  - Ripe bushes show 4 red berry cubes; `PlantRenderer` rebuilds on a signature that includes ripeness.
+  - Top bar: "Wet season, N days left" / "Drought, N days left" (orange), toast on `SeasonChanged`. The bar is now
+    anchored to the top right.
+  - Screenshot harness: `SCRIPT=farm` (5×5 field on the nearest moist ground to the hub, found on a private
+    `MoistureMap`, read only) and an opt-in `farm` preset (`SHOTS=farm`). Default shots unchanged
+    (`ScreenshotPresets.DefaultShots`). `run-headless.sh --script farm` also works.
+- Tests: new `View/FarmViewTests.cs` (18 incl. theory rows): tool hotkey/drag/command, moisture tooltip, crop
+  stages/colors/slice/signature/label, farm overlay, bush berries + signature, season text for 5 ticks across the
+  cycle, season toast, farm script + preset. They did not compile first (no Farm tool, CropMesher, FarmTool, season
+  fields). Updated (intended look change): `PlantMesherTests.Bush_SmallConeWithinItsCell` and
+  `SeedOne_AllPlantsMeshed` now count the berry cubes of ripe bushes; `ScreenshotArgsTests.Defaults_WhenNoArgs`
+  keeps passing because the defaults are now `DefaultShots`, not all preset names.
+  - check.sh: 507 passed, 3 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-050. VIEW-11 and VIEW-15 annotated.
+- Golden: unchanged (no sim change).
+- Headless seed 1, `--script farm`, 9,000 ticks: hash `f8c960dcc30fcceb`, ~8,800 ticks/s, stored potato 75,
+  berries 77 (25 tiles, first harvests before day 4).
+- Perf: perf.sh 7 passed, 1 skipped (SIM-P1). The first run failed PTH-P1 at p95 1.517 ms (known noise, budget
+  1.5 ms; no path code changed); the rerun passed.
+- Screenshots (Forward+, looked at each): `artifacts/screens/farm4000/{farm,hub}.png` (young crops, berries on
+  bushes, "Wet season, 4 days left"), `farm7700/farm.png` (tall green crops, first potato caps, close-up at distance
+  14), `farm9000/{farm,river}.png` (all harvested, 75 potatoes, replanting on bare furrows),
+  `farm13200/farm.png` (drought: orange "Drought, 2 days left", toast, river bed empty, crops straw colored).
+  - Harness quirk: `screenshot.sh`'s `--build-solutions` once did not pick up a ViewCore change (stale
+    `.godot/mono/temp/bin/Debug/Aurvangar.ViewCore.dll`). Run `dotnet build src/Aurvangar.Godot` (check.sh does it)
+    before `screenshot.sh` after editing ViewCore.
+- Next: M6-T6 (complete SurvivalScript). The farm script shows a 5×5 field at the nearest moist site to the hub; its
+  corner is `ScreenshotScripts.FindFarm(sim)` on seed 1 if the survival script wants the same spot. Crops there
+  are straw colored and wither during every drought (river empty days 5-7); the 9,000-tick run already stores 75
+  potatoes before the first drought.

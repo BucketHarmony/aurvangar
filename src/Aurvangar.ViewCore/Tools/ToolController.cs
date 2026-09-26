@@ -4,9 +4,9 @@ using Aurvangar.ViewCore.Picking;
 
 namespace Aurvangar.ViewCore.Tools;
 
-/// <summary>Player tools (VIEW-12). Dig, Chop and Cancel are drag tools (this class); Build and Deconstruct are
-/// click tools (<see cref="BuildTool"/>, <see cref="DeconstructTool"/>, M5-T6). Farm arrives with M6-T5.</summary>
-public enum ToolKind : byte { Select, Dig, Chop, Cancel, Build, Deconstruct }
+/// <summary>Player tools (VIEW-12). Dig, Chop, Farm (M6-T5) and Cancel are drag tools (this class); Build and
+/// Deconstruct are click tools (<see cref="BuildTool"/>, <see cref="DeconstructTool"/>, M5-T6).</summary>
+public enum ToolKind : byte { Select, Dig, Chop, Cancel, Build, Deconstruct, Farm }
 
 /// <summary>Tool state and drag boxes (VIEW-12, VIEW-13, ADR-033). Engine-neutral: the Godot layer feeds it mouse
 /// presses, picks and key presses, draws <see cref="PreviewBox"/>, and enqueues the command a release returns.
@@ -20,19 +20,20 @@ public sealed class ToolController
     private PickHit? _start;
     private PickHit? _end;
 
-    /// <summary>VIEW-12 hotkeys: G dig, C chop, Z cancel, B build, X deconstruct. Null for any other key.</summary>
+    /// <summary>VIEW-12 hotkeys: G dig, C chop, F farm, Z cancel, B build, X deconstruct. Null for any other key.</summary>
     public static ToolKind? ForHotkey(char key) => char.ToUpperInvariant(key) switch
     {
         'G' => ToolKind.Dig,
         'C' => ToolKind.Chop,
+        'F' => ToolKind.Farm,
         'Z' => ToolKind.Cancel,
         'B' => ToolKind.Build,
         'X' => ToolKind.Deconstruct,
         _ => null,
     };
 
-    /// <summary>Dig, Chop and Cancel define a box by dragging.</summary>
-    public static bool IsDragTool(ToolKind tool) => tool is ToolKind.Dig or ToolKind.Chop or ToolKind.Cancel;
+    /// <summary>Dig, Chop, Farm and Cancel define a box by dragging.</summary>
+    public static bool IsDragTool(ToolKind tool) => tool is ToolKind.Dig or ToolKind.Chop or ToolKind.Farm or ToolKind.Cancel;
 
     /// <summary>Switches tool; any drag in progress is dropped without a command.</summary>
     public void SetTool(ToolKind tool)
@@ -76,6 +77,7 @@ public sealed class ToolController
     /// <item>Dig (VIEW-13): the box from the first picked cell to the second, whose height is clamped to the slice
     /// level, so a drag on a sliced layer digs that layer.</item>
     /// <item>Chop (DSG-05): the XZ rectangle of the two picks.</item>
+    /// <item>Farm (ECO-11): the XZ rectangle of the two picks; the sim takes each column's top surface.</item>
     /// <item>Cancel (DSG-06): the dig box raised one cell at the top, so trees standing on the dragged ground (their
     /// base is the cell above the picked block) are included.</item>
     /// </list></summary>
@@ -87,6 +89,7 @@ public sealed class ToolController
         {
             ToolKind.Dig => new DesignateDig(a, b),
             ToolKind.Chop => new DesignateChop(a.X, a.Z, b.X, b.Z),
+            ToolKind.Farm => new DesignateFarm(a.X, a.Z, b.X, b.Z),
             ToolKind.Cancel => CancelCommand(a, b),
             _ => null,
         };
@@ -99,7 +102,7 @@ public sealed class ToolController
         var b = SecondCorner(second, sliceY);
         return tool switch
         {
-            ToolKind.Dig => Sorted(a, b),
+            ToolKind.Dig or ToolKind.Farm => Sorted(a, b),
             ToolKind.Chop => Sorted(a + Int3.Up, b + Int3.Up),
             ToolKind.Cancel => CancelBox(a, b),
             _ => null,

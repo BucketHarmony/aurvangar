@@ -26,5 +26,6 @@
   },
   "agents": { "idle": "#b0b0b0", "working": "#f0f0f0", "dead": "#c03030", "trapped": "#f0c020" },
   "designations": { "dig": "#ff9a3c", "chop": "#ff9a3c", "farm": "#6b4a2a", "unreachable": "#e03a3a" },
-  "plants": { "trunk": "#6b4a2a", "canopy": "#3f6f2e", "bush": "#4f7f3a", "berries": "#b0304a" }
+  "plants": { "trunk": "#6b4a2a", "canopy": "#3f6f2e", "bush": "#4f7f3a", "berries": "#b0304a",
+              "crop": "#6fae3a", "cropDry": "#b39a4e" }
 }

@@ -1,5 +1,6 @@
 using Aurvangar.Sim.Events;
 using Aurvangar.ViewCore.Entities;
+using Aurvangar.ViewCore.Hud;
 using Aurvangar.ViewCore.Tools;
 using Godot;
 
@@ -112,13 +113,16 @@ public partial class GameRoot
         return null;
     }
 
-    /// <summary>Events for the HUD: the colony-lost modal and refused commands.</summary>
+    /// <summary>Events for the HUD: the colony-lost modal, season changes (ECO-18) and refused commands.</summary>
     private void HandleHudEvent(SimEvent e)
     {
         switch (e)
         {
             case ColonyLost:
                 _lostModal.Open(Sim.Clock.Day + 1);
+                break;
+            case SeasonChanged s:
+                _hud.Toast(TopBarModel.SeasonMessage(s.Season));
                 break;
             case CommandRejected r:
                 _hud.Toast($"{r.Command} refused: {r.Reason}");

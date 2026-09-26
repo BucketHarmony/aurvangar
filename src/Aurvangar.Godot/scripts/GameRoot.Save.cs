@@ -36,12 +36,12 @@ public partial class GameRoot
         _hud.Toast($"Loaded (tick {Sim.Clock.Tick}).");
     }
 
-    /// <summary>Makes <paramref name="sim"/> the running simulation: frees the old terrain, water, plant, agent, pile,
+    /// <summary>Makes <paramref name="sim"/> the running simulation: frees the old terrain, water, plant, crop, agent, pile,
     /// designation and building renderers, creates new ones, queues every chunk, and drops pending events and any tool
     /// drag. The slice level carries over; the colony-lost modal follows the new colony.</summary>
     public void AttachSimulation(Simulation sim)
     {
-        foreach (Node? old in new Node?[] { Terrain, WaterView, PlantView, AgentView, PileView, DesignationView, BuildingView })
+        foreach (Node? old in new Node?[] { Terrain, WaterView, PlantView, CropView, AgentView, PileView, DesignationView, BuildingView })
         {
             if (old == null) continue;
             RemoveChild(old);
@@ -56,6 +56,8 @@ public partial class GameRoot
         WaterView.Init(Sim, new WaterColors(Content));
         PlantView = Add(new PlantRenderer { Name = "Plants" });
         PlantView.Init(Sim, new PlantColors(Content));
+        CropView = Add(new CropRenderer { Name = "Crops" });
+        CropView.Init(Sim, new PlantColors(Content));
         AgentView = Add(new AgentRenderer { Name = "Agents" });
         PileView = Add(new PileRenderer { Name = "Piles" });
         PileView.Init(Sim, _entityColors);

@@ -21,10 +21,14 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// looking along -X so both ends sit side by side.</item>
 /// <item><c>hub</c>: colony close-up on the hub footprint center.</item>
 /// <item><c>slice</c>: slice at y=20 over the hill peak (the tallest column).</item>
+/// <item><c>farm</c> (M6-T5): close-up on the center of the farm tiles (the hub when there are none).</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "overview", "river", "hub", "slice" };
+    public static readonly IReadOnlyList<string> Names = new[] { "overview", "river", "hub", "slice", "farm" };
+
+    /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
+    public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
 
     public const int SliceLevel = 20;
 
@@ -53,6 +57,8 @@ public static class ScreenshotPresets
                 float distance = Math.Clamp(MathF.Max(40f, span * 1.5f), OrbitRig.MinDistance, OrbitRig.MaxDistance);
                 return new CameraShot(name, focus, 90f, 40f, distance, top);
             }
+            case "farm":
+                return new CameraShot(name, FarmFocus(sim) ?? HubFocus(sim), 45f, 50f, 14f, top);
             case "slice":
             {
                 var (px, pz) = PeakColumn(sim);
@@ -62,6 +68,16 @@ public static class ScreenshotPresets
             default:
                 throw new ArgumentException($"unknown screenshot preset '{name}' (known: {string.Join(",", Names)})");
         }
+    }
+
+    /// <summary>Center of the farm tiles on X/Z, one cell above their mean top; null when there are none.</summary>
+    public static Vector3? FarmFocus(Simulation sim)
+    {
+        if (sim.Farms.Count == 0) return null;
+        float sx = 0, sy = 0, sz = 0;
+        foreach (var t in sim.Farms.All) { sx += t.Cell.X + 0.5f; sy += t.Cell.Y + 1; sz += t.Cell.Z + 0.5f; }
+        int n = sim.Farms.Count;
+        return new Vector3(sx / n, sy / n, sz / n);
     }
 
     /// <summary>Center of the first building's footprint (the pre-placed hub) at its origin height; the world center

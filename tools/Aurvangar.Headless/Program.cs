@@ -7,7 +7,7 @@ using Aurvangar.ViewCore.Screenshots;
 using Aurvangar.ViewCore.Scripts;
 
 // Headless runner. Usage:
-//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script none|digchop|build|survival]
+//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script none|digchop|build|farm|survival]
 // Prints world stats, per-interval sim stats and the final StateHash. Exit code 0 on success.
 // Later milestones extend the per-interval report (agents alive, jobs, storage, water).
 
@@ -19,7 +19,7 @@ Simulation sim = WorldFactory.Create(opts.Seed, content);
 Console.WriteLine($"world: seed={opts.Seed} size={sim.World.SizeX}x{sim.World.SizeY}x{sim.World.SizeZ} created in {sw.ElapsedMilliseconds} ms");
 PrintWorldStats(sim);
 
-// ADR-036: "none"/"digchop"/"build" are the screenshot harness scripts (ViewCore), enqueued before tick 1 exactly as
+// ADR-036: "none"/"digchop"/"build"/"farm" are the screenshot harness scripts (ViewCore), enqueued before tick 1 exactly as
 // the harness does. ADR-045: "survival" is SurvivalScript, whose commands are enqueued at their ticks.
 Baseline? baseline = null;
 bool survival = opts.Script == "survival";
