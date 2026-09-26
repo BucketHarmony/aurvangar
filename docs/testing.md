@@ -80,3 +80,8 @@ On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env o
 pump, farm 6×6 field, chop area, place warehouse, dig into the hill, breach the bank at tick N, levee line at
 tick N+300. It is used by the golden test, the survival scenario, and `run-headless.sh --script survival`.
 Build it incrementally: each milestone that adds a command type extends the script.
+
+`run-headless.sh --script digchop` (also `none`) runs the screenshot harness's `ScreenshotScripts` command list
+(ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a
+`work:` line per report (marks left, piles, stored items, path searches, trapped agents) and a final `summary:`
+(jobs completed/failed, cells dug, trees felled, items hauled into storage).

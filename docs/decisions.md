@@ -616,3 +616,15 @@ The separate `artifacts/screens/forward_plus/` comparison path is dropped. `SEED
 Consequences: gate shots now match play (lighter, greyer greens; shadowed faces lit by the 0.3 ambient). On Linux
 under `xvfb-run` the shots need a Vulkan driver (e.g. Mesa lavapipe); the CI job does not run screenshots.
 Supersedes the "Compatibility screenshots" consequence of ADR-022.
+
+## ADR-036: The headless runner reuses the screenshot command scripts (2026-09-26, M4-GATE)
+Context: G2 asks for a headless seed-1 run with a dig + chop script and job/haul/path stats. The only dig + chop
+script is `ScreenshotScripts.digchop` in ViewCore; the headless runner referenced only Aurvangar.Sim, and the
+survival script (test project) does not exist before M5-T7.
+Decision: `tools/Aurvangar.Headless` also references Aurvangar.ViewCore (Godot-free, depends only on the sim) and
+accepts `--script none|digchop`, enqueuing `ScreenshotScripts.For(name, sim)` before tick 1, exactly as the
+screenshot harness does. So the headless stats and the gate screenshots describe the same work. With a script it
+prints per-report work stats and a final summary; "items hauled" is the rise in building storage since tick 1.
+Unknown names (including `survival`, until M5-T7) exit 2. Without `--script` the output and hash are unchanged.
+Consequences: a tool depends on view logic, but only on pure C# code; the sim still never references ViewCore.
+When M5-T7 adds `survival`, it must either move to a project the runner can reference or be added beside these.

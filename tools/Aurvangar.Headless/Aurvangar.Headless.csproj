@@ -6,5 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Aurvangar.Sim/Aurvangar.Sim.csproj" />
+    <!-- Godot-free view logic; used only for the shared command scripts (ScreenshotScripts, ADR-036). -->
+    <ProjectReference Include="../../src/Aurvangar.ViewCore/Aurvangar.ViewCore.csproj" />
   </ItemGroup>
 </Project>

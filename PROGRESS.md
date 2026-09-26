@@ -894,3 +894,99 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
 - Perf: n/a (no sim change). perf.sh green.
 - Next: M4-GATE (G2). Use `SCRIPT=digchop` renders, which are now Forward+. The pit-trap issue from M4-T11 is still
   open. On Linux/xvfb, screenshots now need a Vulkan driver (e.g. lavapipe).
+
+## M4-GATE — HUMAN-GATE G2: colonists at work (2026-09-26)
+
+**Status: waiting for human review. The gate box in BACKLOG.md is NOT checked; check it after review.**
+All M4 tasks (T1..T13) are checked. No M5 work has started.
+
+### What changed for the gate
+- The headless runner can now run the dig + chop script: `./scripts/run-headless.sh --seed 1 --ticks 2400
+  --report-every 300 --script digchop` (ADR-036). It reuses the screenshot harness's `ScreenshotScripts` (ViewCore,
+  Godot-free), so the stats and the screenshots describe the same work: a 14x9, 2-deep pit 3 cells east of the hub,
+  and every tree within 24 cells of the hub marked for chopping. It prints a `work:` line per report and a
+  `summary:`. Without `--script`, output and hash are unchanged (`d8a1e43aeeb5d540` at 24,000 ticks).
+  docs/testing.md "Scripted play" documents it. No sim code changed; golden unchanged.
+
+### Build and test results (this run)
+- `./scripts/check.sh`: OK. 361 passed, 37 skipped (acceptance tests for M5+), 0 failed. Godot csproj 0 warnings.
+- `./scripts/perf.sh`: OK. 6 passed, 2 skipped (M6-T1 moisture, M6-T7 full tick at day 5).
+
+| Budget | Measured (Release, this machine) | Limit |
+|---|---|---|
+| WAT-P1 128x128 (15,494 active) | median 1.13 ms, p95 1.19 ms | 4 ms |
+| WAT-P1 192x128 (>= 23,048 active) | median 1.72 ms, p95 1.84 ms | 4 ms |
+| WAT-P2 seed-1 river, tick 1200 | 699 active cells, step median 0.049 ms | 3000 cells |
+| MESH-P1 chunk (3,0,2), 581 quads | median 0.63 ms, p95 0.69 ms (sliced: 0.55 ms) | 6 ms |
+| PTH-P1 A*, 200 paths of 90..110 cells | median 0.31 ms, p95 0.80 ms, max 1.02 ms (5,153 expanded) | 1.5 ms p95 |
+| PTH-P2 region rebuild seed 1 | warm median 2.18 ms, cold 3.47 ms | 25 ms |
+
+Nothing is within 20% of its limit (PTH-P1 p95 is at 53%).
+
+### Headless run: seed 1, `--script digchop`, 2400 ticks (1 day)
+
+| Tick | Dig marks left | Trees marked | Piles (items) | Carried | Stored (logs) | Jobs done | Failed | Path searches | Idle |
+|---|---|---|---|---|---|---|---|---|---|
+| 300 | 53 | 23 | 0 | 0 | 0 | 37 | 1 | 46 | 0 |
+| 600 | 5 | 22 | 1 (4) | 0 | 0 | 86 | 1 | 95 | 0 |
+| 900 | 0 | 14 | 9 (36) | 0 | 0 | 99 | 1 | 109 | 0 |
+| 1200 | 0 | 3 | 18 (72) | 8 | 0 | 110 | 1 | 122 | 0 |
+| 1500 | 0 | 0 | 7 (28) | 16 | 48 | 125 | 1 | 150 | 0 |
+| 1800 | 0 | 0 | 1 (4) | 4 | 84 | 134 | 1 | 163 | 3 |
+| 2100 | 0 | 0 | 0 | 0 | 92 | 136 | 1 | 164 | 5 |
+
+Summary: **136 jobs completed** (90 digs + 23 chops + 23 hauls), **1 job failure** (before tick 300; the job was
+retried and completed, nothing was left unreachable; the cause was not traced), **92 logs hauled** into the Great
+Hall (23 trees x 4 logs, one pile per trip), **164 path searches**, 202 region rebuilds, 0 trapped agents, all 5
+dwarves in one region at the end. The pit is dirt and grass only, so digging produced no items (only stone drops
+items). Everything is done by ~tick 2000; the 5 dwarves are then idle. The run is deterministic: two runs gave hash
+`a182db6b82bdf66f`. Continued to 24,000 ticks: same totals, hash `debf00e425c86e2b`, 17,076 ticks/s.
+Tick cost while working: median 0.07-0.15 ms, but **p95 2.3-3.0 ms**. Each dig or chop triggers a region rebuild
+(~2 ms). That is well under SIM-P1 (8 ms median at day 5), but it is the biggest cost per tick right now.
+
+### Screenshots (Godot 4.6.2 .NET, Forward+/Vulkan, seed 1, looked at)
+- Default, 1200 ticks, no script: `artifacts/screens/{overview,river,hub,slice}.png`. Same as M4-T13: 5 idle dwarves
+  next to the hub. The overview shows the whole map with the river, and the panel lists all 5 dwarves as "Idle".
+- `SCRIPT=digchop TICKS=400`: `artifacts/screens/g2/t400/{overview,river,hub,slice}.png`. In `hub.png` the pit is
+  about half dug (brown floor). The remaining cells have translucent yellow dig marks, and 4 white dwarves are
+  working inside the pit. Orange chop rings circle about 25 trees. The panel reads "Digging" x4 and "Felling a
+  tree". One tree stands in the pit area (see issue 2).
+- `SCRIPT=digchop` (1200): `artifacts/screens/g2/t1200/{overview,river,hub,slice}.png`. In `hub.png` the pit is
+  finished and most marked trees are gone. Dwarves are out in the field, and the panel reads "Felling a tree" x3
+  and "Hauling log" x2. **The log piles are tiny brown specks at this zoom (distance 32).** A single grass-topped
+  column is left standing in the pit where the tree was.
+
+### Open issues
+1. **Pit trap (from M4-T11).** Digging is top-down with no exit rule. In a 10x7x5 pit all 5 dwarves ended on the
+   floor, cut off from the hall (separate region). Chop jobs then went untaken for good. The 2-deep gate pit does
+   not trap anyone, because a 1-step climb is allowed. The problem only shows with 3+ deep digs.
+2. **Tree floors are skipped.** DSG-02 (as implemented) never marks the cell under a plant, because `WorldActions.Dig`
+   refuses a plant's floor. Felling the tree later does not re-mark it, so a drag over a wooded area leaves one-cell
+   pillars (visible in `g2/t1200/hub.png`). The player has to drag the dig again after chopping.
+3. **Log piles are hard to see** at the default hub zoom. They are drawn as small brown cubes sized by count.
+4. **Hub capacity is 100 per item** until warehouses arrive (M5-T3). The gate run stores 92 logs. A larger chop
+   area would fill the hall, and the leftover logs would stay in piles.
+5. **Region rebuild per dig/chop** (~2 ms) is the main cost of a busy tick (p95 2-3 ms). This is fine for now; M6-T7
+   (SIM-P1) will measure it at day 5.
+6. One job failure in the run is untraced. It was retried and completed.
+
+### Questions for the human
+1. **Pit trap**: how should digging avoid stranding dwarves? Options:
+   (a) **Auto-stair**: when a dig would leave the designated area with no walkable way up to the rest of the colony,
+   keep one cell per level as a step (a 1-high staircase along one wall). Dwarves can always get out, and the pit
+   loses a few cells.
+   (b) **Refuse stranding digs**: a dig job is not taken if, after it, the digger's standing cell would be in a
+   different region from the hub. That job waits, or is marked unreachable (red) once the rest is done. It is
+   simple and safe, but it can leave the last layer undug.
+   (c) **Leave it to the player**: no rule, but show a warning (for example, the pit marks turn red when a dwarf is
+   trapped). This is closest to DF, but it is easy to lose all dwarves in the POC.
+   My recommendation is (b) now, with (a) as a later nicety.
+2. **Tree floors in a dig drag**: should the dig designation also mark cells under trees, and dig them once the
+   tree is gone (the dig job simply waits until the plant is removed)? Or keep them unmarked, as now?
+3. **Log pile visibility**: make piles bigger or brighter (for example, a fixed-size marker plus a count label), or
+   leave them until an item art pass?
+4. **Hauling while storage is full**: when the hall hits 100 of an item before warehouses exist, should the logs
+   stay in piles (current behavior), or should haul jobs stop being posted with a HUD notice?
+
+Next after approval: M5-T1 (building definitions, rotation, placement validation), plus any tasks the answers add
+(for example, a pit-exit rule before M5).
