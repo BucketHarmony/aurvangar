@@ -111,3 +111,16 @@ the end.
 Consequences: Overfill (WAT-16) can occur from spread alone (four min-flow inflows of 1 into a cell 2 below Full);
 tests cover both the open-air push and the ceiling evaporation. In Drought (strength 0) sources add nothing and the
 river drains through drains and evaporation only.
+
+## ADR-012: Basin scenario source sits above the rim (2026-09-26, M2-T3)
+Context: `WaterScenarioTests.BasinFillsThenOverflows` (water.md scenario 2) put its source at (1,7,1), in the top
+interior layer of a basin whose walls also end at y=7. WAT-09 sets a source cell to `Full * strength / 100` and
+never above, and no rule moves water up except WAT-16 overfill (level > Full). A full basin with the source inside it
+therefore stays at exactly Full in every y=7 cell and can never overflow the rim, whatever the implementation. The
+alternative, sources that add `Full` per step and overfill upward, contradicts WAT-09's wording and would make
+GEN-08's river source column (bed..bed+3) push water up without limit.
+Decision: Keep WAT-09 as written (set/raise to target). Move the scenario's corner source one cell above the rim,
+to (1,8,1), where it still pours into the corner of the basin and overflows once the basin is full. The fill
+and overflow assertions are unchanged.
+Consequences: A source only drives water up to its own cell height. Scenarios that expect a source to overflow a
+container must place the source at or above the rim.

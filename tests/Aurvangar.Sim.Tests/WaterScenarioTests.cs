@@ -46,16 +46,18 @@ public class WaterScenarioTests
         for (int y = 5; y <= 9; y++) Assert.Equal(Full, sim.Water.GetLevel(new Int3(5, y, 5)));
     }
 
-    [Fact(Skip = "M2-T3")]
+    [Fact]
     public void BasinFillsThenOverflows() // water.md scenario 2
     {
         // Floor top y=4. Walls x=0/11, z=0/11 from y=5..7. Interior x,z in 1..10, 3 deep.
+        // The corner source sits one cell above the rim (y=8): WAT-09 sources are set to Full, never above it, so a
+        // source inside the top layer (y=7) could never lift water over the rim (ADR-012).
         var b = new ScenarioBuilder().Ground(4);
         b.FillBox(new Int3(0, 5, 0), new Int3(11, 7, 0), BlockId.Stone)
          .FillBox(new Int3(0, 5, 11), new Int3(11, 7, 11), BlockId.Stone)
          .FillBox(new Int3(0, 5, 0), new Int3(0, 7, 11), BlockId.Stone)
          .FillBox(new Int3(11, 5, 0), new Int3(11, 7, 11), BlockId.Stone)
-         .Source(new Int3(1, 7, 1));
+         .Source(new Int3(1, 8, 1));
         var sim = b.Build();
 
         sim.RunTicks(2000);

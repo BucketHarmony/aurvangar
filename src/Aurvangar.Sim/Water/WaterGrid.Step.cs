@@ -17,13 +17,14 @@ public sealed partial class WaterGrid
     /// <summary>WAT-07: below this level a film on a floor evaporates.</summary>
     public const int FilmLevel = 16;
 
-    /// <summary>One CA step (WAT-02..09, WAT-16). Drains and world interaction: M2-T3..T4.</summary>
+    /// <summary>One CA step (WAT-02..11, WAT-16). World interaction: M2-T4.</summary>
     public void Tick(EventBus events)
     {
         ApplySources();
         _active.TakeSorted(_stepCells);                    // WAT-03: sorted for stable iteration
         foreach (var c in _stepCells) ComputeFlows(c);
         ApplyDeltas();
+        ApplyDrains();
         foreach (var c in _changed) ActivateAround(c);     // WAT-02: changed cells and their neighbors
         _changed.Clear();
     }
@@ -39,6 +40,21 @@ public sealed partial class WaterGrid
             Stats.SourceAdded += target - _level[s];
             _level[s] = (ushort)target;
             ActivateAround(s);
+        }
+    }
+
+    /// <summary>WAT-10: empty each drain cell at the end of the step; the removed volume is counted in
+    /// <see cref="WaterStats.Drained"/>. The change activates the drain's wet neighbors so water keeps flowing in.
+    /// </summary>
+    private void ApplyDrains()
+    {
+        foreach (var d in _drains)
+        {
+            int v = _level[d];
+            if (v == 0) continue;
+            Stats.Drained += v;
+            _level[d] = 0;
+            _changed.Add(d);
         }
     }
 

@@ -213,7 +213,7 @@ public class WaterGridTests
         Assert.Equal(before, Accounted(sim));
     }
 
-    [Fact(Skip = "M2-T3")]
+    [Fact]
     public void Conservation_RandomPours() // WAT-11, WAT-16
     {
         var sim = new ScenarioBuilder().Ground(4)
@@ -238,7 +238,7 @@ public class WaterGridTests
         }
     }
 
-    [Fact(Skip = "M2-T3")]
+    [Fact]
     public void Source_AddsVolume_Drain_RemovesIt() // WAT-09, WAT-10
     {
         var sim = new ScenarioBuilder().Ground(4)
@@ -251,12 +251,30 @@ public class WaterGridTests
         Assert.Equal(0, Accounted(sim));
     }
 
-    [Fact(Skip = "M2-T3")]
+    [Fact]
     public void Source_StrengthZero_AddsNothing() // WAT-09
     {
         var sim = new ScenarioBuilder().Ground(4).Source(new Int3(2, 5, 2)).Build();
         sim.Water.SourceStrength = 0;
         sim.RunTicks(50);
         Assert.Equal(0, sim.Water.Stats.SourceAdded);
+    }
+
+    [Fact]
+    public void Conservation_SourceAndDrain_EveryTick() // WAT-09, WAT-10, WAT-11
+    {
+        var sim = new ScenarioBuilder().Ground(4)
+            .Source(new Int3(2, 5, 2)).Drain(new Int3(6, 5, 2)).Drain(new Int3(2, 5, 6))
+            .Build();
+        sim.Water.SourceStrength = 50;
+        for (int t = 0; t < 300; t++)
+        {
+            sim.Tick();
+            Assert.Equal(0, Accounted(sim));
+            Assert.Equal(0, sim.Water.GetLevel(new Int3(6, 5, 2)));
+            Assert.Equal(0, sim.Water.GetLevel(new Int3(2, 5, 6)));
+            Assert.True(sim.Water.GetLevel(new Int3(2, 5, 2)) <= Full / 2);
+        }
+        Assert.True(sim.Water.Stats.Drained > 0);
     }
 }

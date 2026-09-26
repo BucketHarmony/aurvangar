@@ -59,7 +59,7 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M2-T2** Spread, minimum flow, evaporation · specs: WAT-05..08 · deps: M2-T1
   - Un-skip `WaterGridTests.Spread_*`, `WaterScenarioTests.SingleCellSpreadsAndEvaporates`,
     `WaterScenarioTests.ShaftFillsBottomUp`.
-- [ ] **M2-T3** Sources, drains, stats, conservation · specs: WAT-09..11 · deps: M2-T2
+- [x] **M2-T3** Sources, drains, stats, conservation · specs: WAT-09..11 · deps: M2-T2
   - Un-skip `WaterScenarioTests.BasinFillsThenOverflows`, `WaterGridTests.Conservation_*`.
 - [ ] **M2-T4** World interaction · specs: WAT-12, WAT-13, WAT-15 · deps: M2-T3
   - WaterGrid consumes `World.CellChanged`. Solidify push; dig activation; WaterDirty event throttling.

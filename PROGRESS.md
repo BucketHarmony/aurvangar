@@ -146,3 +146,20 @@ Entry template:
 - Next: M2-T3 needs drains (WAT-10: zero at end of step, count `Drained`). `ApplySources` already exists. Note
   that a source's stream arrives as alternating Full slugs under double buffering, which slows fill rates; check
   `BasinFillsThenOverflows` (2,000 ticks) against this.
+
+## M2-T3 — Sources, drains, stats, conservation (2026-09-26)
+- Done: `WaterGrid.Step.cs` adds `ApplyDrains` (WAT-10). It runs after the deltas are applied, zeroes each drain
+  cell, counts the volume in `Stats.Drained`, and marks the drain changed so its wet neighbors activate and keep
+  flowing in. Sources (WAT-09, raise-only) were already in place from M2-T2. WAT-11 conservation now holds with
+  sources and drains.
+- Tests: un-skipped `WaterGridTests.Conservation_RandomPours`, `Source_AddsVolume_Drain_RemovesIt`,
+  `Source_StrengthZero_AddsNothing`, and `WaterScenarioTests.BasinFillsThenOverflows`. Before the change, the drain
+  test failed on `Drained > 0` (right reason). The basin test failed on "never overflowed" because of its geometry
+  (ADR-012): I moved its source from (1,7,1) to (1,8,1). Added `Conservation_SourceAndDrain_EveryTick` (strength 50,
+  two drains, conservation checked every tick). check.sh: 85 passed, 95 skipped, 0 failed.
+- Decisions: ADR-012 (the basin scenario source sits one cell above the rim; WAT-09 keeps set/raise semantics).
+- Golden: unchanged (seed 1 has no sources or drains registered until M2-T5).
+- Perf: n/a
+- Next: M2-T4 (world interaction). `WaterGrid` does not yet consume `World.CellChanged`, and it emits no `WaterDirty`
+  events (the `events` parameter of `Tick` is still unused). Drain cells are only zeroed at the end of the step, so
+  they hold water while that step is computed, and neighbors see a drain as an empty cell only from the next step.
