@@ -367,3 +367,125 @@ Entry template:
   p95 3.95 ms (budget 4 ms on the median; the median has 50% headroom). WAT-P2 1602 active cells, step 0.086 ms.
 - Next: M3-GATE (HUMAN-GATE G1). Screenshots cannot be produced here (GODOT_BIN unset; only standard Godot 4.6.1
   installed), so the gate report must say so and give the perf numbers above.
+
+## M3-GATE — HUMAN-GATE G1: world and water look (2026-09-26)
+
+**Status: waiting for human review. The gate box in BACKLOG.md is NOT checked; check it after review.**
+All M3 tasks (T1..T7) are checked. No M4 work has started.
+
+### Build and test results (this run)
+- `./scripts/check.sh`: OK. 177 passed, 78 skipped (acceptance tests for later milestones), 0 failed. The Godot
+  csproj builds with 0 warnings.
+- `./scripts/perf.sh`: OK. 4 passed, 4 skipped (M4-T12 x2, M6-T1, M6-T7).
+
+| Budget | Measured (Release, this machine) | Limit |
+|---|---|---|
+| WAT-P1 128x128 (~15.5k active) | median 1.16 ms, p95 1.74 ms | 4 ms median |
+| WAT-P1 192x128 (>= 23,048 active every step) | median 2.06 ms, p95 3.24 ms | 4 ms median |
+| WAT-P2 seed-1 river after 1200 ticks | 1602 active cells, step median 0.086 ms | 3000 cells |
+| MESH-P1 busiest seed-1 chunk (3,0,2), 581 quads | median 0.81 ms, p95 2.06 ms | 6 ms |
+| MESH-P1 same chunk sliced at y=16 (265 quads, 44 cut) | median 0.56 ms | 6 ms |
+
+- Headless smoke run `run-headless.sh --seed 1 --ticks 24000 --report-every 2400`: world created in 58 ms; 150
+  trees, 24 bushes, 1 building (the hub). Tick median 0.085-0.096 ms, p95 <= 0.194 ms, 9,735 ticks/s. Active water
+  cells 1,901-2,462. Final hash `1466e1f6d7ad677c`. No agents yet (they arrive in M4).
+- Water volume on seed 1 falls from 4,785,289 at tick 0 to 2,747,763 at day 10 (-43%, about 1,990 full cells)
+  with no drought. It is still falling slowly (-50k over the last 2400 ticks). The conservation tests pass, so the
+  water leaves through drains and evaporation and is not lost to a bug. The likely cause is the initial fill of the
+  lower bank cells (ADR-009) draining away, plus evaporation of the thin film on the banks. The active cell count
+  stays within the WAT-P2 budget. See Q4.
+
+### Screenshots: NOT produced
+The only Godot on this machine is the standard (non-.NET) 4.6.1 from winget, and `GODOT_BIN` is unset. So
+`./scripts/screenshot.sh` stops with a clear error and `artifacts/screens/` does not exist.
+
+**No Godot-side code from M3-T4..T6 has ever been run.** GameRoot, ChunkRenderer, WaterRenderer, PlantRenderer,
+CameraRig, DebugOverlay, HoverMarker, ScreenshotRunner, Main.tscn and Screenshot.tscn have only been compiled and
+checked with static tests. The ViewCore code they call (meshers, queues, camera math, picking, presets) is covered
+by headless unit tests.
+
+How to produce the four PNGs:
+1. Install Godot **4.6 .NET** (the "mono" build, 4.6.x, to match `Godot.NET.Sdk/4.6.2`). The .NET 8 SDK is already
+   installed.
+2. In Git Bash: `export GODOT_BIN='C:/path/to/Godot_v4.6.x-stable_mono_win64_console.exe'`. Use the `_console.exe` so
+   you can see Godot's output.
+3. Recommended once: open `src/Aurvangar.Godot/project.godot` in that editor so it imports the project and creates
+   `.godot/`.
+4. Run `./scripts/screenshot.sh`. It writes `artifacts/screens/{overview,river,hub,slice}.png` (seed 1, 1200 ticks).
+   Override with `SEED`, `TICKS`, `SHOTS` or `OUT`.
+
+What to look at in each shot (camera numbers are in ADR-020):
+- `overview.png` (world center, yaw 45, pitch 45, distance 120): terrain colors (grass, dirt, stone, sand), the hill,
+  the river across the whole map, trees drawn as trunk + cone. There should be no holes, no inside-out faces and no
+  seams at the 32-cell chunk borders.
+- `river.png` (between the hub and the river, looking along -X): water transparency (alpha 0.72) and the
+  shallow-to-deep tint, the sand banks, water side faces where the bank steps down. Look for flicker or wrong draw
+  order where water overlaps terrain.
+- `hub.png` (the hub, pitch 50, distance 32): the hub block (BuildingSolid) on the spawn flat, bushes nearby, and how
+  big one cell looks at this zoom.
+- `slice.png` (slice at y=20 over the hill peak): cut faces darkened (x0.55) only where solid rock continues above,
+  nothing drawn above y=20, trees above the slice hidden.
+
+First-run checklist for the game itself (play Main.tscn in the editor):
+- **Face winding**: terrain is not inside-out (you see the outer faces, not the far walls). The CCW-to-CW flip is in
+  `MeshWinding`. If everything is inverted, that flip or the material cull mode is wrong.
+- **Water transparency sorting**: water is alpha-blended with culling disabled and no shadows, one mesh per chunk.
+  Watch for water chunks vanishing or popping as the camera turns, and for terrain showing through where it should
+  not.
+- **Camera** (VIEW-06): WASD or the arrow keys pan relative to the view. Q/E rotate 90 degrees (0.2 s tween). The
+  wheel zooms between 10 and 120. Middle-drag changes yaw and pitch (pitch 25-80). Pan speed equals the zoom distance
+  in cells/s, so judge whether it feels too fast.
+- **Slice keys** (VIEW-04): PageUp/PageDown and ]/[ move the slice one level and repeat while held. Only the affected
+  chunk layers should remesh. The camera focus drops onto the slice when you slice below the colony.
+- **F3 overlay** (VIEW-17): FPS, ticks/s, water ms, region ms, active water cells and remesh queue lengths. Jobs show
+  "none" until M4.
+- **Picking** (VIEW-05): the hover box marks the cell under the mouse, on the correct face. Nothing above the slice
+  can be picked.
+- **Speed**: Space pauses and resumes; 1/2/3 set x1/x3/x6. At x1 the river should look calm and settled, with no
+  visible stepping.
+
+### Known and likely visual issues
+- Water top quads are one per cell and not merged (as the contract says). This is fine for looks but costs more
+  triangles.
+- A WaterDirty event can remesh up to 7 chunks (ADR-018), so a busy river can lag a few frames behind the sim.
+- Plants are placeholders: a trunk box with a square cone canopy for trees, a small cone for bushes.
+- Lighting and post-processing are untuned. Colors come straight from `data/palette.json` as vertex colors.
+
+### ADRs from M1–M3 to sanity-check (docs/decisions.md)
+- **ADR-009** River: flat bed at y=14, 7-cell channel, banks slope 1:1. The initial water also fills the low bank
+  cells.
+- **ADR-010** The water active set holds wet cells only and is part of the hashed and saved state.
+- **ADR-011** All water rules read the pre-step snapshot. Sources only raise water, never lower it. The shaft test
+  was rewritten.
+- **ADR-012** The basin scenario's source moved above the rim, because a source cannot overfill its own container.
+- **ADR-013** Water reads world changes twice per tick. Defines the push-out rules. WaterDirty baselines are not
+  state.
+- **ADR-014** The 600-tick pre-settle runs the full tick loop, then resets the clock, the water stats and the event
+  queue.
+- **ADR-015** The water step uses a radix sort and AggressiveOptimization; the sustained-20k perf test is heavier
+  than the spec asks.
+- **ADR-016** Slice cut faces appear only where the real cell above is solid, so open ground at the slice keeps its
+  normal color.
+- **ADR-017** Every wet cell gets water side faces; the tint follows column depth (fully dark at 3 cells deep).
+- **ADR-018** View loop logic (tick clock, remesh queues, router, winding) lives in ViewCore. Collision is built per
+  chunk.
+- **ADR-019** Camera start (over the hub, yaw 45, pitch 45, distance 60), the focus height rule, the sim profiler
+  hook, and the picking rules.
+- **ADR-020** Screenshot presets are computed from the world. Placeholder plant shapes. The harness scene instances
+  Main.tscn.
+
+### Questions for the human
+1. **Water look**: the colors run from shallow `#5aa9d6` to deep `#1f4f7a`, with alpha 0.72, fully dark at 3 cells
+   deep. Keep these, or make the water more opaque, greener or darker? Should the surface be merged or animated for
+   the POC?
+2. **Slice cut color**: cut faces are the block color x0.55. Is that readable, or do you want a distinct tint or
+   hatch (for example a fixed dark red-brown) so cut rock stands out?
+3. **Camera feel**: pan speed equals the zoom distance in cells/s, zoom is 10-120, pitch 25-80, and the camera starts
+   at distance 60 over the hub. Is it too fast or too slow? Should Q/E rotate freely instead of in 90-degree steps?
+4. **River volume**: seed 1 loses about 43% of its water over 10 days, mostly the initial bank fill draining away
+   (ADR-009), so by day 10 the river is visibly narrower than at tick 0. Is the day-10 width acceptable, or should the
+   initial fill be limited to the channel, or the sources made stronger?
+5. **Godot .NET on the build machine**: can you install Godot 4.6 .NET and set `GODOT_BIN`, so the loop can render
+   screenshots itself from M4 on? Until then every Godot task is only compile-verified.
+
+Next after approval: M4-T1 (PathGrid flag cache).
