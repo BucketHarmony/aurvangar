@@ -24,6 +24,8 @@ public sealed class Simulation
     public ContentDb Content { get; }
     public VoxelWorld World { get; }
     public WaterGrid Water { get; }
+    /// <summary>ECO-15. Saved and hashed: it reflects the water at the last recompute (ADR-046).</summary>
+    public MoistureMap Moisture { get; }
     public PlantSystem Plants { get; }
     public PathGrid PathGrid { get; }
     public Pathfinder Pathfinder { get; }
@@ -54,6 +56,7 @@ public sealed class Simulation
         Rng = Rng.Derive(seed, salt: 1);
         World = new VoxelWorld(sizeX, sizeY, sizeZ, content.SolidTable);
         Water = new WaterGrid(World);
+        Moisture = new MoistureMap(World, Water);
         Plants = new PlantSystem(World);
         PathGrid = new PathGrid(World, Water, Plants);
         Pathfinder = new Pathfinder(PathGrid);
@@ -77,7 +80,7 @@ public sealed class Simulation
         Profiler?.Begin(TickPhase.Water);
         Water.Tick(Events);                      // 3
         Profiler?.End(TickPhase.Water);
-        // 4  MoistureMap.Tick                    (M6-T1)
+        Moisture.Tick(Clock.Tick);               // 4
         Plants.Tick(Clock);                      // 5
         NeedsSystem.Tick(this);                  // 6
         Buildings.Tick(this);                    // 7
@@ -109,6 +112,7 @@ public sealed class Simulation
         h.Add(World.SizeX); h.Add(World.SizeY); h.Add(World.SizeZ);
         h.Add(World.Blocks);
         Water.AddToHash(ref h);
+        Moisture.AddToHash(ref h);
         Plants.AddToHash(ref h);
         Buildings.AddToHash(ref h);
         Piles.AddToHash(ref h);

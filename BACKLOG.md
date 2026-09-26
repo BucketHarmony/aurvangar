@@ -170,7 +170,7 @@ Milestone order is by risk: world and water before anything that depends on them
 
 ## M6 — Farming, weather, integration
 
-- [ ] **M6-T1** Moisture map · specs: ECO-15, ECO-16 · deps: M2-T5
+- [x] **M6-T1** Moisture map · specs: ECO-15, ECO-16 · deps: M2-T5
   - Un-skip `MoistureTests.*`.
 - [ ] **M6-T2** Farm designation and crops · specs: ECO-11..14 · deps: M6-T1, M5-T5
   - Un-skip `Scenarios/FarmScenarioTests.*`.

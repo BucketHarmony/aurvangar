@@ -13,12 +13,6 @@ namespace Aurvangar.Sim.Tests
         [Fact(Skip = "M6-T3")] public void HarvestNotPosted_WhenFoodStockAtLeast60() => Placeholder.Write("ECO-10");
     }
 
-    public class MoistureTests
-    {
-        [Fact(Skip = "M6-T1")] public void Radius5Moist_Radius6Dry() => Placeholder.Write("ECO-15 / needs-economy.md moisture scenario");
-        [Fact(Skip = "M6-T1")] public void HeightWindow_Respected() => Placeholder.Write("ECO-15: water 3 below surface does not moisten");
-        [Fact(Skip = "M6-T1")] public void RecomputesEvery50Ticks() => Placeholder.Write("ARCH-01 step 4");
-    }
 }
 
 namespace Aurvangar.Sim.Tests.Scenarios

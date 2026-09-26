@@ -3,11 +3,12 @@ using Aurvangar.Sim.Core;
 namespace Aurvangar.Sim.Save;
 
 /// <summary>SAV-01 section markers, written before each section so a corrupt or mismatched file fails at the first
-/// section that does not line up. Never renumber; append new sections and bump <see cref="SaveGame.FormatVersion"/>.</summary>
+/// section that does not line up. Never renumber; append new sections and bump <see cref="SaveGame.FormatVersion"/>.
+/// Enum order is not the on-disk order: sections are written in call order (Moisture follows Plants).</summary>
 internal enum SaveSection
 {
     Header = 1, Blocks, Water, WaterStats, Plants, Buildings, Storage, Piles, Designations, Agents, Jobs, Ids,
-    Commands, End,
+    Commands, End, Moisture,
 }
 
 /// <summary>Binary helpers shared by the save sections.</summary>

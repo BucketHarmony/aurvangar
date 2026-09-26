@@ -85,6 +85,9 @@ public sealed class VoxelWorld
     /// <summary>Solidity by flat index (caller guarantees bounds). Hot path.</summary>
     public bool IsSolidAt(int index) => _solid[_blocks[index]];
 
+    /// <summary>Whether a raw block byte (from <see cref="Blocks"/>) is solid.</summary>
+    public bool IsSolidBlock(byte block) => _solid[block];
+
     /// <summary>Set a block. Returns false if out of bounds or unchanged. Marks chunks dirty and records the change.</summary>
     public bool SetBlock(Int3 c, BlockId b)
     {

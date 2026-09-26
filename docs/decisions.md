@@ -555,7 +555,7 @@ restores entities through `internal Restore` hooks (no events), then: clears the
 `PathGrid.InvalidateAll()`, rebuilds regions at once when the saved game had them built (job selection reads them
 during the tick; a game saved before its first tick had none and its load has none either), `Jobs.RebuildReservations()`, takes the loaded levels as the WAT-15
 baseline, and drains events. Farm tiles and weather are not sections yet; the tasks that add them (M6-T1..T4) add
-sections and bump the format version (no migration, SAV-04). Moisture is recomputed, not saved (SAV-01).
+sections and bump the format version (no migration, SAV-04). Moisture is recomputed, not saved (SAV-01; superseded by ADR-046: moisture is saved).
 Consequences: a save taken between ticks is exact, also before the first tick. Only a game whose world was mutated
 outside `Tick` after its regions were built (stale regions, test setup only) loads with fresh regions instead.
 Block bytes, item ids (1-based), enums, counts and indices are range-checked on load. `SimCounters` and `BuildingSystem.Totals` are
@@ -917,3 +917,30 @@ Decision:
 Consequences: golden hashes now cover construction, pumping, hauling and needs (regenerated). With the script no
 dwarf dies of thirst; the colony now starves after the 40 starting berries (first death tick 23,091, lost at
 29,011) until farms (M6).
+
+## ADR-046: Moisture map: surface, height window, algorithm; saved and hashed instead of recomputed on load (2026-09-26, M6-T1)
+Context: ECO-15 says "the top-surface cell" without defining it for columns under water, overhangs or buildings, or
+with no solid cell. SAV-01 and ADR-032 say moisture is not saved and is recomputed on load. But the map is only
+recomputed in ticks that are a multiple of 50, so between recomputes it reflects older water. A load at, say, tick
+1025 that recomputes would see the water at 1025, not at 1000. Once crops read the map (M6-T2), the loaded game
+would diverge from the original, which breaks SAV-03.
+Decision:
+- A column's surface is its highest solid cell (any solid block, including BuildingSolid). Under a river that is the
+  riverbed, so the water above it (surfaceY + 1) moistens it. A column with no solid cell is dry.
+- A column is moist when a water cell with level >= 128 lies within Chebyshev radius 5 at
+  `y in [surfaceY - 2, surfaceY + 1]`, where surfaceY is the target column's own surface.
+- Algorithm (`Water/MoistureMap.cs`): one top-down pass over all layers builds a per-column bitmask of the heights
+  that hold enough water (skipping groups of four empty cells) and the surface height (the search stops once every
+  column has one). The masks are OR-dilated along x, then along z (a separable 11x11 box). A column is moist if its
+  dilated mask has a bit inside its window. This is the 2D dilation ECO-15 asks for; the height window stays exact
+  because the mask keeps every height.
+- `Simulation.Tick` step 4 calls `Moisture.Tick(Clock.Tick)`, which recomputes when `tick % 50 == 0`, after the water
+  step. The flags (one byte per column) are part of `StateHash` and are saved in a new `Moisture` section after
+  plants (RLE, values checked to be 0/1). Load restores them and does not recompute. Save `FormatVersion` is now 3.
+  docs/specs/save-load.md SAV-01 is updated.
+- `SurfaceY(x, z)` is a public helper that reads the current world (for farms and tests); the surface found during
+  the recompute is scratch, not state.
+Consequences: SAV-03 holds exactly for saves taken between recomputes. The saved size grows by the RLE of 16,384
+bytes (small; mostly long runs). Seed-1 golden hashes change (the hash now includes the map); no behavior changes
+until crops read the map. v2 saves no longer load (SAV-04). Recompute on seed 1: ~0.9 ms median (Release; budget
+3 ms, ECO-16).

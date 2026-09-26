@@ -11,7 +11,7 @@ namespace Aurvangar.Sim.Save;
 public static partial class SaveGame
 {
     public const string Magic = "CSAV";
-    public const int FormatVersion = 2;   // 2: M5-T5 need retry ticks, ColonyLost
+    public const int FormatVersion = 3;   // 2: M5-T5 need retry ticks, ColonyLost; 3: M6-T1 moisture
 
     /// <summary>Largest world edge a save may declare (guards the allocation on corrupt input).</summary>
     private const int MaxWorldEdge = 1024;
@@ -34,6 +34,9 @@ public static partial class SaveGame
 
         WriteWater(w, sim);
         WritePlants(w, sim);
+
+        w.Section(SaveSection.Moisture);   // ADR-046: saved, not recomputed (it reflects the last recompute)
+        w.WriteRle(sim.Moisture.Flags);
         WriteBuildings(w, sim);
         WritePiles(w, sim);
         WriteDesignations(w, sim);
@@ -107,6 +110,11 @@ public static partial class SaveGame
 
         ReadWater(r, sim);
         ReadPlants(r, sim);
+
+        r.ExpectSection(SaveSection.Moisture);
+        r.ReadRle(sim.Moisture.FlagsMutable, "moisture");
+        foreach (var f in sim.Moisture.Flags)
+            if (f > 1) throw new InvalidDataException($"Save file is corrupt: moisture flag {f}.");
         ReadBuildings(r, sim, content);
         ReadPiles(r, sim, content);
         ReadDesignations(r, sim);

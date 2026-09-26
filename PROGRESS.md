@@ -1356,3 +1356,39 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
 - Next: M6-T1. M6-T6 must add food (farm field near the river, berry harvest) to the script so all 5 live to day
   10; append its commands to `SurvivalScript.Build()` after tick 1800 and keep `EnqueueDue` semantics. The screenshot
   harness does not support `SCRIPT=survival` yet (it enqueues all commands before tick 1); M6-T8 may want it.
+
+## M6-T1 — Moisture map (2026-09-26)
+- Done: ECO-15, ECO-16. New `Water/MoistureMap.cs` (`sim.Moisture`), ticked at ARCH-01 step 4: it recomputes when
+  `tick % 50 == 0`, after the water step.
+  - A column's surface is its highest solid cell. The column is moist when water >= 128 lies within Chebyshev
+    radius 5 at `y in [surfaceY - 2, surfaceY + 1]`; a column with no solid cell is dry.
+  - Algorithm: one top-down layer pass builds per-column height bitmasks of wet cells (skipping groups of four empty
+    cells) and the surface heights; then a separable OR dilation (x, then z) and a window test per column.
+  - API: `IsMoist(x, z)`, `Flags` (byte per column), `SurfaceY(x, z)` (reads the current world), `Recompute()`.
+    `VoxelWorld.IsSolidBlock(byte)` added.
+  - The flags are hashed and saved (new `Moisture` section after plants, `FormatVersion` 3), not recomputed on load:
+    between recomputes they reflect older water, so a recompute on load would break SAV-03 once crops read them
+    (ADR-046; SAV-01 updated).
+- Tests: the 3 placeholders moved to `MoistureTests.cs` with bodies (13 cases): radius 5 moist / 6 dry, including
+  diagonals and an exact 11x11 count; level 127 vs 128; height window (water at surface + 2 / + 1 / 0 / - 2 / - 3);
+  a column with no solid; recompute only at ticks 0, 50, 100; a save at tick 25 keeps the stale map and the hash and
+  both copies turn moist at tick 50; the map is hashed; seed-1 banks moist, Great Hall dry. `OtherPerfTests.
+  Moisture_Recompute` has a body and is un-skipped. The tests did not compile first (no `Simulation.Moisture`).
+  - check.sh: 452 passed, 10 skipped, 0 failed; Godot csproj 0 warnings.
+- Review (sim-reviewer): no rule violations; agreed with saving the map. It reported ECO-16 as failing at 3.5-3.9 ms,
+  but that was a Debug build; perf.sh (Release) measures 0.99 ms. Applied: a comment that `SaveSection` enum order is
+  not the on-disk order, and ADR-032's recompute-on-load line is marked superseded. Noted for M6-T2: `SurfaceY` reads
+  the live world while the flags reflect the last recompute.
+- Decisions: ADR-046.
+- Golden: regenerated with `UPDATE_GOLDEN=1` (intentional): `StateHash` now includes the moisture flags. Nothing reads
+  them yet, so behavior is unchanged. New: 0 `79abf70fc6d591a0`, 1200 `28f147c5e5ed96de`, 3000 `dca29ab9252d4323`,
+  6000 `b02a6ce078f54935`.
+- Perf: perf.sh 7 passed, 1 skipped (SIM-P1, M6-T7). ECO-16 moisture recompute median 0.99 ms, p95 1.04 ms (budget
+  3 ms). WAT-P1 1.71 / 1.13 ms, WAT-P2 699 active, PTH-P1 p95 0.77 ms, PTH-P2 warm 4.67 ms, MESH-P1 0.62 ms. One
+  earlier perf.sh run had PTH-P1 p95 at 1.519 ms, with every timing about 2x slower (machine load); three reruns gave
+  0.75-0.83 ms and a full rerun was green. No path code changed.
+- Headless seed 1, `--script survival`, 24,000 ticks: hash `3c4a16db6749c7b8`, ~12,200 ticks/s, 154 jobs done,
+  0 failed (same stats as M5-T7). No script: hash `5bb7582c41e4551b`, colony lost at tick 15,012 (unchanged).
+- Next: M6-T2. Crops read `sim.Moisture.IsMoist(x, z)` for their column; ECO-11's farm tile is the column's top
+  surface cell, so `SurfaceY` should match the tile's y. Farm tiles need their own save section (bump FormatVersion
+  to 4) and hash. No view event exists for moisture changes yet; M6-T5 can add one if it renders moisture.

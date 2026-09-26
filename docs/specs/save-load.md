@@ -2,7 +2,8 @@
 
 - **SAV-01** Binary format via `BinaryWriter`: magic `CSAV`, format version `int` (start at 1), then sections in
   fixed order: header (seed, tick, rng state), blocks (RLE of the byte array), water (RLE of ushort levels),
-  water stats, plants, farm tiles, moisture (recomputable; not saved, recomputed on load), buildings (sorted by
+  water stats, plants, moisture flags (saved and hashed: they reflect the water at the last 50-tick recompute, ADR-046),
+  farm tiles, buildings (sorted by
   id), storage contents, item piles (sorted by cell index), designations, agents (sorted by id, alive only), job
   board (sorted by id, with reservations), weather, id allocators, command log.
 - **SAV-02** Load constructs a `Simulation` purely from the file plus `ContentDb`. No terrain generation runs on

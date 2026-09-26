@@ -70,8 +70,20 @@ public class WaterPerfTests
 [Trait("Category", "Perf")]
 public class OtherPerfTests
 {
-    [Fact(Skip = "M6-T1")]
-    public void Moisture_Recompute() => Placeholder.Write("ECO-16: MoistureMap recompute on seed 1 median <= 3 ms * PERF_SCALE");
+    private readonly ITestOutputHelper _out;
+
+    public OtherPerfTests(ITestOutputHelper output) => _out = output;
+
+    [Fact]
+    public void Moisture_Recompute() // ECO-16
+    {
+        var sim = WorldFactory.Create(1, TestContent.Db);
+        sim.RunTicks(1200);
+        var times = PerfHelpers.Measure(() => sim.Moisture.Recompute(), iterations: 50);
+        double median = PerfHelpers.Median(times);
+        _out.WriteLine($"ECO-16: moisture recompute median {median:F3} ms, p95 {PerfHelpers.P95(times):F3} ms");
+        Assert.True(median <= 3.0 * PerfHelpers.Scale, $"moisture recompute median {median:F2} ms");
+    }
 
     [Fact(Skip = "M6-T7")]
     public void FullTick_Seed1_Day5() => Placeholder.Write("SIM-P1: seed 1 + SurvivalScript to day 5, then median Tick() over 500 ticks <= 8 ms * PERF_SCALE");
