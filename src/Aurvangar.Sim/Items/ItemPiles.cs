@@ -62,6 +62,9 @@ public sealed class ItemPiles
         return n;
     }
 
+    /// <summary>SaveGame load: sets a pile by cell index without an event.</summary>
+    internal void Restore(int index, ItemStack stack) => _piles.Add(index, stack);
+
     public void AddToHash(ref StateHasher h)
     {
         h.Add(_piles.Count);

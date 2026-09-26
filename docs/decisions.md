@@ -534,3 +534,30 @@ Consequences: No new sim state (the Flee job is a hashed board job; health is ha
 Walkable means "not deep and not a construction site" (PTH-02); swim mode uses standable, so a fleeing agent could
 also cross an M5 construction footprint. The BFS runs only for agents in deep water (at most once per 5 ticks while
 trapped); in a wide lake it can visit ~(2·64+1)² cells. Health regeneration (ECO-06) comes with M5-T5.
+
+## ADR-032: Save format v1: section markers, what is saved, derived data rebuilt on load (2026-09-26, M4-T10)
+Context: SAV-01 lists the sections but not the encoding of each, whether queued-but-unapplied commands are saved,
+how an unknown command is handled, or what happens to derived data (path flag cache, regions, reservation tables,
+storage totals, the WAT-15 WaterDirty throttle). Farm tiles, moisture and weather do not exist yet.
+Decision: `SaveGame` writes magic `CSAV`, `int` version 1, then each section preceded by a 4-byte marker
+(`0x53454300 + n`, `SaveSection` enum; a mismatch fails with the expected section's name). Header: world size, seed,
+tick, RNG state, and whether regions were built and current. Blocks and water levels: run-length pairs (7-bit-encoded run length, value). Water: active set
+(sorted, it is hashed state, ADR-010), source strength, sources and drains in list order, then the four stats.
+Then plants, buildings (by def id string) + delivered, storage contents, item piles (cell index order),
+designation marks (cell index order; `DesignationMap.Set` rebuilds the sorted index), agents (alive only, SAV-06;
+every field incl. name, path, move state, `NextJobSearchTick`), jobs (every field incl. steps and reservations), the
+four id allocators, the command log (tick + `CommandCodec`), and the pending command queue (so a save between an
+`Enqueue` and the next tick loses nothing). `CommandCodec` lists every command type; saving a command with no codec
+throws `NotSupportedException` naming its tag, and every task that adds a command must add it there. Loading throws
+`InvalidDataException` for a wrong magic, a version mismatch (message names both versions), a truncated file, an
+out-of-range count/index/enum, or a building def missing from the ContentDb. Load writes blocks and levels raw,
+restores entities through `internal Restore` hooks (no events), then: clears the change log, marks all chunks dirty,
+`PathGrid.InvalidateAll()`, rebuilds regions at once when the saved game had them built (job selection reads them
+during the tick; a game saved before its first tick had none and its load has none either), `Jobs.RebuildReservations()`, takes the loaded levels as the WAT-15
+baseline, and drains events. Farm tiles and weather are not sections yet; the tasks that add them (M6-T1..T4) add
+sections and bump the format version (no migration, SAV-04). Moisture is recomputed, not saved (SAV-01).
+Consequences: a save taken between ticks is exact, also before the first tick. Only a game whose world was mutated
+outside `Tick` after its regions were built (stale regions, test setup only) loads with fresh regions instead.
+Block bytes, item ids (1-based), enums, counts and indices are range-checked on load. `SimCounters` and `BuildingSystem.Totals` are
+diagnostics/derived and restart after a load (Totals fills at the next buildings step). Seed-1 save at day 5 is
+29,376 bytes (SAV-05 budget 3 MB; save ~20 ms, load ~52 ms in a Debug test run).

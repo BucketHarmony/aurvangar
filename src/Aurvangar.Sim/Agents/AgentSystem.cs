@@ -31,6 +31,9 @@ public sealed class AgentSystem
         return a;
     }
 
+    /// <summary>SaveGame load: re-adds an agent with its saved id and fields, without an event.</summary>
+    internal void Restore(Agent a) => _agents.Add(a.Id.Value, a);
+
     /// <summary>True if a living agent other than <paramref name="except"/> stands in the cell or is stepping into it.</summary>
     public bool AnyHolds(Int3 c, AgentId except = default)
     {

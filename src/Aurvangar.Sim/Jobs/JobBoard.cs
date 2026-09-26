@@ -46,6 +46,9 @@ public sealed class JobBoard
         return job;
     }
 
+    /// <summary>SaveGame load: re-adds a job with its saved id. Call <see cref="RebuildReservations"/> afterwards.</summary>
+    internal void Restore(Job job) => _jobs.Add(job.Id.Value, job);
+
     /// <summary>Removes a job. Its reservations must already be released.</summary>
     internal void Remove(Job job) => _jobs.Remove(job.Id.Value);
 

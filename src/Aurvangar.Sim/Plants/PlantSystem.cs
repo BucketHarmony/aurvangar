@@ -86,6 +86,17 @@ public sealed class PlantSystem
         return p;
     }
 
+    /// <summary>SaveGame load: re-adds a plant with its saved id and fields and marks its cells occupied.</summary>
+    internal void Restore(Plant p)
+    {
+        _plants.Add(p.Id.Value, p);
+        for (int h = 0; h < p.Height; h++)
+        {
+            var c = p.Base + Int3.Up * h;
+            if (_world.InBounds(c)) SetOccupied(_world.Index(c), true);
+        }
+    }
+
     private void SetOccupied(int index, bool value)
     {
         if (_occupied[index] == value) return;

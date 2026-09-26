@@ -66,6 +66,19 @@ public sealed partial class WaterGrid
         ActivateAround(i);
     }
 
+    /// <summary>SaveGame load: levels are already written raw. Rebuilds the active set, sources and drains from saved
+    /// indices and takes the current levels as the WAT-15 baseline (the view remeshes everything after a load).</summary>
+    internal void RestoreAfterLoad(IEnumerable<int> active, IEnumerable<int> sources, IEnumerable<int> drains)
+    {
+        foreach (var i in active) _active.Add(i);
+        _sources.AddRange(sources);
+        _drains.AddRange(drains);
+        _level.CopyTo(_emitted, 0);
+    }
+
+    /// <summary>The active set, ascending (SaveGame).</summary>
+    internal IReadOnlyList<int> ActiveSorted() => _active.Sorted();
+
     public void AddSource(Int3 c) { if (_world.InBounds(c)) _sources.Add(_world.Index(c)); }
 
     public void AddDrain(Int3 c) { if (_world.InBounds(c)) _drains.Add(_world.Index(c)); }

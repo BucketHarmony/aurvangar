@@ -7,14 +7,6 @@ using Xunit;
 
 namespace Aurvangar.Sim.Tests
 {
-    public class SaveLoadTests
-    {
-        [Fact(Skip = "M4-T10")] public void RoundTrip_HashEqual() => Placeholder.Write("SAV-03 part 1 on seed 1 after 1000 ticks with a dig designation active");
-        [Fact(Skip = "M4-T10")] public void RoundTrip_FutureEqual() => Placeholder.Write("SAV-03 part 2: hashes equal every 100 ticks for 1000 ticks");
-        [Fact(Skip = "M4-T10")] public void WrongVersion_FailsClearly() => Placeholder.Write("SAV-04");
-        [Fact(Skip = "M6-T7")] public void SaveSize_Day5_Under3MB() => Placeholder.Write("SAV-05");
-    }
-
     public class BuildingPlacementTests
     {
         [Fact(Skip = "M5-T1")] public void Overlap_Rejected() => Placeholder.Write("BLD-02 / buildings.md scenario 1");

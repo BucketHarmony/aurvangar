@@ -33,6 +33,9 @@ public sealed class BuildingSystem
         return b;
     }
 
+    /// <summary>SaveGame load: re-adds a building with its saved id. Blocks are loaded separately, so none are written.</summary>
+    internal void Restore(Building b) => _buildings.Add(b.Id.Value, b);
+
     /// <summary>BLD-12: stored items summed over all storage buildings by ItemId.Value, recomputed each tick for the
     /// HUD (complete storage buildings only). Computed at the buildings step (ARCH-01 step 7), so it lags hauling and
     /// eating by one tick and is empty after a load until the next tick. Derived from <see cref="Building.Stored"/>, so

@@ -780,3 +780,34 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   `AgentSystem.Kill(sim, a, Starved/Dehydrated)`, which releases the claimed job. Need jobs are removed on failure,
   so the needs system must re-post them. Drink/Eat preemption goes through `AssignNeed`, and Flee preempts them.
   M5-T2: construction footprints are standable but not walkable, so swim mode would let a fleeing agent cross one.
+
+## M4-T10 — Save/load v1 (2026-09-26)
+- Done: `SaveGame.Save/Load` (`Save/SaveGame.cs`, `SaveGame.Entities.cs`, `SaveIo.cs`, `CommandCodec.cs`). SAV-01
+  binary format: magic `CSAV`, version 1, marked sections in spec order (header incl. a "regions built" flag, RLE blocks,
+  RLE water levels + active set + sources/drains + stats, plants, buildings, storage, piles, designations, alive agents,
+  jobs with steps and reservations, id allocators, command log, pending commands). Load restores through `internal
+  Restore` hooks (no events), then clears the change log, marks all chunks dirty, `PathGrid.InvalidateAll()`, rebuilds
+  regions (only if the saved game had them), `Jobs.RebuildReservations()`, and drains events. Bad magic, version,
+  truncation or corrupt values throw `InvalidDataException`. A command with no codec throws `NotSupportedException` on save.
+- Tests: `SaveLoadTests` has 10 run + `SaveSize_Day5_Under3MB` still `Skip = "M6-T7"`. The 3 placeholders now have
+  bodies: RoundTrip_HashEqual (seed 1, 1000 ticks, dig active; also byte-identical re-save), RoundTrip_FutureEqual (1000
+  ticks, chop command after load, hash every 100), and WrongVersion_FailsClearly. New tests cover: bad magic and
+  truncation, SAV-06 dead agents dropped, a save mid-flee (swim path), piles/stock/designations/command log/pending
+  command, derived data (reservations, regions), a save before the first tick, and an unknown command tag. All failed
+  first on `NotImplementedException`. Mutations: skipping the region rebuild or the reservation rebuild fails
+  DerivedData; always rebuilding regions fails SaveBeforeFirstTick. check.sh: 322 passed, 37 skipped, 0 failed; Godot
+  csproj 0 warnings. perf.sh: 4 passed, 4 skipped.
+- sim-reviewer: its one required fix is applied. A save taken before the first tick used to load with regions built,
+  so tick 1 differed; the new header flag fixes that. Also applied: block bytes and item ids (1-based) are validated,
+  `FormatException` and `IOException` are wrapped, and the codec uses `nameof` tags.
+- Decisions: ADR-032
+- Golden: unchanged (no sim behavior change).
+- Perf: headless seed 1, 24,000 ticks: tick median 0.032 ms, p95 0.035 ms, 26,406 ticks/s, hash `d8a1e43aeeb5d540`
+  (unchanged). One-off probe (not committed): seed-1 save at day 5 is 29,376 bytes (SAV-05 budget 3 MB); save ~20 ms,
+  load ~52 ms (Debug test run). No Godot code touched, so screenshots were not re-rendered.
+- Next: M4-T11. F5/F9 should call `SaveGame.Save/Load` between ticks, swap in the new `Simulation`, and rebuild every
+  renderer from scratch (load drains events; all chunks are marked dirty, so `ChunkDirty` fires on the first tick).
+  Every later task that adds sim state must extend `SaveGame` + hash in the same task. New commands need a
+  `CommandCodec` entry, or saving throws. Farm tiles (M6-T2), moisture (recomputed, M6-T1) and weather (M6-T4) must add
+  sections and bump `FormatVersion`. M5-T2 construction-site blocking: if it is derived, rebuild it in `AfterLoad`.
+  Test-only `SetBlockCommand` has no codec.

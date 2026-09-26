@@ -22,6 +22,9 @@ public sealed class CommandQueue
 
     public int PendingCount => _pending.Count;
 
+    /// <summary>Queued commands not yet applied, in order (saved so a load between ticks applies them too).</summary>
+    internal IReadOnlyList<ICommand> Pending => _pending;
+
     internal void ApplyAll(Simulation sim)
     {
         if (_pending.Count == 0) return;
