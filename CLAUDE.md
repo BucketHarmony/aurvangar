@@ -1,4 +1,8 @@
-# CLAUDE.md — Aurvangar POC
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Aurvangar POC
 
 Working title: **Aurvangar**. A voxel colony builder in the Timberborn vein: indirect control, prefab
 buildings, water as the central system, DF-style digging. This file is the operating manual for Claude Code.
@@ -47,6 +51,22 @@ If a spec is ambiguous or wrong, pick the simplest option consistent with `docs/
 ADR in `docs/decisions.md`, and continue. Do not stop to ask. Stopping is reserved for `HUMAN-GATE` tasks and for
 the conditions in "When to stop" below.
 
+## Architecture in one screen (details: `docs/01-architecture.md`)
+
+- **Data flow.** View → `Simulation.Enqueue(ICommand)` → applied at the start of the next `Tick()` and appended to
+  the command log (replay/save). Sim → view only via read-only queries and `SimEvent`s (`ChunkDirty`,
+  `WaterDirty`, …) that `GameRoot` drains each frame and routes to budgeted remesh queues.
+- **Tick order is fixed (ARCH-01)** in `Simulation.Tick()`: commands → weather → water CA → moisture → plants →
+  needs → buildings → designations → haul → agents (ascending id) → region rebuild → clock. Unimplemented steps
+  are placeholder comments tagged with their backlog task (e.g. `// M4-T7`); fill them in that slot. Systems never
+  call each other's `Tick`; they interact through shared state and `WorldActions`.
+- **Job pipeline.** Designation posts a job → idle agent claims it (reservation) → path to adjacent standable cell
+  → `Work` for N ticks → `WorldActions.*` mutates → world marks chunks/path cells dirty → next systems react.
+- **StateHash covers all sim state.** When you add new sim state, add it to `Simulation.StateHash()` too, or
+  determinism tests will not see it.
+- **GameRoot** runs the sim in `_Process` with a fixed-step accumulator (max 4 ticks/frame); everything is
+  single-threaded.
+
 ## Hard rules
 
 - **Sim/view boundary.** Nothing in `Aurvangar.Sim` references Godot, `System.Numerics` floats for state, wall-clock
@@ -67,12 +87,21 @@ the conditions in "When to stop" below.
 ## Commands
 
 ```bash
-./scripts/check.sh          # format check + build all + unit/scenario tests. Must pass before every commit.
+./scripts/check.sh          # sim-guard + build sln + all non-Perf tests + Godot csproj build. Must pass before every commit.
+./scripts/sim-guard.sh      # grep-based boundary/determinism lint (also runs as a PostToolUse hook on src/ edits)
 ./scripts/perf.sh           # perf-category tests (budgets). Run at the end of every milestone and after touching water/paths.
 ./scripts/run-headless.sh --seed 1 --ticks 24000   # full-sim smoke run with stats
 ./scripts/screenshot.sh     # renders fixed camera shots to artifacts/screens (needs Godot 4.6 mono + xvfb)
 UPDATE_GOLDEN=1 dotnet test tests/Aurvangar.Sim.Tests --filter Category=Golden   # only when a change is intentional; record in PROGRESS.md
+
+# Single test / class (xUnit traits: Unit, Scenario, Golden, Perf)
+dotnet test tests/Aurvangar.Sim.Tests --filter "FullyQualifiedName~WaterGridTests"
+dotnet test tests/Aurvangar.Sim.Tests --filter "FullyQualifiedName~WaterGridTests.SomeTestName"
+dotnet test tests/Aurvangar.Sim.Tests --filter "Category=Scenario"
 ```
+
+`Directory.Build.props` sets `TreatWarningsAsErrors`, so any compiler warning breaks `check.sh`. CI
+(`.github/workflows/ci.yml`) runs `check.sh`, plus `perf.sh` with `PERF_SCALE=2.0` (non-blocking).
 
 `GODOT_BIN` must point at the Godot 4.6 .NET editor binary for screenshot and editor tasks. If it is missing,
 skip screenshot steps, note it in PROGRESS.md, and continue.
