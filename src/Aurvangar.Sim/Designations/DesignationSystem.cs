@@ -24,8 +24,8 @@ public static class DesignationSystem
 
     // ---- commands ----
 
-    /// <summary>DSG-02. Solid, diggable cells (never y = 0, WLD-05) that are not a building's footprint, the floor
-    /// under it, or a plant's floor get <c>Dig</c>; <c>DigUnreachable</c> becomes <c>Dig</c> again (a retry); others are unchanged.</summary>
+    /// <summary>DSG-02. Solid, diggable cells (never y = 0, WLD-05) that are not a building's footprint or the floor
+    /// under it get <c>Dig</c>, including a plant's floor (M4-T15: its job waits until the plant is gone, DSG-03); <c>DigUnreachable</c> becomes <c>Dig</c> again (a retry); others are unchanged.</summary>
     public static void DesignateDig(Simulation sim, string tag, Int3 a, Int3 b)
     {
         var world = sim.World;
@@ -39,7 +39,6 @@ public static class DesignationSystem
                     var def = sim.Content.Block(world.GetBlock(c));
                     if (!def.Solid || !def.Diggable) continue;
                     if (building.Contains(world.Index(c)) || building.Contains(world.Index(c + Int3.Up))) continue;
-                    if (sim.Plants.IsOccupied(c + Int3.Up)) continue;   // a plant's floor (WorldActions.Dig refuses it)
                     if (sim.Designations.Get(c) != DesignationMark.Dig) sim.Designations.Set(c, DesignationMark.Dig);
                 }
     }
@@ -89,7 +88,7 @@ public static class DesignationSystem
     // ---- tick (ARCH-01 step 8) ----
 
     /// <summary>DSG-03/04 and chop posting. One Dig job per <c>Dig</c> mark on a solid, diggable, exposed cell without
-    /// a job; a mark whose cell is no longer solid (and, for Dig, has no job) is cleared. Open dig jobs get priority
+    /// a job and without a plant on top (M4-T15); a mark whose cell is no longer solid (and, for Dig, has no job) is cleared. Open dig jobs get priority
     /// 25 + min(y − lowest marked y, <see cref="MaxHeightBonus"/>), recomputed every tick. One Chop job per marked,
     /// not given-up tree without a job. Marks, trees and jobs are visited in ascending index / id order.</summary>
     public static void Tick(Simulation sim)
@@ -136,18 +135,23 @@ public static class DesignationSystem
         }
         foreach (var c in stale) marks.Set(c, DesignationMark.None);
         if (lowest == int.MaxValue) return;
+        var trees = TreeFloors.Waiting(sim);
 
         foreach (var (c, mark) in marks.All)
         {
             if (mark != DesignationMark.Dig) continue;
             int priority = Job.DefaultPriority(JobKind.Dig) + Math.Min(c.Y - lowest, MaxHeightBonus);
+            bool held = TreeFloors.Holds(trees, c);
             if (digJobs.TryGetValue(world.Index(c), out var job))
             {
-                if (!job.IsClaimed) job.Priority = priority;
+                if (job.IsClaimed) continue;
+                if (held) sim.Jobs.Remove(job);   // posted before the tree was marked: it waits too
+                else job.Priority = priority;
                 continue;
             }
             var def = sim.Content.Block(world.GetBlock(c));
             if (!def.Solid || !def.Diggable || !Exposed(world, c)) continue;
+            if (held || sim.Plants.IsOccupied(c + Int3.Up)) continue;   // M4-T15: a plant's floor waits for the plant
             sim.Jobs.Post(JobKind.Dig, c,
                 new[] { JobStep.GoTo(c, GoalMode.Dig), JobStep.Work(c, def.Hardness), JobStep.Dig(c) },
                 new[] { Reservation.OnCell(c) }, priority);

@@ -1036,3 +1036,32 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   inside the pit box, and could drop that exclusion once M4-T15 lands. Only the digger is protected (the human's
   rule); another dwarf could still in principle be cut off by someone else's dig. New dig-like mutations (M5
   construction footprints) should consider `DigStrand` if they remove floors.
+
+## M4-T15 — Dig drags mark tree floors (2026-09-26)
+- Done: G2 answer 2. `DesignateDig` now marks the floor under a plant (tree or bush). Its dig job is not posted
+  while the plant stands; once the tree is felled (or the plant removed) the next designation tick posts it as usual,
+  and ADR-037's strand rule, DSG-08 and JOB-09 apply unchanged. DSG-02/03 updated.
+- Found while testing: with only mark + wait, the digs around a standing tree went on, so in a pit the tree ended on a
+  pillar 2+ levels above any standable cell, out of chop reach (the seed-1 10x7x5 pit left tree (47,23,59) standing).
+  New `Designations/TreeFloors`: while a tree marked for chopping (not given up) stands on a Dig-marked floor F, a
+  mark at Chebyshev distance r >= 1 from F with y <= F.y - r gets no job (an unclaimed one is withdrawn). What may be
+  dug meanwhile forms 1-high steps down from the tree. Derived each tick; no new sim state, save or hash fields.
+- Tests: `DesignateDig_SkipsPlantFloor` replaced by `DesignateDig_MarksPlantFloor_JobWaitsForPlant` (the old test
+  encoded the behavior the human changed), plus `PlantFloor_UnchoppedTree_WaitsWithoutFailures`.
+  New `Scenarios/TreeFloorScenarioTests`: a 6x6x2 wooded box with dig + chop leaves no pillar (4 trees, 0 failures);
+  a 9x9x4 pit with a tree in the middle, chop marked 30 ticks after the dig, fells the tree and digs its floor.
+  `StrandScenarioTests.Seed1_DeepPit_*` no longer excludes trees inside the pit box. All failed first for the right
+  reason (marks missing; the pit tree left standing), and the three scenarios fail again with the hold disabled.
+  check.sh: 372 passed, 37 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-038.
+- Golden: unchanged (the golden run has no script). Headless seed 1, 24,000 ticks: hash `d8a1e43aeeb5d540`
+  (unchanged), 26,613 ticks/s.
+- `--script digchop`, 2400 ticks: hash changed `a182db6b82bdf66f` -> `edb36219b6a838fa`, because the one tree inside
+  the gate pit now has its floor dug: 91 of 91 cells dug (was 90, with a pillar), 23 trees felled, 92 logs stored,
+  137 jobs, 168 path searches, 0 trapped, 2 failures. Both failures were traced with temporary logging (removed): GoTo
+  step failures (PTH-16, the path changed while walking) at tick 48 and tick 625; both jobs were retried and done.
+  The tick-48 one is the "untraced" failure from the G2 report.
+- Perf: perf.sh 6 passed, 2 skipped. No Godot code changed, so no screenshots were taken.
+- Next: M4-T16 (bigger piles). A log pile at a felled tree's base stays in place when the floor below is dug
+  (loose piles do not fall, as with stone drops); it is still hauled from a neighbouring cell. A chop is not
+  prioritised over digs; the holds keep the order safe.

@@ -3,10 +3,14 @@
 - **DSG-01** `Designations` stores a `byte[]` per cell: `None`, `Dig`, `DigUnreachable`. Chop designations are
   stored on the tree entity (`tree.MarkedForChop`). Farm tiles live in `FarmSystem`.
 - **DSG-02** `DesignateDig(box)`: for every cell in the box that is diggable (WLD block table) and not under a
-  building, set `Dig`. Cells already designated are unchanged. Air cells in the box are ignored.
+  building, set `Dig`. Cells already designated are unchanged. Air cells in the box are ignored. (M4-T15, ADR-038)
+  Cells under plants are marked too; their dig job waits until the plant is gone (DSG-03).
 - **DSG-03** `DesignationSystem.Tick` posts one Dig job per designated cell that has no open job and is
   **exposed** (at least one of its 6 neighbors is non-solid). Unexposed cells wait; digging their neighbor
-  exposes them. This produces DF-style tunneling from the surface inward.
+  exposes them. This produces DF-style tunneling from the surface inward. (M4-T15, ADR-038) No job is posted for a
+  cell with a plant on top; once the plant is felled or removed it is posted as usual. While a tree marked for
+  chopping (not given up) stands on a `Dig`-marked floor F, a cell at horizontal (Chebyshev) distance r >= 1 from F
+  with y <= F.y - r gets no job either (an unclaimed one is withdrawn), so the tree stays in a chopper's reach.
 - **DSG-04** Dig job ordering bias: among equal-priority dig jobs, JOB-06's distance tie-break naturally
   digs from the near side. Additionally, dig jobs for cells with higher `y` get +1 priority per level above
   the lowest designated `y` in the same job batch, so pits are dug top-down.

@@ -42,15 +42,42 @@ public class DesignationTests
         Assert.NotNull(hub);
     }
 
+    /// <summary>M4-T15 (G2 answer 2, ADR-038): the floor under a plant is marked, but its dig job is not posted while
+    /// the plant stands (WorldActions.Dig would refuse it). Once the plant is gone the job is posted as usual.</summary>
     [Fact]
-    public void DesignateDig_SkipsPlantFloor()
+    public void DesignateDig_MarksPlantFloor_JobWaitsForPlant()
     {
         var sim = new ScenarioBuilder().Ground(4).Layer(new Int3(5, 5, 5), "Tb").Build();
         Apply(sim, new DesignateDig(new Int3(4, 4, 5), new Int3(7, 4, 5)));
         Assert.Equal(DesignationMark.Dig, sim.Designations.Get(new Int3(4, 4, 5)));
-        Assert.Equal(DesignationMark.None, sim.Designations.Get(new Int3(5, 4, 5)));   // under the tree
-        Assert.Equal(DesignationMark.None, sim.Designations.Get(new Int3(6, 4, 5)));   // under the bush
+        Assert.Equal(DesignationMark.Dig, sim.Designations.Get(new Int3(5, 4, 5)));    // under the tree
+        Assert.Equal(DesignationMark.Dig, sim.Designations.Get(new Int3(6, 4, 5)));    // under the bush
         Assert.Equal(DesignationMark.Dig, sim.Designations.Get(new Int3(7, 4, 5)));
+        Assert.Equal(new[] { new Int3(4, 4, 5), new Int3(7, 4, 5) },
+            sim.Jobs.All.Where(j => j.Kind == JobKind.Dig).Select(j => j.Target).OrderBy(c => c.X).ToArray());
+
+        sim.RunTicks(20);
+        Assert.Equal(2, sim.Jobs.All.Count(j => j.Kind == JobKind.Dig));   // still waiting, marks kept
+        Assert.Equal(DesignationMark.Dig, sim.Designations.Get(new Int3(5, 4, 5)));
+
+        var tree = sim.Plants.All.Single(p => p.Kind == Plants.PlantKind.Tree);
+        sim.Plants.Remove(tree.Id);
+        sim.Tick();
+        Assert.Contains(sim.Jobs.All, j => j.Kind == JobKind.Dig && j.Target == new Int3(5, 4, 5));
+        Assert.DoesNotContain(sim.Jobs.All, j => j.Kind == JobKind.Dig && j.Target == new Int3(6, 4, 5));
+    }
+
+    /// <summary>M4-T15: a dwarf never fails on a waiting tree floor; the mark just stays until the tree is felled.</summary>
+    [Fact]
+    public void PlantFloor_UnchoppedTree_WaitsWithoutFailures()
+    {
+        var sim = new ScenarioBuilder().Ground(4).Layer(new Int3(5, 5, 5), "T").Agent(new Int3(2, 5, 2)).Build();
+        Apply(sim, new DesignateDig(new Int3(5, 4, 5), new Int3(5, 4, 5)));
+        sim.RunTicks(600);
+        Assert.Equal(DesignationMark.Dig, sim.Designations.Get(new Int3(5, 4, 5)));
+        Assert.True(sim.World.IsSolid(new Int3(5, 4, 5)));
+        Assert.DoesNotContain(sim.Jobs.All, j => j.Kind == JobKind.Dig);
+        Assert.Equal(0, sim.Counters.JobsFailed);
     }
 
     [Fact]

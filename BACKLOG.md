@@ -140,7 +140,7 @@ Milestone order is by risk: world and water before anything that depends on them
     no other open dig can make it safe. No automatic stairs (option a) for now.
   - Scenario test: the 10x7x5 pit from M4-T11 no longer traps any dwarf; all 5 stay in the hub region and keep
     taking chop jobs. Regenerate golden only if behavior on the gate script changes; record why.
-- [ ] **M4-T15** Dig drags mark tree floors · specs: DSG-02, DSG-03 · deps: M4-GATE
+- [x] **M4-T15** Dig drags mark tree floors · specs: DSG-02, DSG-03 · deps: M4-GATE
   - Gate G2 answer 2: `DesignateDig` also marks cells under plants. The dig job for such a cell is not posted
     until the plant is gone (felled or removed); it then digs normally. Update DSG-02 and record an ADR.
   - Scenario test: dig + chop over a wooded box leaves no one-cell pillars.

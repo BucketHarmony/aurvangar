@@ -661,3 +661,27 @@ Consequences: a pit dug top-down keeps its last step out per level; in the 10x7x
 dug and 2 turned red. Other dwarves are not protected by this rule (only the digger); in pits they stay connected
 through the digger's side in practice. The cost is a small flood per candidate dig whose top cell is walkable,
 cached until walkability changes; perf budgets and the golden hash are unchanged.
+
+## ADR-038: Dig drags mark tree floors; digs below a marked tree wait in steps (2026-09-26, M4-T15)
+Context: G2 answer 2. DSG-02 skipped the cell under a plant because `WorldActions.Dig` refuses a plant's floor, so a
+dig + chop drag over woods left one-cell pillars. The human asked that the drag also mark those cells, and that the
+dig job wait until the plant is gone. A first cut (mark + wait only) showed a second problem: digs around the tree
+went on while it stood, so in a pit it ended up on a pillar two or more levels above any standable cell, out of
+reach (ARCH-07 reach is one level up or down), and the chop never ran.
+Decision:
+- DSG-02 marks plant floors like any other diggable cell (buildings are still skipped).
+- DSG-03: no dig job is posted for a cell with a plant on top (tree or bush). When the plant is felled or removed,
+  the next designation tick posts it as usual; the M4-T14 strand rule (ADR-037), DSG-08 and JOB-09 apply unchanged.
+- While a tree marked for chopping (not `ChopUnreachable`) stands on a `Dig`-marked floor F, a dig mark at horizontal
+  Chebyshev distance r >= 1 from F with y <= F.y - r gets no job, and an unclaimed job already posted there is
+  withdrawn (the chop may be marked after the dig). What can be dug meanwhile forms 1-high steps down from the tree,
+  so a cell beside its base stays standable and reachable. The hold ends when the tree is felled, unmarked or given
+  up (`Designations/TreeFloors`). It is derived each tick from marks and trees, so no new state, save or hash field.
+- A tree that is not marked for chopping keeps its floor mark waiting forever and holds nothing; the player chose to
+  keep it.
+- Logs dropped at a felled tree's base stay where they are when the floor below is dug (loose piles do not fall;
+  this is the same as a stone drop under a later dig). They are hauled from a neighbouring cell as before.
+Consequences: a drag over woods is dug completely once the trees are down. In deep pits the cells under and around
+a marked tree are dug last. A chop is not prioritised over digs; the holds make the order safe instead. The
+DSG-09 give-up can still turn a held-back region's digs red if every posted dig strands while a chop is pending;
+re-designating retries them.

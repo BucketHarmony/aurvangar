@@ -123,16 +123,16 @@ public class StrandScenarioTests
         Assert.True(marked >= 10, $"only {marked} trees marked");
         Assert.True(sim.Designations.Count >= 200, $"only {sim.Designations.Count} dig marks");
 
-        // A tree standing inside the pit box ends up on an undug pillar (its floor is never marked, DSG-02) that no
-        // one can reach; tree floors are M4-T15. Every other marked tree must come down.
-        bool InPit(Int3 c) => c.X >= min.X && c.X <= max.X && c.Z >= min.Z && c.Z <= max.Z;
-        bool WorkLeft() => sim.Plants.All.Any(p => p.MarkedForChop && !InPit(p.Base)) || sim.Jobs.All.Any(j => j.Kind == JobKind.Dig);
+        // M4-T15: tree floors in the pit box are marked too, so no tree is left on an undug pillar; every marked
+        // tree comes down.
+        bool WorkLeft() => sim.Plants.All.Any(p => p.MarkedForChop) || sim.Jobs.All.Any(j => j.Kind == JobKind.Dig);
         for (int t = 0; t < 7200 && WorkLeft(); t++)
         {
             sim.Tick();
             AssertAllInHubRegion(sim, hub);
         }
-        Assert.DoesNotContain(sim.Plants.All, p => p.MarkedForChop && !InPit(p.Base));
+        var standing = sim.Plants.All.Where(p => p.MarkedForChop).Select(p => $"{p.Base} unreachable={p.ChopUnreachable}").ToList();
+        Assert.True(standing.Count == 0, $"tick {sim.Clock.Tick}, pit {min}..{max}, marked trees left: {string.Join("; ", standing)}");
         Assert.DoesNotContain(sim.Jobs.All, j => j.Kind == JobKind.Dig);
         Assert.Contains(sim.Designations.All, m => m.Mark == DesignationMark.DigUnreachable);
         Assert.True(AirCount(sim, min, max) >= 250, $"pit mostly dug: {AirCount(sim, min, max)} of 350");
