@@ -3,7 +3,8 @@ using Aurvangar.Sim.Items;
 
 namespace Aurvangar.Sim.Agents;
 
-public enum AgentState : byte { Idle, Working, Dead }
+/// <summary>Trapped (WAT-14, ADR-031): in deep water with no flee path; it re-searches every 5 ticks.</summary>
+public enum AgentState : byte { Idle, Working, Dead, Trapped }
 
 public enum DeathCause : byte { None, Starved, Dehydrated, Drowned }
 

@@ -93,14 +93,25 @@ public static class JobRunner
         IEnumerable<Reservation>? reservations = null)
     {
         var current = Current(sim, a);
-        if (current is { IsNeed: true } || !a.IsAlive) return null;
+        if (!a.IsAlive) return null;
         if (kind is not (JobKind.Drink or JobKind.Eat or JobKind.Flee))
             throw new ArgumentException($"JOB-07: {kind} is not a need job", nameof(kind));
+        // A need job is not preempted by another need job, except that Flee (WAT-14) preempts Drink and Eat.
+        if (current is { IsNeed: true } && (kind != JobKind.Flee || current.Kind == JobKind.Flee)) return null;
         var job = sim.Jobs.Post(kind, target, steps, reservations);
         if (!sim.Jobs.CanReserve(sim, job)) { sim.Jobs.Remove(job); return null; }
-        if (current is not null) Unclaim(sim, a, current);
+        if (current is not null) Release(sim, a, current);
         Claim(sim, a, job);
         return job;
+    }
+
+    /// <summary>JOB-07 preemption: returns the agent's job to the board (a need job, which belongs to this agent
+    /// alone, is removed instead) without counting a failure; the agent stops, drops its stack and goes idle.
+    /// No-op when the agent has no job.</summary>
+    public static void ReleaseCurrent(Simulation sim, Agent a)
+    {
+        var job = Current(sim, a);
+        if (job is not null) Release(sim, a, job);
     }
 
     /// <summary>DSG-06: removes a job; a claimed job is released first and its agent goes idle.</summary>
@@ -136,7 +147,7 @@ public static class JobRunner
                     if (goals.Count == 0) { Fail(sim, a, job); return; }
                     sim.Agents.MoveTo(sim, a, goals);
                 }
-                else AgentMovement.Advance(sim.PathGrid, sim.Pathfinder, a);
+                else AgentMovement.Advance(sim.PathGrid, sim.Pathfinder, a, swim: job.Kind == JobKind.Flee);
                 if (a.Move == MoveStatus.Arrived) NextStep(sim, a, job);
                 else if (a.Move != MoveStatus.Moving) Fail(sim, a, job);   // PTH-16 step failure
                 return;
@@ -189,7 +200,8 @@ public static class JobRunner
         sim.Counters.JobsFailed++;
         job.Failures++;
         Unclaim(sim, a, job);
-        if (job.Failures >= Job.MaxFailures)
+        if (job.IsNeed) sim.Jobs.Remove(job);   // ADR-031: per-agent need jobs are re-posted by their owner, never retried
+        else if (job.Failures >= Job.MaxFailures)
         {
             sim.Jobs.Remove(job);   // cancelled
             if (job.Kind == JobKind.Dig) sim.Designations.MarkUnreachable(job.Target);
@@ -197,6 +209,12 @@ public static class JobRunner
                 tree.ChopUnreachable = true;
         }
         else job.RetryAfterTick = sim.Clock.Tick + Job.RetryCooldown;
+    }
+
+    private static void Release(Simulation sim, Agent a, Job job)
+    {
+        Unclaim(sim, a, job);
+        if (job.IsNeed) sim.Jobs.Remove(job);
     }
 
     /// <summary>Returns the job to the board unclaimed with its reservations released; the agent stops, drops what it

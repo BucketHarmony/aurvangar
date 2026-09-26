@@ -52,8 +52,23 @@ public sealed class AgentSystem
         foreach (var a in _agents.Values)
         {
             if (!a.IsAlive) continue;
+            if (FleeRules.Tick(sim, a)) continue;   // WAT-14
             JobRunner.Tick(sim, a);
         }
+    }
+
+    /// <summary>Death (WAT-14, ECO-06): releases the agent's job (dropping its stack), stops it and marks it dead. The
+    /// agent stays in the list (JOB-02) and leaves the hash (SAV-06). Emits <see cref="AgentDied"/> once.</summary>
+    public void Kill(Simulation sim, Agent a, DeathCause cause)
+    {
+        if (!a.IsAlive) return;
+        JobRunner.ReleaseCurrent(sim, a);
+        if (!a.Carried.IsEmpty) sim.Actions.Drop(a.Id, a.Cell);
+        AgentMovement.Halt(a);
+        a.Health = 0;
+        a.State = AgentState.Dead;
+        a.Death = cause;
+        _events.Emit(new AgentDied(a.Id, cause.ToString()));
     }
 
     public void AddToHash(ref StateHasher h)

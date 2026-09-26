@@ -51,13 +51,6 @@ namespace Aurvangar.Sim.Tests
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class FloodScenarioTests
-    {
-        [Fact(Skip = "M4-T9")] public void AgentFleesRisingWater() => Placeholder.Write("WAT-14 flee; pathfinding.md scenario 7");
-        [Fact(Skip = "M4-T9")] public void TrappedAgent_Drowns() => Placeholder.Write("WAT-14 drowning with DeathCause.Drowned");
-    }
-
-    [Trait("Category", "Scenario")]
     public class ConstructionScenarioTests
     {
         [Fact(Skip = "M5-T2")] public void Warehouse_BuiltByTwoAgents() => Placeholder.Write("buildings.md scenario 2");

@@ -39,21 +39,31 @@ public static class AgentMovement
         return r.Status;
     }
 
-    /// <summary>One tick of movement for an agent whose status is <see cref="MoveStatus.Moving"/>.</summary>
-    public static void Advance(PathGrid grid, Pathfinder pathfinder, Agent a)
+    /// <summary>Starts following a path found elsewhere (the WAT-14 flee search). Same as <see cref="Start"/> after
+    /// its search: a one-cell path arrives at once.</summary>
+    public static void Begin(Agent a, Int3[] path)
+    {
+        a.Repathed = false;
+        Follow(a, path);
+    }
+
+    /// <summary>One tick of movement for an agent whose status is <see cref="MoveStatus.Moving"/>. With
+    /// <paramref name="swim"/> (a Flee job, ADR-031) steps may enter deep cells, and a blocked step fails the move
+    /// instead of running an A* repath (the flee search is run again instead).</summary>
+    public static void Advance(PathGrid grid, Pathfinder pathfinder, Agent a, bool swim = false)
     {
         if (a.Move != MoveStatus.Moving) return;
         if (a.MoveTotal == 0)
         {
             var next = a.Path[a.PathPos + 1];
-            if (!CanStep(grid, a.Cell, next)) { Repath(pathfinder, a); return; }   // PTH-16: next tick starts the new path
+            if (!CanStep(grid, a.Cell, next, swim)) { Repath(pathfinder, a, swim); return; }   // PTH-16: next tick starts the new path
             a.NextCell = next;
             a.MoveTotal = MoveTicks(grid, a.Cell, next);
         }
         a.MoveProgress++;
         if (a.MoveProgress < a.MoveTotal) return;
 
-        if (!CanStep(grid, a.Cell, a.NextCell)) { Repath(pathfinder, a); return; }  // PTH-16: never enter a blocked cell
+        if (!CanStep(grid, a.Cell, a.NextCell, swim)) { Repath(pathfinder, a, swim); return; }  // PTH-16: never enter a blocked cell
         a.Cell = a.NextCell;
         a.PathPos++;
         a.MoveProgress = 0;
@@ -65,19 +75,19 @@ public static class AgentMovement
     public static void Halt(Agent a) => Stop(a, MoveStatus.None);
 
     /// <summary>True if <paramref name="to"/> is one legal PTH-04..08 move from <paramref name="from"/> right now.</summary>
-    public static bool CanStep(PathGrid grid, Int3 from, Int3 to)
+    public static bool CanStep(PathGrid grid, Int3 from, Int3 to, bool swim = false)
     {
         Span<PathMove> moves = stackalloc PathMove[PathMoves.MaxMoves];
-        int n = PathMoves.From(grid, from, moves);
+        int n = PathMoves.From(grid, from, moves, swim);
         for (int i = 0; i < n; i++)
             if (moves[i].To == to) return true;
         return false;
     }
 
-    private static void Repath(Pathfinder pathfinder, Agent a)
+    private static void Repath(Pathfinder pathfinder, Agent a, bool swim)
     {
         var goal = a.Path[^1];
-        if (a.Repathed) { Stop(a, MoveStatus.Failed); return; }
+        if (a.Repathed || swim) { Stop(a, MoveStatus.Failed); return; }
         a.Repathed = true;
         var r = pathfinder.FindPath(a.Cell, goal);
         if (!r.Found) { Stop(a, MoveStatus.Failed); return; }

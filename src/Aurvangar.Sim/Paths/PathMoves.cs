@@ -15,8 +15,10 @@ public static class PathMoves
 
     /// <summary>Writes the legal moves out of <paramref name="a"/> into <paramref name="moves"/> in the fixed
     /// <see cref="Int3.Horizontal8"/> order and returns how many. The caller decides whether <paramref name="a"/>
-    /// itself may be left (A* allows leaving a deep start cell, WAT-14 flee). Assumes <paramref name="a"/> is standable.</summary>
-    public static int From(PathGrid grid, Int3 a, Span<PathMove> moves)
+    /// itself may be left (A* allows leaving a deep start cell, WAT-14 flee). Assumes <paramref name="a"/> is standable.
+    /// <paramref name="swim"/> (WAT-14 flee, ADR-031): deep standable cells count as passable too, so a fleeing agent
+    /// can cross deep water; every other rule is unchanged.</summary>
+    public static int From(PathGrid grid, Int3 a, Span<PathMove> moves, bool swim = false)
     {
         var world = grid.World;
         int n = 0;
@@ -29,16 +31,16 @@ public static class PathMoves
             var flat = a + dir;
             int dy;
             // PTH-04. Standable cells in one column at y-1, y, y+1 are mutually exclusive, so the first walkable wins.
-            if (grid.IsWalkable(flat)) dy = 0;
-            else if (headroomUp && grid.IsWalkable(flat + Int3.Up)) dy = 1;
-            else if (grid.IsWalkable(flat + Int3.Down) && !world.IsSolid(flat.X, flat.Y + 1, flat.Z)) dy = -1; // PTH-05: b+up+up = flat+up
+            if (Pass(grid, flat, swim)) dy = 0;
+            else if (headroomUp && Pass(grid, flat + Int3.Up, swim)) dy = 1;
+            else if (Pass(grid, flat + Int3.Down, swim) && !world.IsSolid(flat.X, flat.Y + 1, flat.Z)) dy = -1; // PTH-05: b+up+up = flat+up
             else continue;                                          // PTH-08: nothing reachable within one step
 
             if (diagonal)
             {
                 // PTH-06: both orthogonal intermediates walkable at a.y (flat, down) or b.y (up).
                 int iy = dy == 1 ? a.Y + 1 : a.Y;
-                if (!grid.IsWalkable(new Int3(a.X + dir.X, iy, a.Z)) || !grid.IsWalkable(new Int3(a.X, iy, a.Z + dir.Z)))
+                if (!Pass(grid, new Int3(a.X + dir.X, iy, a.Z), swim) || !Pass(grid, new Int3(a.X, iy, a.Z + dir.Z), swim))
                     continue;
             }
 
@@ -51,6 +53,9 @@ public static class PathMoves
         }
         return n;
     }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static bool Pass(PathGrid grid, Int3 c, bool swim) => swim ? grid.IsStandable(c) : grid.IsWalkable(c);
 
     /// <summary>PTH-09 heuristic: octile distance on (x,z) plus 2 per level. Admissible and consistent with PTH-07.</summary>
     public static int Heuristic(Int3 a, Int3 b)

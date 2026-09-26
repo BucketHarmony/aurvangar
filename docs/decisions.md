@@ -509,3 +509,28 @@ by the next tick with a fresh failure count; the region filter and the reservati
 unlikely, so no give-up mark is kept. The storage choice ignores regions: if the nearest storage is unreachable from
 the pile while a farther one is reachable, the pile waits. A partly hauled pile gets no second job until the first
 ends (one job per pile). `Totals` is computed before the haul and agent steps, so it lags delivery by one tick.
+
+## ADR-031: Flee search swims through deep water; trapped agents; need-job failure (2026-09-26, M4-T9)
+Context: WAT-14 says an agent standing in a cell that becomes deep "requests a path to the nearest non-deep standable
+cell" and is trapped if "none reachable within 64 steps". A* never enters deep cells (PTH-02), so from the middle of a
+flooded area it can only ever take one step; "within 64 steps" implies the flee path may cross deep water. The spec
+does not say how "nearest" is measured, what a trapped agent does with its job, how often it searches again, or what
+happens to a per-agent need job that fails (JOB-08 returns failed jobs to the board, where need jobs are never
+selected, so they would leak).
+Decision: `Pathfinder.FindFlee(start, 64)` is a breadth-first search over the PTH-04..08 moves in swim mode
+(`PathMoves.From(..., swim: true)`: deep standable cells count as passable for the destination and the PTH-06
+intermediates; every other rule is unchanged). It returns the fewest-step path to the first walkable cell found in
+the fixed `Horizontal8` expansion order (Cost = step count); a walkable start is `[start]`. `FleeRules.Tick` runs for
+each living agent just before its job step (ARCH-01 step 10): when the agent's cell is standable and deep and it has
+no Flee job, it searches; on success it claims a Flee need job (`GoTo(dry, Exact)`, priority 200, preempting any
+job including Drink/Eat, JOB-07) and follows the found path at once; the GoTo step of a Flee job moves in swim mode
+and a blocked step fails the job without an A* repath. The first search is immediate, whatever the JOB-06 idle
+search throttle says. On no path the agent is trapped (new `AgentState.Trapped`, hashed with the state): its job is
+released (stack dropped), it stops, takes 1 health damage per tick, does nothing else, and searches again every 5
+ticks (`NextJobSearchTick`); it returns to Idle when its cell is no longer deep. At health 0 `AgentSystem.Kill(Drowned)` releases the job,
+drops the stack (if that drop is blocked, the stack is lost with the dead agent), marks the agent dead and emits `AgentDied`. Need jobs (Drink, Eat, Flee) that fail or are preempted
+are removed from the board (their owner re-posts them), still counted in `JobsFailed` when they fail.
+Consequences: No new sim state (the Flee job is a hashed board job; health is hashed). Seed-1 golden unchanged.
+Walkable means "not deep and not a construction site" (PTH-02); swim mode uses standable, so a fleeing agent could
+also cross an M5 construction footprint. The BFS runs only for agents in deep water (at most once per 5 ticks while
+trapped); in a wide lake it can visit ~(2·64+1)² cells. Health regeneration (ECO-06) comes with M5-T5.

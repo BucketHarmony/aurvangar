@@ -749,3 +749,34 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   hauls are recognised by kind + 4-step shape (`HaulSystem.IsPileHaul`): M5 haul-like jobs (refunds, BLD-14 pump
   hauls) must use a different shape or a marker. One job per pile means big piles are hauled one trip at a time.
   Hub per-item cap (100) is the limit on logs until warehouses (M5-T3).
+
+## M4-T9 — Flee from deep water (2026-09-26)
+- Done: `Pathfinder.FindFlee(start, 64)` does a breadth-first search in swim mode (`PathMoves.From(..., swim: true)`, in
+  which deep standable cells count as passable) to the walkable cell with the fewest steps. `FleeRules.Tick` runs for
+  each living agent before its job step. An agent on a deep cell claims a Flee need job (priority 200; it preempts
+  any job, including Drink/Eat) and follows the found path at once, with swim moves. A blocked swim step fails the
+  job, and the agent searches again at once. With no path it is `AgentState.Trapped`: its job is released and its
+  stack dropped, it takes 1 damage per tick and searches again every 5 ticks. At health 0 it dies with
+  `DeathCause.Drowned` through the new `AgentSystem.Kill`, which releases the job, drops the stack and emits
+  `AgentDied`. JOB-07/08: need jobs that fail or are preempted are removed from the board, not left for a retry.
+- Tests: `Scenarios/FloodScenarioTests` has 11 tests: the 2 placeholders with bodies, plus preemption with a cargo
+  drop, ignoring the board while fleeing, a blocked flee path, water receding, the Trapped state, and the throttle
+  regression (5 flood ticks). `FleeSearchTests` has 4: swimming through deep water where A* gives NoPath, exactly
+  64 steps found but 65 NoPath, nearest by steps, and start rules. All failed first: the API was missing, then
+  there was no flee/drown behavior. Mutations: keeping failed need jobs on the board makes 1 test fail; the old
+  shared throttle makes 4 fail. check.sh: 312 passed, 40 skipped, 0 failed; Godot csproj 0 warnings. perf.sh:
+  4 passed, 4 skipped.
+- sim-reviewer found 1 required fix, now applied: the first flee search was delayed by the JOB-06 idle search
+  throttle, which shared `NextJobSearchTick`. Only Trapped agents are throttled now (new `AgentState.Trapped`).
+  Also applied: an `AssignNeed` null result returns without damage, and ADR-031 notes that a blocked drop on death
+  loses the stack.
+- Decisions: ADR-031
+- Golden: unchanged. No agent reaches deep water on seed 1 without commands.
+- Perf: headless seed 1, 24,000 ticks: tick median 0.031 ms, p95 0.043 ms, 25,931 ticks/s, hash `d8a1e43aeeb5d540`
+  (unchanged). No Godot code touched, so screenshots were not re-rendered.
+- Next: M4-T10 must save `Health`, `Death`, `State` (including Trapped), `NextJobSearchTick` and Flee jobs. A saved
+  in-progress Flee job resumes on its saved swim path (`StepProgress = 1`). `AgentMovement.Advance` needs
+  `swim: true` for Flee, which `JobRunner` already passes. M4-T11: show Trapped/drowning agents. M5-T5: use
+  `AgentSystem.Kill(sim, a, Starved/Dehydrated)`, which releases the claimed job. Need jobs are removed on failure,
+  so the needs system must re-post them. Drink/Eat preemption goes through `AssignNeed`, and Flee preempts them.
+  M5-T2: construction footprints are standable but not walkable, so swim mode would let a fleeing agent cross one.

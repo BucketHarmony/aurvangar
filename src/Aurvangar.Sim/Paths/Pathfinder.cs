@@ -18,6 +18,8 @@ public sealed record PathResult(PathStatus Status, Int3[] Path, int Cost)
 public sealed class Pathfinder
 {
     public const int MaxExpanded = 20_000;          // PTH-10
+    /// <summary>WAT-14: a flee path is at most this many steps.</summary>
+    public const int FleeMaxSteps = 64;
     public const int CostStraight = PathMoves.CostStraight, CostDiagonal = PathMoves.CostDiagonal,
         CostStepUp = PathMoves.CostStepUp, CostStepDown = PathMoves.CostStepDown, CostWade = PathMoves.CostWade; // PTH-07
 
@@ -27,6 +29,7 @@ public sealed class Pathfinder
     private readonly PathGrid _grid;
     private readonly PathHeap _open = new();
     private readonly List<Int3> _goals = new();
+    private readonly List<int> _queue = new();
     private readonly PathMove[] _moves = new PathMove[PathMoves.MaxMoves];
 
     // Pooled per-cell search state (PTH-09). _seen[i] == _gen: _g and _cameFrom are valid; _closed[i] == _gen: expanded.
@@ -107,6 +110,44 @@ public sealed class Pathfinder
             }
         }
         LastExpanded = expanded;
+        return PathResult.None;
+    }
+
+    /// <summary>WAT-14 flee (ADR-031): breadth-first over PTH-04..08 moves in swim mode (deep standable cells are
+    /// passable) from <paramref name="start"/> to the walkable cell with the fewest steps, ties by the fixed
+    /// <see cref="Int3.Horizontal8"/> expansion order. No path longer than <paramref name="maxSteps"/> steps.
+    /// A walkable start returns <c>[start]</c>. The result's Cost is the step count.</summary>
+    public PathResult FindFlee(Int3 start, int maxSteps = FleeMaxSteps)
+    {
+        Searches++;
+        LastExpanded = 0;
+        var world = _grid.World;
+        if (!_grid.IsStandable(start)) return InvalidStartResult;
+        if (_grid.IsWalkable(start)) return new PathResult(PathStatus.Found, new[] { start }, 0);
+
+        EnsureArrays(world.CellCount);
+        NextGeneration();
+        _queue.Clear();
+        int si = world.Index(start);
+        _seen[si] = _gen; _g[si] = 0; _cameFrom[si] = -1;
+        _queue.Add(si);
+        for (int head = 0; head < _queue.Count; head++)
+        {
+            int ci = _queue[head];
+            int depth = _g[ci];
+            if (depth >= maxSteps) continue;
+            LastExpanded++;
+            int n = PathMoves.From(_grid, world.CellOf(ci), _moves, swim: true);
+            for (int m = 0; m < n; m++)
+            {
+                var to = _moves[m].To;
+                int ni = world.Index(to);
+                if (_seen[ni] == _gen) continue;
+                _seen[ni] = _gen; _g[ni] = depth + 1; _cameFrom[ni] = ci;
+                if (_grid.IsWalkable(to)) return Build(ni, depth + 1);
+                _queue.Add(ni);
+            }
+        }
         return PathResult.None;
     }
 
