@@ -1,0 +1,11 @@
+# Keep shell scripts LF on Windows checkouts; CRLF breaks bash ("$'\r': command not found").
+*.sh      text eol=lf
+*.cs      text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.csproj  text eol=lf
+*.props   text eol=lf
+*.sln     text eol=crlf
+*.tscn    text eol=lf
+*.godot   text eol=lf
+*.png     binary

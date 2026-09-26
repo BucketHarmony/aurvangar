@@ -25,7 +25,7 @@ scripts/                  check, perf, run-headless, screenshot, autopilot, sim-
 - .NET 8 SDK
 - Godot 4.6 .NET edition (for running the game and screenshots). Set `GODOT_BIN` to its binary.
 - Claude Code
-- `jq` (used by the Claude Code hooks), `xvfb-run` for headless screenshots on Linux
+- Windows: Git for Windows (Git Bash) — Claude Code, the hooks and `scripts/*.sh` run through it. Linux: `xvfb-run` for headless screenshots
 
 ## Running the build with Claude Code
 
