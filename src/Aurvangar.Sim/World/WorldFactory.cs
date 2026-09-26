@@ -11,7 +11,8 @@ public static class WorldFactory
     {
         var sim = new Simulation(content, SizeX, SizeY, SizeZ, seed);
         var terrain = TerrainGenerator.Generate(sim.World, seed);   // M1-T3
-        sim.Buildings.PlacePrebuilt(content.Building("hub"), terrain.HubOrigin, 0);
+        var hub = content.Building("hub");
+        sim.Buildings.PlacePrebuilt(hub, terrain.HubOrigin(hub.Footprint), 0);
         foreach (var t in terrain.TreeBases) sim.Plants.AddTree(t);
         foreach (var b in terrain.BushBases) sim.Plants.AddBush(b);
         // M2-T5: register sources/drains, fill InitialWater, run 600 water ticks, reset the clock to 0.

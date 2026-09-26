@@ -38,7 +38,7 @@ Milestone order is by risk: world and water before anything that depends on them
     (`World.CellChanged` list consumed by WaterGrid and PathGrid later — a `List<int>` of changed indices per
     tick, cleared by `Simulation` at tick end).
   - `VoxelWorldTests`, `SimulationTests` pass.
-- [ ] **M1-T3** Terrain generator · specs: GEN-01..07 · deps: M1-T2
+- [x] **M1-T3** Terrain generator · specs: GEN-01..07 · deps: M1-T2
   - Integer value noise, hill, river channel (with `Fixed.Sin` table), layers, spawn flat, trees, bushes.
     Trees and bushes stored as plain lists on `PlantSystem` (entity behavior comes in M6).
   - Return `HubOrigin` as the footprint origin standing on the spawn flat (y = flat surface + 1). `WorldFactory`

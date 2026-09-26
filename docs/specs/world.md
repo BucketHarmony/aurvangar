@@ -39,7 +39,7 @@ Deterministic from `seed`. Implemented in `TerrainGenerator`, pure function of `
 - **GEN-01** Base height: 2D value noise (own implementation, integer hash based, no library), 2 octaves,
   heights in `[18, 26]`. Use `Rng` derived from `seed` only.
 - **GEN-02** Hill: add a radial bump centered at `(90, 40)` (x,z), radius 26, peak +16. Clamp total height ≤ 48.
-- **GEN-03** River: a channel from `x=0` to `x=127` following `z = 80 + 8*sin(x/20)` computed with integer
+- **GEN-03** (geometry clarified by ADR-009) River: a channel from `x=0` to `x=127` following `z = 80 + 8*sin(x/20)` computed with integer
   approximation (precomputed table from `Fixed` sine, not `Math.Sin`). Channel half-width 3, bed at
   `baseHeight - 4` along its path. Banks slope 1 block per cell for 2 cells.
 - **GEN-04** Layers per column of height h: `y=0` Bedrock; `1 ≤ y < h-4` Stone; `h-4 ≤ y < h` Dirt;

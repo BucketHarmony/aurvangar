@@ -62,3 +62,19 @@ Decision: Title, repo, solution and namespaces are Aurvangar (`Aurvangar.Sim`, `
 `Aurvangar.Client`). Colonists are dwarves in all player-facing text; code identifiers stay generic. The long-term
 endgame (science, exploration, diplomacy) is recorded in docs/00-overview.md as direction only.
 Consequences: Player-facing strings (UI labels, names) use dwarf flavor from M4-T11 onward. No Tolkien-derived words.
+
+## ADR-009: River channel geometry and "river distance" (2026-09-26, M1-T3)
+Context: GEN-03 says "bed at baseHeight - 4" and "banks slope 1 block per cell for 2 cells", and GEN-04/06/07
+measure distances "from the river" without defining them. A bed that follows the local noise height would make
+pools and dams along the channel; banks that stop after 2 cells leave a 2+ block cliff (terrain sits ≥ 4 above the
+bed), so colonists could not walk down to the water (pump, DoD step 2).
+Decision: `baseHeight` is GEN-01's minimum base height (18). The channel (|z - center(x)| ≤ 3) has a constant floor:
+the lowest water cell is y = 14 ("bed"), the solid floor top is y = 13; GEN-08 sources and the initial fill cover
+y = 14..17 ("bed .. bed+3"). Banks slope up 1 block per cell from the channel edge until they meet natural terrain.
+"Distance from the river" is `max(0, |z - center(x)| - 3)` (cells from the channel edge along Z): Sand where ≤ 2,
+no trees where ≤ 3, bushes where 4..12. Bushes' "within 30 cells of the hub" is Chebyshev on X/Z from the spawn
+flat center. Drains cover the channel z range at x = 127 for y = bed .. top of the world. The hub is centered on
+the flat using its footprint from data (`TerrainResult.HubOrigin(footprint)`; its entrance faces north onto the flat).
+Consequences: The river is fed/drained by level difference only (flat bed); the M2-T5 settle and WAT-P2 budget are
+measured on this geometry. Initial water also fills the lower bank cells (y ≤ 17), so the wet surface is wider
+than the 7-cell channel.

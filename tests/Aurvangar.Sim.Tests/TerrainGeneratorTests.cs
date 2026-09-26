@@ -10,7 +10,7 @@ public class TerrainGeneratorTests
 {
     private static VoxelWorld NewWorld() => new(WorldFactory.SizeX, WorldFactory.SizeY, WorldFactory.SizeZ, TestContent.Db.SolidTable);
 
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void SameSeed_IdenticalBlocks()
     {
         var a = NewWorld(); var b = NewWorld();
@@ -19,7 +19,7 @@ public class TerrainGeneratorTests
         Assert.True(a.Blocks.SequenceEqual(b.Blocks));
     }
 
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void DifferentSeed_DifferentBlocks()
     {
         var a = NewWorld(); var b = NewWorld();
@@ -28,7 +28,7 @@ public class TerrainGeneratorTests
         Assert.False(a.Blocks.SequenceEqual(b.Blocks));
     }
 
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void Heights_WithinSpecRange() // GEN-01, GEN-02
     {
         var w = NewWorld();
@@ -38,7 +38,7 @@ public class TerrainGeneratorTests
         Assert.True(r.Heights.Max() >= 34, "hill should rise well above base terrain");
     }
 
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void River_CrossesMap_WithSourcesAndDrains() // GEN-03, GEN-08
     {
         var w = NewWorld();
@@ -50,7 +50,7 @@ public class TerrainGeneratorTests
         Assert.NotEmpty(r.InitialWater);
     }
 
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void Plants_CountsAndSpacing() // GEN-06, GEN-07
     {
         var w = NewWorld();
@@ -65,5 +65,39 @@ public class TerrainGeneratorTests
             Assert.Equal(BlockId.Air, w.GetBlock(t));
             Assert.Equal(BlockId.Grass, w.GetBlock(t + Int3.Down));
         }
+    }
+
+    [Theory]
+    [InlineData(2UL)]
+    [InlineData(3UL)]
+    [InlineData(4UL)]
+    [InlineData(5UL)]
+    public void Plants_CountsHoldAcrossSeeds(ulong seed) // GEN-06, GEN-07
+    {
+        var r = TerrainGenerator.Generate(NewWorld(), seed);
+        Assert.InRange(r.TreeBases.Count, 120, 150);
+        Assert.Equal(24, r.BushBases.Count);
+    }
+
+    [Fact]
+    public void HubOnSpawnFlat_BushesNearRiverAndHub() // GEN-05, GEN-07
+    {
+        var w = NewWorld();
+        var r = TerrainGenerator.Generate(w, 1);
+        Assert.Equal((40, 60), (r.SpawnX, r.SpawnZ)); // river is far enough on seed 1: no shift
+        int flat = r.Heights[r.SpawnX + r.SpawnZ * w.SizeX];
+        for (int z = r.SpawnZ - 4; z <= r.SpawnZ + 4; z++)
+            for (int x = r.SpawnX - 4; x <= r.SpawnX + 4; x++)
+                Assert.Equal(flat, r.Heights[x + z * w.SizeX]);
+        Assert.Equal(flat, r.SpawnSurfaceY);
+        Assert.Equal(new Int3(39, flat + 1, 59), r.HubOrigin(TestContent.Db.Building("hub").Footprint));
+        var water = r.InitialWater.ToHashSet();
+        foreach (var b in r.BushBases)
+        {
+            Assert.Equal(BlockId.Grass, w.GetBlock(b + Int3.Down));
+            Assert.True(b.ChebyshevXZ(new Int3(r.SpawnX, 0, r.SpawnZ)) <= 30, "bush too far from hub");
+            Assert.DoesNotContain(b, water);
+        }
+        Assert.All(r.InitialWater, c => Assert.Equal(BlockId.Air, w.GetBlock(c)));
     }
 }

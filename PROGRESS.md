@@ -58,3 +58,23 @@ Entry template:
 - Next: M1-T1/M1-T2 are done; next is M1-T3 (terrain generator). Follow-up, not blocking: GitHub warns that
   actions/checkout@v4 and actions/setup-dotnet@v4 target deprecated Node 20, and ubuntu-latest moves to Ubuntu 26
   from 2026-10-19; bump to v5 actions / pin the runner when convenient.
+
+## M1-T3 — Terrain generator (2026-09-26)
+- Done: `TerrainGenerator` (GEN-01..08 data) split into `TerrainShape` (2-octave integer value noise 18..26, hill
+  at (90,40) r26 +16 clamped 48, river table from `Fixed.Sin`, channel carve), `TerrainGenerator` (spawn flat to
+  median + north shift rule, layers, sources/drains/initial water lists) and `TerrainPlants` (seeded dart throwing:
+  150 trees spacing ≥ 4, 24 bushes). Hub origin is computed from the hub footprint in data
+  (`TerrainResult.HubOrigin(footprint)`, used by `WorldFactory`) per sim-reviewer. Seed 1: spawn flat at (40,60),
+  no shift; 150 trees + 24 bushes; 18 BuildingSolid; headless creation 15 ms.
+- Tests: un-skipped `TerrainGeneratorTests.*` (5) and `WorldInvariantTests.EveryColumnHasBedrockAtZero`,
+  `HubFootprintIsBuildingSolid_EntranceStandable`, `TreesRegisteredAsPlants`. Added
+  `TerrainGeneratorTests.HubOnSpawnFlat_BushesNearRiverAndHub` and `Plants_CountsHoldAcrossSeeds` (seeds 2..5).
+  check.sh: 48 passed, 110 skipped, 0 failed.
+- Decisions: ADR-009 (river channel geometry: constant bed, lowest water y=14, fill 14..17; banks slope 1/cell
+  until natural terrain; "distance from river" = cells from channel edge along Z).
+- Golden: unchanged (no golden file yet; M1-T4 creates it)
+- Perf: n/a
+- Next: M1-T4. `WorldFactory` does not yet register sources/drains or fill water (M2-T5); `TerrainResult` exposes
+  `WaterSources`, `WaterDrains`, `InitialWater`, `SpawnX/Z`, `SpawnSurfaceY`. Initial water covers every air cell
+  with y ≤ 17 (channel plus lower bank cells). Reviewer note for M4-T3: flattening to the median can leave steps
+  of several blocks at the flat edges; check `HubReachesRiverAndHill` when pathing lands.

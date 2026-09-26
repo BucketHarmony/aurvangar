@@ -8,7 +8,7 @@ namespace Aurvangar.Sim.Tests;
 
 public class WorldInvariantTests
 {
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void EveryColumnHasBedrockAtZero()
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
@@ -17,7 +17,7 @@ public class WorldInvariantTests
                 Assert.Equal(BlockId.Bedrock, sim.World.GetBlock(x, 0, z));
     }
 
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void HubFootprintIsBuildingSolid_EntranceStandable() // GEN-05
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
@@ -26,7 +26,7 @@ public class WorldInvariantTests
         Assert.True(sim.PathGrid.IsStandable(hub.EntranceCell));
     }
 
-    [Fact(Skip = "M1-T3")]
+    [Fact]
     public void TreesRegisteredAsPlants()
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
