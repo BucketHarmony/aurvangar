@@ -127,7 +127,7 @@ public class WaterScenarioTests
 [Trait("Category", "Scenario")]
 public class RiverTests
 {
-    [Fact(Skip = "M2-T5")]
+    [Fact]
     public void Seed1_RiverFlowsAcrossMap()
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
@@ -139,12 +139,36 @@ public class RiverTests
         Assert.Equal(0, sim.Clock.Tick); // pre-settle must reset the clock
     }
 
-    [Fact(Skip = "M2-T5")]
+    [Fact]
     public void Seed1_RiverSettles() // WAT-P2
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
         sim.RunTicks(1200);
         Assert.True(sim.Water.ActiveCount <= 3000, $"active cells {sim.Water.ActiveCount}");
+    }
+
+    [Fact]
+    public void Seed1_PreSettleResetsStatsAndEvents_ConservationFromTickZero() // GEN-08, WAT-11, ADR-014
+    {
+        var sim = WorldFactory.Create(1, TestContent.Db);
+        Assert.Equal(0, sim.Water.Stats.SourceAdded);
+        Assert.Equal(0, sim.Water.Stats.Drained);
+        Assert.Equal(0, sim.Water.Stats.Evaporated);
+        Assert.Empty(sim.Events.Drain());
+        Assert.True(sim.Water.Sources.Count > 0 && sim.Water.Drains.Count > 0);
+        long initial = sim.Water.TotalVolume();
+        sim.RunTicks(300);
+        var s = sim.Water.Stats;
+        Assert.True(s.Drained > 0, "river does not reach the drains");
+        Assert.Equal(initial + s.SourceAdded - s.Drained - s.Evaporated, sim.Water.TotalVolume());
+    }
+
+    [Fact]
+    public void Seed1_CreateIsDeterministic() // ARCH-06, GEN-08
+    {
+        var a = WorldFactory.Create(1, TestContent.Db);
+        var b = WorldFactory.Create(1, TestContent.Db);
+        Assert.Equal(a.StateHash(), b.StateHash());
     }
 
     [Fact(Skip = "M6-T4")]

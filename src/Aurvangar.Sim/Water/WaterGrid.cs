@@ -72,6 +72,13 @@ public sealed partial class WaterGrid
 
     public IReadOnlyList<int> Drains => _drains;
 
+    /// <summary>Zero the volume counters so conservation (WAT-11) is measured from the current total. Used after
+    /// the world-creation pre-settle (ADR-014).</summary>
+    public void ResetStats()
+    {
+        Stats.SourceAdded = 0; Stats.Drained = 0; Stats.Evaporated = 0; Stats.Pumped = 0;
+    }
+
     /// <summary>Number of cells in the active set (WAT-02).</summary>
     public int ActiveCount => _active.Count;
 

@@ -147,3 +147,17 @@ a tick. If the log is cleared outside `Simulation.Tick` while the cursor is ahea
 Consequences: Neighbor chunks are not dirtied by a border cell change; a water side face at a chunk seam can stay stale
 until the neighboring chunk gets its own WaterDirty (M3-T3/T4 may revisit if seams show). Water level changes from the push are visible to the
 `PathGrid` in the same tick.
+
+## ADR-014: World-creation pre-settle runs the full tick loop, then resets clock, water stats and events (2026-09-26, M2-T5)
+Context: GEN-08 says to run the water sim for 600 ticks inside `WorldFactory` and `RiverTests` requires the clock to be
+0 afterwards, but does not say how the step is driven or what happens to `WaterStats` and queued events. Calling
+`Water.Tick` alone would skip `Water.EndTick` and `ClearChangeLog` (ADR-013 cursor). Keeping the pre-settle's
+`SourceAdded`/`Drained`/`Evaporated` would make WAT-11 checks from tick 0 need the pre-fill volume, which no caller has.
+Decision: `WorldFactory.PreSettleRiver` registers the terrain's sources and drains, sets every `InitialWater` cell to
+`Full`, calls `Simulation.RunTicks(600)`, then sets `Clock.Tick = 0`, calls `WaterGrid.ResetStats()` and drains the
+event bus. The active set and levels are kept (they are the settled state). No other system acts during the settle yet;
+M4-T4 spawns colonists after it, so agents never run during pre-settle.
+Consequences: Conservation is measured from the tick-0 total. The view gets no WaterDirty backlog from world creation;
+it builds everything from `MarkAllDirty`. Systems added later that act in `Tick` (plants growth, weather) will also run
+for the 600 settle ticks unless they are registered after `PreSettleRiver`; keep colonists, stock and anything
+time-dependent after it.
