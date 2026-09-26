@@ -500,3 +500,8 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
 5. **Godot .NET**: yes. `GODOT_BIN` points at the Godot 4.6.2 .NET console binary; later gates get real screenshots.
 - Added **M3-T9** (ambient lighting) for the black shaded faces.
 - Gate checked. Next: M3-T8, then M3-T9, then M4-T1.
+
+### G1 follow-up (human, after hands-on play, 2026-09-26)
+- **Q1 water colors**: keep as is (`#5aa9d6` → `#1f4f7a`, alpha 0.72). Closed.
+- **Q3 pan speed**: good as is. Closed.
+- **Lighting**: shadows are a little harsh, so raise the ambient light some. Folded into M3-T9.

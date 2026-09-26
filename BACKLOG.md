@@ -95,6 +95,8 @@ Milestone order is by risk: world and water before anything that depends on them
 - [ ] **M3-T9** Ambient lighting · specs: VIEW-20 · deps: M3-GATE
   - Screenshots show faces turned away from the sun rendering pure black (only a DirectionalLight3D in
     `Main.tscn`). Add a `WorldEnvironment` with ambient light / sky so shaded faces stay readable.
+  - Human (after play): shadows are a little harsh, so raise the ambient light some. Soften shadows by raising
+    ambient light only. Keep the sun, water colors and palette unchanged.
   - Verify with `./scripts/screenshot.sh` (needs `GODOT_BIN`) and describe the before/after in PROGRESS.md.
 - [x] **M3-GATE HUMAN-GATE G1: world and water look** · deps: M3-T6
   - Write a gate report in PROGRESS.md: screenshots produced (paths), perf numbers, known visual issues, and
