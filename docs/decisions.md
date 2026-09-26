@@ -188,3 +188,21 @@ Consequences: At the default slice (`SizeY - 1`) there are no cut faces. Cut fac
 that holds `SliceY`, so the VIEW-04 remesh rule (chunks whose Y range contains the old or new slice) still covers a
 slice change (M3-T5). A block change at `SliceY + 1` in the chunk above already dirties the chunk below (WLD-03
 neighbor dirtying), so cut faces stay current.
+
+## ADR-017: Water mesher emits side faces for every wet cell and tints by column depth (2026-09-26, M3-T3)
+Context: The water.md rendering contract says to build top faces for surface cells (wet, dry above) "plus side faces
+where a neighbor's surface is lower", and to depth-tint by `level`. Emitting sides only for surface cells leaves
+gaps in falls and free-standing columns (only the top cell of a column would have sides), and tinting by the top
+cell's `level` alone makes a deep lake look as pale as a puddle. The contract also does not say how slicing
+(VIEW-04) and the palette (`water.shallow/deep/alpha`) apply.
+Decision: The water top of a wet cell is `y + level/Full` if it is a surface cell, otherwise `y + 1`. Every wet cell
+(not only surface cells) emits a side quad toward each non-solid horizontal neighbor whose water top in that cell
+is lower (dry = `y`), spanning the difference. Surface cells emit one top quad each (no greedy merge). Cells above
+`sliceY` are ignored and count as dry, so a wet cell at `sliceY` under more water becomes a surface cell. Color
+lerps from `water.shallow` to `water.deep` by column depth (this cell's level plus `Full` per contiguous wet cell
+below, full dark at 3 cells), alpha `water.alpha`, via new `WaterColors`. `WaterMesher.Build` takes an optional
+`WaterColors` (default: the embedded palette), so the scaffold signature still works.
+Consequences: A lake bed step inside a body of water emits no faces (both sides are `y + 1`). Neighbors in other
+chunks are read from the world, so a chunk's water mesh depends on the one-cell border: M3-T4 must also remesh the
+water of a neighbor chunk when a border cell's water changes (M2-T4 note: WaterDirty is per chunk of the changed
+cell only).

@@ -258,3 +258,25 @@ Entry template:
 - Perf: n/a (MESH-P1 is M3-T7; the cut check adds one `world.IsSolid` call per visible top face on the slice layer)
 - Next: M3-T3 (WaterMesher, ViewCore). It should also hide water above `sliceY` (VIEW-04). M3-T5 slice controller:
   remesh the chunks containing the old and new slice (ADR-016).
+
+## M3-T3 — Water surface builder (2026-09-26)
+- Done: `ViewCore.Meshing.WaterMesher.Build` implemented (water.md rendering contract, VIEW-07). A surface cell (wet,
+  above dry/solid/OOB/above slice) gets one top quad at `y + level/Full`. Every wet cell gets side quads toward
+  non-solid horizontal neighbors whose water top is lower (dry = `y`), so columns and falls have no gaps. Cells above
+  `sliceY` are ignored (VIEW-04). Neighbors in other chunks come from the world. New `WaterColors` (palette
+  `water.shallow/deep/alpha`) tints by column depth (full dark at 3 cells); `Build` takes an optional `WaterColors`
+  (default: embedded palette). ViewCore only; no Sim changes.
+- Tests: moved `WaterMesherTests` into `Meshing/WaterMesherTests.cs` and un-skipped its 3 tests (all failed first
+  with the M3-T3 `NotImplementedException`). Added `QuadsWoundCounterClockwiseFromNormalSide`,
+  `SideQuad_SpansLevelDifferenceToLowerNeighbor`, `FreeStandingColumn_SidesCoverWholeHeight`,
+  `Slice_HidesWaterAbove_AndCellAtSliceBecomesSurface`, `NeighborInOtherChunk_IsReadFromWorld`,
+  `Color_DarkerWithDepth_AndSemiTransparent`. check.sh: 127 passed, 78 skipped, 0 failed.
+- Decisions: ADR-017 (side faces for every wet cell, column-depth tint, slice handling, optional colors).
+- Golden: unchanged
+- Perf: n/a (no water mesh budget; one top quad per surface cell, no greedy merge, per the contract)
+- Next: M3-T4 (Godot GameRoot loop, ChunkRenderer, WaterRenderer). The water mesh of a chunk reads its one-cell
+  border, so when water changes in a border cell the WaterRenderer must also remesh the neighbor chunk (WaterDirty
+  is only raised for the chunk of the changed cell), and dedupe WaterDirty per frame. Water material needs alpha
+  blending (vertex color alpha = `water.alpha`) and, like terrain, reversed index order or a cull-mode change for
+  Godot's clockwise front faces. Godot cannot be run on this machine (standard 4.6.1, no GODOT_BIN), so M3-T4
+  rendering can only be build-verified.

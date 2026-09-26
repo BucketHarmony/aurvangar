@@ -79,7 +79,7 @@ Milestone order is by risk: world and water before anything that depends on them
     merge across types; hidden faces culled across chunk borders).
 - [x] **M3-T2** Slicing in mesher · specs: VIEW-04 · deps: M3-T1
   - Un-skip `Meshing/SliceTests.*` (cells above slice treated as air; cut faces flagged).
-- [ ] **M3-T3** Water surface builder · specs: water.md rendering contract, VIEW-07 · deps: M2-T4, M3-T1
+- [x] **M3-T3** Water surface builder · specs: water.md rendering contract, VIEW-07 · deps: M2-T4, M3-T1
   - `Aurvangar.ViewCore.Meshing.WaterMesher`. Un-skip `Meshing/WaterMesherTests.*`.
 - [ ] **M3-T4** Godot: GameRoot loop, ChunkRenderer, WaterRenderer · specs: VIEW-01, VIEW-02 · deps: M3-T3
   - Seed 1 renders with terrain and river. Remesh queue with per-frame budget.
