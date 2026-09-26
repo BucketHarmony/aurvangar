@@ -1,0 +1,65 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet run *)",
+      "Bash(dotnet restore *)",
+      "Bash(dotnet format *)",
+      "Bash(./scripts/*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git show *)",
+      "Bash(ls *)",
+      "Bash(xvfb-run *)",
+      "Bash(UPDATE_GOLDEN=1 dotnet test *)",
+      "Bash(PERF_SCALE=* ./scripts/perf.sh*)",
+      "Bash(mkdir *)",
+      "Bash(chmod +x *)",
+      "Bash(git init*)",
+      "Bash(git mv *)",
+      "Bash(git rm *)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git rebase *)",
+      "Bash(git commit --amend *)",
+      "Bash(rm -rf *)",
+      "Bash(dotnet add * package *)",
+      "Edit(tests/golden/*)",
+      "Write(tests/golden/*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-after-edit.sh",
+            "args": [],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-gate.sh",
+            "args": [],
+            "timeout": 600,
+            "statusMessage": "Running check.sh before stopping"
+          }
+        ]
+      }
+    ]
+  }
+}

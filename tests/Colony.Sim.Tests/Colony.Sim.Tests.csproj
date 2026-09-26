@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>Colony.Sim.Tests</RootNamespace>
+    <!-- xUnit1004: skipped tests are the backlog's acceptance tests; they are expected until un-skipped. -->
+    <NoWarn>$(NoWarn);xUnit1004</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Colony.Sim/Colony.Sim.csproj" />
+    <ProjectReference Include="../../src/Colony.ViewCore/Colony.ViewCore.csproj" />
+  </ItemGroup>
+</Project>

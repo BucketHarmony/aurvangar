@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The simulation. MUST NOT reference Godot. See CLAUDE.md hard rules. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Colony.Sim</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Game data is embedded so sim, tests, tools and Godot all load identical content with no path logic. -->
+    <EmbeddedResource Include="../../data/*.json" LogicalName="data/%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Colony.Sim.Tests" />
+  </ItemGroup>
+</Project>

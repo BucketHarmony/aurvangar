@@ -1,0 +1,60 @@
+using Colony.Sim.Content;
+using Colony.Sim.Tests.Support;
+using Colony.Sim.World;
+using Xunit;
+
+namespace Colony.Sim.Tests;
+
+public class ContentDbTests
+{
+    [Fact]
+    public void LoadEmbedded_LoadsAllFiles()
+    {
+        var db = TestContent.Db;
+        Assert.Equal(8, db.Blocks.Count);
+        Assert.Equal(5, db.Items.Count - 1);
+        Assert.Equal(4, db.Buildings.Count);
+        Assert.NotEmpty(db.Palette.Blocks);
+    }
+
+    [Fact]
+    public void SolidTable_MatchesBlocks()
+    {
+        var db = TestContent.Db;
+        Assert.False(db.SolidTable[(int)BlockId.Air]);
+        Assert.True(db.SolidTable[(int)BlockId.Stone]);
+        Assert.True(db.SolidTable[(int)BlockId.BuildingSolid]);
+    }
+
+    [Fact]
+    public void Lookups_Work()
+    {
+        var db = TestContent.Db;
+        Assert.Equal("water", db.ItemDef(db.Item("water")).Id);
+        Assert.Equal(5000, db.ItemDef(db.Item("water")).Drink);
+        Assert.Equal(20, db.Building("warehouse").Cost["log"]);
+        Assert.Equal("stone", db.Block(BlockId.Stone).Drop);
+        Assert.Throws<KeyNotFoundException>(() => db.Item("gold"));
+    }
+
+    [Fact]
+    public void Validation_RejectsUnknownCostItem()
+    {
+        var root = TestContent.RepoRoot;
+        string Read(string f) => File.ReadAllText(Path.Combine(root, "data", f));
+        var badBuildings = Read("buildings.json").Replace("\"log\": 20", "\"gold\": 20");
+        var ex = Assert.Throws<InvalidDataException>(() =>
+            ContentDb.Load(Read("blocks.json"), Read("items.json"), badBuildings, Read("palette.json")));
+        Assert.Contains("gold", ex.Message);
+    }
+
+    [Fact]
+    public void Validation_RejectsBlockNameMismatch()
+    {
+        var root = TestContent.RepoRoot;
+        string Read(string f) => File.ReadAllText(Path.Combine(root, "data", f));
+        var badBlocks = Read("blocks.json").Replace("\"Sand\"", "\"Gravel\"");
+        Assert.Throws<InvalidDataException>(() =>
+            ContentDb.Load(badBlocks, Read("items.json"), Read("buildings.json"), Read("palette.json")));
+    }
+}

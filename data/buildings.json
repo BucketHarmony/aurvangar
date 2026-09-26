@@ -1,0 +1,60 @@
+{
+  "buildings": [
+    {
+      "id": "hub",
+      "name": "Colony Hub",
+      "footprint": [3, 2, 3],
+      "entrance": [1, 0, -1],
+      "cost": {},
+      "buildTicks": 0,
+      "placement": "ground",
+      "storage": { "capacity": 0, "perItemCapacity": 100, "accepts": ["log", "stone", "berries", "potato", "water"] },
+      "workers": 0,
+      "producer": null,
+      "setsBlocks": true,
+      "prebuiltOnly": true
+    },
+    {
+      "id": "warehouse",
+      "name": "Warehouse",
+      "footprint": [2, 2, 2],
+      "entrance": [0, 0, -1],
+      "cost": { "log": 20 },
+      "buildTicks": 300,
+      "placement": "ground",
+      "storage": { "capacity": 150, "perItemCapacity": 0, "accepts": ["log", "stone", "berries", "potato"] },
+      "workers": 0,
+      "producer": null,
+      "setsBlocks": true,
+      "prebuiltOnly": false
+    },
+    {
+      "id": "pump",
+      "name": "Water Pump",
+      "footprint": [2, 1, 1],
+      "entrance": [0, 0, -1],
+      "cost": { "log": 12 },
+      "buildTicks": 200,
+      "placement": "waterEdge",
+      "storage": null,
+      "workers": 1,
+      "producer": { "output": "water", "cycleTicks": 30, "minIntakeLevel": 256, "unitsPerCycle": 64, "buffer": 10, "haulAt": 5 },
+      "setsBlocks": true,
+      "prebuiltOnly": false
+    },
+    {
+      "id": "levee",
+      "name": "Levee",
+      "footprint": [1, 1, 1],
+      "entrance": [0, 0, -1],
+      "cost": { "log": 2 },
+      "buildTicks": 40,
+      "placement": "ground",
+      "storage": null,
+      "workers": 0,
+      "producer": null,
+      "setsBlocks": true,
+      "prebuiltOnly": false
+    }
+  ]
+}

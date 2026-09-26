@@ -1,0 +1,12 @@
+bin/
+obj/
+.godot/
+.import/
+artifacts/
+*.user
+*.suo
+.vs/
+.idea/
+.DS_Store
+TestResults/
+.claude/settings.local.json

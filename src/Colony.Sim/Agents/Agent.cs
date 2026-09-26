@@ -1,0 +1,45 @@
+using Colony.Sim.Core;
+using Colony.Sim.Items;
+
+namespace Colony.Sim.Agents;
+
+public enum AgentState : byte { Idle, Working, Dead }
+
+public enum DeathCause : byte { None, Starved, Dehydrated, Drowned }
+
+/// <summary>A colonist (JOB-01). A future player avatar is an Agent driven by input instead of the job board.</summary>
+public sealed class Agent
+{
+    public const int CarryCapacity = 10;
+    public const int NeedMax = 10_000;   // ECO-02
+    public const int HealthMax = 1_000;  // ECO-06
+
+    public AgentId Id { get; init; }
+    public string Name { get; init; } = "";
+
+    public Int3 Cell { get; set; }
+    public Int3 NextCell { get; set; }
+    /// <summary>Ticks spent moving toward NextCell. The view lerps Cell→NextCell by MoveProgress/MoveTotal.</summary>
+    public int MoveProgress { get; set; }
+    public int MoveTotal { get; set; }
+
+    public int Hunger { get; set; } = NeedMax;
+    public int Thirst { get; set; } = NeedMax;
+    public int Health { get; set; } = HealthMax;
+
+    public ItemStack Carried { get; set; } = ItemStack.Empty;
+
+    public AgentState State { get; set; } = AgentState.Idle;
+    public DeathCause Death { get; set; }
+
+    public JobId CurrentJob { get; set; }
+    public int StepIndex { get; set; }
+    public int StepProgress { get; set; }
+    public Int3[] Path { get; set; } = Array.Empty<Int3>();
+    public int PathPos { get; set; }
+
+    /// <summary>Tick before which the agent will not try to pick a job again (JOB-06 throttle).</summary>
+    public long NextJobSearchTick { get; set; }
+
+    public bool IsAlive => State != AgentState.Dead;
+}

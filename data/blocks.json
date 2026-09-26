@@ -1,0 +1,12 @@
+{
+  "blocks": [
+    { "id": 0, "name": "Air",           "solid": false, "diggable": false, "hardness": 0,  "drop": null },
+    { "id": 1, "name": "Bedrock",       "solid": true,  "diggable": false, "hardness": 0,  "drop": null },
+    { "id": 2, "name": "Stone",         "solid": true,  "diggable": true,  "hardness": 60, "drop": "stone" },
+    { "id": 3, "name": "Dirt",          "solid": true,  "diggable": true,  "hardness": 25, "drop": null },
+    { "id": 4, "name": "Grass",         "solid": true,  "diggable": true,  "hardness": 25, "drop": null },
+    { "id": 5, "name": "Sand",          "solid": true,  "diggable": true,  "hardness": 20, "drop": null },
+    { "id": 6, "name": "Farmland",      "solid": true,  "diggable": true,  "hardness": 25, "drop": null },
+    { "id": 7, "name": "BuildingSolid", "solid": true,  "diggable": false, "hardness": 0,  "drop": null }
+  ]
+}

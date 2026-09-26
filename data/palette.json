@@ -1,0 +1,30 @@
+{
+  "blocks": {
+    "Bedrock": "#2b2b30",
+    "Stone": "#7d7f86",
+    "Dirt": "#7a5534",
+    "Grass": "#5f8f3e",
+    "Sand": "#d6c48f",
+    "Farmland": "#5a3b22",
+    "BuildingSolid": "#9a8f7a"
+  },
+  "cutFaceDarken": 0.55,
+  "water": { "shallow": "#5aa9d6", "deep": "#1f4f7a", "alpha": 0.72 },
+  "items": {
+    "log": "#8a5a2b",
+    "stone": "#8c8c8c",
+    "berries": "#b0304a",
+    "potato": "#c9a55a",
+    "water": "#3f8fd0"
+  },
+  "buildings": {
+    "hub": "#c28b4a",
+    "warehouse": "#a07850",
+    "pump": "#4f7fa0",
+    "levee": "#8f8a70",
+    "blueprint": "#7fd0ff"
+  },
+  "agents": { "idle": "#b0b0b0", "working": "#f0f0f0", "dead": "#c03030" },
+  "designations": { "dig": "#ff9a3c", "chop": "#ff9a3c", "farm": "#6b4a2a", "unreachable": "#e03a3a" },
+  "plants": { "trunk": "#6b4a2a", "canopy": "#3f6f2e", "bush": "#4f7f3a", "berries": "#b0304a" }
+}

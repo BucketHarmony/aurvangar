@@ -1,0 +1,106 @@
+using Colony.Sim.Actions;
+using Colony.Sim.Agents;
+using Colony.Sim.Buildings;
+using Colony.Sim.Commands;
+using Colony.Sim.Content;
+using Colony.Sim.Core;
+using Colony.Sim.Events;
+using Colony.Sim.Paths;
+using Colony.Sim.Plants;
+using Colony.Sim.Water;
+using Colony.Sim.World;
+
+namespace Colony.Sim;
+
+/// <summary>Root of the simulation. Owns all state and runs systems in the fixed order of ARCH-01.
+/// Add new systems as fields here, construct them in the constructor, tick them in Tick, hash them in StateHash,
+/// and save them in SaveGame — all in the same task.</summary>
+public sealed class Simulation
+{
+    public ulong Seed { get; }
+    public ContentDb Content { get; }
+    public VoxelWorld World { get; }
+    public WaterGrid Water { get; }
+    public PlantSystem Plants { get; }
+    public PathGrid PathGrid { get; }
+    public Pathfinder Pathfinder { get; }
+    public Regions Regions { get; }
+    public AgentSystem Agents { get; }
+    public BuildingSystem Buildings { get; }
+    public WorldActions Actions { get; }
+    public SimClock Clock { get; } = new();
+    public Rng Rng { get; }
+    public EventBus Events { get; } = new();
+    public CommandQueue Commands { get; } = new();
+
+    /// <summary>Wall-clock-free perf counters. Never read by gameplay code.</summary>
+    public SimCounters Counters { get; } = new();
+
+    public Simulation(ContentDb content, int sizeX, int sizeY, int sizeZ, ulong seed)
+    {
+        Seed = seed;
+        Content = content;
+        Rng = Rng.Derive(seed, salt: 1);
+        World = new VoxelWorld(sizeX, sizeY, sizeZ, content.SolidTable);
+        Water = new WaterGrid(World);
+        Plants = new PlantSystem(World);
+        PathGrid = new PathGrid(World, Water, Plants);
+        Pathfinder = new Pathfinder(PathGrid);
+        Regions = new Regions(PathGrid);
+        Agents = new AgentSystem();
+        Buildings = new BuildingSystem(World);
+        Actions = new WorldActions(this);
+    }
+
+    public void Enqueue(ICommand command) => Commands.Enqueue(command);
+
+    /// <summary>One fixed step. Order is ARCH-01 and must not change without an ADR.</summary>
+    public void Tick()
+    {
+        Commands.ApplyAll(this);                 // 1
+        // 2  WeatherSystem.Tick                  (M6-T4)
+        Water.Tick(Events);                      // 3
+        // 4  MoistureMap.Tick                    (M6-T1)
+        Plants.Tick(Clock);                      // 5
+        // 6  NeedsSystem.Tick                    (M5-T5)
+        Buildings.Tick(this);                    // 7
+        // 8  DesignationSystem.Tick              (M4-T7)
+        // 9  HaulSystem.Tick                     (M4-T8)
+        Agents.Tick(this);                       // 10
+        PathGrid.Invalidate(World.ChangedCells);
+        Regions.RebuildIfDirty();                // 11
+        foreach (var ci in World.TakeDirtyChunks()) Events.Emit(new ChunkDirty(ci));
+        World.ClearChangeLog();
+        Clock.Tick++;                            // 12
+    }
+
+    public void RunTicks(int n)
+    {
+        for (int i = 0; i < n; i++) Tick();
+    }
+
+    /// <summary>ARCH-06. Every piece of state must be included. Dead agents are excluded (SAV-06).</summary>
+    public ulong StateHash()
+    {
+        var h = StateHasher.Create();
+        h.Add(Clock.Tick);
+        h.Add(Rng.State);
+        h.Add(World.SizeX); h.Add(World.SizeY); h.Add(World.SizeZ);
+        h.Add(World.Blocks);
+        h.Add(Water.Levels);
+        h.Add(Water.SourceStrength);
+        Plants.AddToHash(ref h);
+        Buildings.AddToHash(ref h);
+        Agents.AddToHash(ref h);
+        return h.Value;
+    }
+}
+
+/// <summary>Diagnostics for the debug overlay and perf tests.</summary>
+public sealed class SimCounters
+{
+    public long PathSearches { get; set; }
+    public long RegionRebuilds { get; set; }
+    public long JobsCompleted { get; set; }
+    public long JobsFailed { get; set; }
+}
