@@ -164,6 +164,22 @@ public class RiverTests
     }
 
     [Fact]
+    public void Seed1_RiverHoldsVolumeThroughDay10() // M3-T8, GEN-08, WAT-09, WAT-11, ADR-021
+    {
+        var sim = WorldFactory.Create(1, TestContent.Db);
+        long v0 = sim.Water.TotalVolume();
+        long lo = v0 * 90 / 100, hi = v0 * 110 / 100;
+        const int every = 100;
+        for (int t = every; t <= 10 * Core.SimClock.TicksPerDay; t += every)
+        {
+            sim.RunTicks(every);
+            long v = sim.Water.TotalVolume();
+            Assert.True(v >= lo && v <= hi,
+                $"river volume {v} at tick {t} is outside +-10% of tick-0 volume {v0} ({v * 100 / v0}%)");
+        }
+    }
+
+    [Fact]
     public void Seed1_CreateIsDeterministic() // ARCH-06, GEN-08
     {
         var a = WorldFactory.Create(1, TestContent.Db);

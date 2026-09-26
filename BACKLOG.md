@@ -87,7 +87,7 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M3-T6** Screenshot harness · specs: VIEW-20 · deps: M3-T5
   - `scripts/screenshot.sh` produces the 4 preset PNGs. Plants render as placeholder trunks/cones.
 - [x] **M3-T7** Mesher perf · specs: MESH-P1 · deps: M3-T1
-- [ ] **M3-T8** River holds its volume · specs: GEN-08, WAT-09, WAT-11 · deps: M3-GATE
+- [x] **M3-T8** River holds its volume · specs: GEN-08, WAT-09, WAT-11 · deps: M3-GATE
   - Gate G1 answer: keep the initial bank fill (ADR-009); fix the ~43% seed-1 volume loss over 10 days with
     stronger inflow (source strength and/or more source cells), not by shrinking the fill or weakening drains.
   - New scenario test: seed-1 river volume stays within ±10% of its tick-0 value from tick 0 through day 10.

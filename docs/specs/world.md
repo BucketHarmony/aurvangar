@@ -50,7 +50,7 @@ Deterministic from `seed`. Implemented in `TerrainGenerator`, pure function of `
 - **GEN-06** Trees: Poisson-disk style placement with min spacing 4 on Grass cells not in the spawn flat, not
   within 3 of the river; target 150 trees. Tree = trunk height 4 (occupies 4 cells), canopy is visual only.
 - **GEN-07** Berry bushes: 24 bushes on Grass within 4–12 cells of the river and within 30 cells of the hub.
-- **GEN-08** Water sources: column cells `x=0`, `z` within the river channel, `y` from bed to `bed+3`.
+- **GEN-08** Water sources: column cells `x=0` plus spring columns every 16 cells along the channel (x = 16, 32, ..., 112; ADR-021), `z` within the river channel, `y` from bed to `bed+3`.
   Drains: `x=127`, same z range, all y. Initial water: fill the channel to `bed+3` at world creation and run
   the water sim for 600 ticks inside `WorldFactory` so the river is settled at tick 0.
 

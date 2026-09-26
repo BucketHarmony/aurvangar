@@ -45,7 +45,11 @@ public class TerrainGeneratorTests
         var r = TerrainGenerator.Generate(w, 1);
         Assert.NotEmpty(r.WaterSources);
         Assert.NotEmpty(r.WaterDrains);
-        Assert.All(r.WaterSources, s => Assert.Equal(0, s.X));
+        // ADR-021: inlet at x=0 plus spring columns every RiverSpringSpacing cells, never in the drain column.
+        Assert.Contains(r.WaterSources, s => s.X == 0);
+        Assert.All(r.WaterSources, s => Assert.Equal(0, s.X % TerrainShape.RiverSpringSpacing));
+        Assert.All(r.WaterSources, s => Assert.True(s.X < w.SizeX - 1));
+        Assert.True(r.WaterSources.Select(s => s.X).Distinct().Count() > 1, "no springs along the channel");
         Assert.All(r.WaterDrains, d => Assert.Equal(w.SizeX - 1, d.X));
         Assert.NotEmpty(r.InitialWater);
     }

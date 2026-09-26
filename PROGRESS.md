@@ -506,3 +506,22 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
 - **Q3 pan speed**: good as is. Closed.
 - **Lighting**: shadows are a little harsh, so raise the ambient light some. Folded into M3-T9.
 - **Q2 slice cut color**: keep the current value (block color x0.55) for now. Closed.
+
+## M3-T8 — River holds its volume (2026-09-26)
+- Done: Root cause of the G1 Q4 loss: flat bed + level-difference-only flow + inlet pinned at `Full` (x=0) + drains
+  pinned at 0 (x=127) settle to a linear slope, about half the bank-filled volume, regardless of source strength
+  (a source cell caps at `Full`). Fix per the human's "more source cells": spring columns every 16 cells along the
+  channel (x = 0, 16, ..., 112; channel cells only, y = bed..bed+3, obeying `SourceStrength`).
+  `TerrainShape.RiverSpringSpacing`, `TerrainGenerator.AddWater`. Bank fill and drains unchanged. GEN-08 text updated.
+- Tests: added `RiverTests.Seed1_RiverHoldsVolumeThroughDay10` (samples every 100 ticks to day 10, ±10% of tick 0);
+  it failed first at tick 1900 (89%). `TerrainGeneratorTests.River_CrossesMap_WithSourcesAndDrains` changed from
+  "all sources at x=0" to the ADR-021 spring layout (the old assertion encoded the single-inlet GEN-08 rule).
+  check.sh: 178 passed, 78 skipped, 0 failed; Godot csproj 0 warnings. perf.sh: 4 passed, 4 skipped.
+- Decisions: ADR-021
+- Golden: regenerated (`UPDATE_GOLDEN=1`): sources changed, so the pre-settled world and every hash changed.
+- Perf: seed-1 water volume 4,914,791 at tick 0 → 4,905,846 at day 10 (-0.2%, was -43%). Active water cells
+  670-724 over 10 days (was 1,900-2,460; WAT-P2 budget 3,000). Headless 24,000 ticks: tick median 0.034-0.054 ms,
+  20,330 ticks/s, final hash `0f27c8ee613dd61c`.
+- Screenshots: rendered overview/river with Godot 4.6.2 .NET; the river is full width along the whole course and
+  narrows only in the last ~15 cells before the drains. Shaded faces are still black (M3-T9).
+- Next: M3-T9 (ambient lighting). M6-T4 drought: springs follow `SourceStrength`, so strength 0 stops all inflow.

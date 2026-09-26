@@ -105,16 +105,19 @@ public static class TerrainGenerator
             }
     }
 
-    /// <summary>GEN-08: sources at x=0 and drains at x=max over the channel; initial water fills every air cell up to
+    /// <summary>GEN-08 + ADR-021: sources at x=0 and every <see cref="TerrainShape.RiverSpringSpacing"/> cells along the
+    /// channel (never in the drain column), drains at x=max over the channel; initial water fills every air cell up to
     /// bed+3 (only the river valley lies that low).</summary>
     private static void AddWater(TerrainResult r, VoxelWorld world, int[] heights, int[] river)
     {
         int sx = world.SizeX, sz = world.SizeZ;
         int top = Math.Min(TerrainShape.RiverFillTop, world.SizeY - 1);
+        for (int x = 0; x < sx - 1; x += TerrainShape.RiverSpringSpacing)
+            for (int z = 0; z < sz; z++)
+                if (TerrainShape.ChannelDistance(river, x, z) == 0)
+                    for (int y = TerrainShape.RiverBed; y <= top; y++) r.WaterSources.Add(new Int3(x, y, z));
         for (int z = 0; z < sz; z++)
         {
-            if (TerrainShape.ChannelDistance(river, 0, z) == 0)
-                for (int y = TerrainShape.RiverBed; y <= top; y++) r.WaterSources.Add(new Int3(0, y, z));
             if (TerrainShape.ChannelDistance(river, sx - 1, z) == 0)
                 for (int y = TerrainShape.RiverBed; y < world.SizeY; y++) r.WaterDrains.Add(new Int3(sx - 1, y, z));
         }

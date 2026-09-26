@@ -16,6 +16,11 @@ internal static class TerrainShape
     /// <summary>Top of the initial river water (GEN-08: fill to bed+3).</summary>
     public const int RiverFillTop = RiverBed + 3;
 
+    /// <summary>ADR-021 (M3-T8): besides the GEN-08 inlet at x=0, the channel gets a spring column (same y range as the
+    /// inlet) every <c>RiverSpringSpacing</c> cells along X, so the flat-bed river holds its initial fill instead of
+    /// relaxing to a linear slope toward the drains.</summary>
+    public const int RiverSpringSpacing = 16;
+
     private const ulong NoiseSalt = 0x6E6F697365UL; // "noise"
 
     /// <summary>GEN-01: 2-octave integer value noise mapped to [BaseMin, BaseMax]. Index x + z*sizeX.</summary>

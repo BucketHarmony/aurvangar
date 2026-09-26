@@ -267,3 +267,20 @@ xvfb-run only on Linux without DISPLAY, and fails if any requested PNG is missin
 Consequences: Presets follow worldgen changes automatically. Changing preset numbers is a view-only change. When
 chopping arrives (M4-T7) the plant mesh rebuilds on a plant-count change. The Godot side of the harness is
 build-verified only until a Godot .NET binary is available.
+
+## ADR-021: River springs every 16 cells hold the river's volume (2026-09-26, M3-T8)
+Context: Gate G1 Q4. Seed 1 lost ~43% of its water over 10 days (4,785,289 -> 2,747,763). Cause: the bed is flat
+(ADR-009), water moves only by level difference (WAT-05, WAT-08), the single GEN-08 inlet at x=0 is pinned at `Full`
+and the drains at x=127 are pinned at 0. The steady state of that system is a linear slope from full to empty along
+the whole river, i.e. about half the initial bank-filled volume, whatever the inflow strength. `SourceStrength`
+cannot exceed 100 usefully (a source cell is capped at `Full`), and more source cells at x=0 only widen the inlet;
+neither changes the slope. The human ruled out shrinking the fill or weakening the drains.
+Decision: "More source cells" along the course. `TerrainShape.RiverSpringSpacing = 16`: every channel cell
+(`ChannelDistance == 0`) in columns x = 0, 16, 32, ..., 112 (never the drain column) is a source for y = bed..bed+3,
+the same y range as the GEN-08 inlet. Between springs the river stays at its fill level; only the last 15 cells
+before the drains slope. Springs obey `SourceStrength` like the inlet, so drought (strength 0, M6-T4) still stops
+all inflow. GEN-08 in `docs/specs/world.md` now points here; `TerrainGeneratorTests.River_CrossesMap_WithSourcesAndDrains`
+asserts the spring layout instead of "all sources at x=0".
+Consequences: Seed-1 volume after pre-settle is 4,914,791 at tick 0 and 4,905,846 at day 10 (-0.2%). Active water
+cells drop from ~1,900-2,460 to ~670-720 (WAT-P2 budget 3,000). A pump or dig next to a spring column is refilled
+at up to `Full` per cell per tick; that is the intended "river keeps flowing" behavior. Golden regenerated.
