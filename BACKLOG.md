@@ -73,7 +73,7 @@ Milestone order is by risk: world and water before anything that depends on them
 
 ## M3 — View: terrain, water, camera, slicing
 
-- [ ] **M3-T1** Greedy chunk mesher · specs: VIEW-03 · deps: M1-T2
+- [x] **M3-T1** Greedy chunk mesher · specs: VIEW-03 · deps: M1-T2
   - `Aurvangar.ViewCore.Meshing.ChunkMesher` → `MeshData` (positions, normals, colors, indices).
   - Un-skip `Meshing/ChunkMesherTests.*` (single block = 6 quads; 4×4×1 slab = 6 quads; two block types = no
     merge across types; hidden faces culled across chunk borders).

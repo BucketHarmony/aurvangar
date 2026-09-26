@@ -13,7 +13,7 @@ public class ChunkMesherTests
 
     private static VoxelWorld World(int sx = 32) => new(sx, 32, 32, TestContent.Db.SolidTable);
 
-    [Fact(Skip = "M3-T1")]
+    [Fact]
     public void SingleBlock_SixQuads()
     {
         var w = World();
@@ -24,7 +24,7 @@ public class ChunkMesherTests
         Assert.Equal(36, m.Indices.Count);
     }
 
-    [Fact(Skip = "M3-T1")]
+    [Fact]
     public void Slab_MergesToSixQuads()
     {
         var w = World();
@@ -32,7 +32,7 @@ public class ChunkMesherTests
         Assert.Equal(6, ChunkMesher.Build(w, 0, 0, 0, 31, Colors).QuadCount);
     }
 
-    [Fact(Skip = "M3-T1")]
+    [Fact]
     public void DifferentTypes_DoNotMerge()
     {
         var w = World();
@@ -42,7 +42,7 @@ public class ChunkMesherTests
         Assert.Equal(10, ChunkMesher.Build(w, 0, 0, 0, 31, Colors).QuadCount);
     }
 
-    [Fact(Skip = "M3-T1")]
+    [Fact]
     public void FacesCulledAcrossChunkBorder()
     {
         var w = World(64);
@@ -52,7 +52,7 @@ public class ChunkMesherTests
         Assert.Equal(5, ChunkMesher.Build(w, 1, 0, 0, 31, Colors).QuadCount);
     }
 
-    [Fact(Skip = "M3-T1")]
+    [Fact]
     public void BottomFacesAtWorldFloorCulled() // WLD-04: below the world is Bedrock
     {
         var w = World();
@@ -60,7 +60,7 @@ public class ChunkMesherTests
         Assert.Equal(5, ChunkMesher.Build(w, 0, 0, 0, 31, Colors).QuadCount);
     }
 
-    [Fact(Skip = "M3-T1")]
+    [Fact]
     public void NormalsPointOutward()
     {
         var w = World();
@@ -69,6 +69,44 @@ public class ChunkMesherTests
         var center = new System.Numerics.Vector3(5.5f, 5.5f, 5.5f);
         for (int i = 0; i < m.Positions.Count; i++)
             Assert.True(System.Numerics.Vector3.Dot(m.Positions[i] - center, m.Normals[i]) > 0);
+    }
+
+    [Fact]
+    public void QuadsWoundCounterClockwiseFromNormalSide() // MeshData.AddQuad contract
+    {
+        var w = World();
+        for (int x = 2; x < 5; x++) for (int y = 2; y < 4; y++) w.SetBlock(new Int3(x, y, 7), BlockId.Dirt);
+        var m = ChunkMesher.Build(w, 0, 0, 0, 31, Colors);
+        Assert.Equal(6, m.QuadCount);
+        for (int q = 0; q < m.QuadCount; q++)
+        {
+            var a = m.Positions[q * 4]; var b = m.Positions[q * 4 + 1]; var c = m.Positions[q * 4 + 2];
+            var n = System.Numerics.Vector3.Cross(b - a, c - a);
+            Assert.True(System.Numerics.Vector3.Dot(n, m.Normals[q * 4]) > 0);
+        }
+    }
+
+    [Fact]
+    public void FacesCulledAcrossVerticalChunkBorder_AndColorsFromPalette()
+    {
+        var w = new VoxelWorld(32, 64, 32, TestContent.Db.SolidTable);
+        w.SetBlock(new Int3(4, 31, 4), BlockId.Stone);
+        w.SetBlock(new Int3(4, 32, 4), BlockId.Grass);
+        var lower = ChunkMesher.Build(w, 0, 0, 0, 63, Colors);
+        var upper = ChunkMesher.Build(w, 0, 1, 0, 63, Colors);
+        Assert.Equal(5, lower.QuadCount);
+        Assert.Equal(5, upper.QuadCount);
+        Assert.All(lower.Colors, c => Assert.Equal(Colors.Get(BlockId.Stone), c));
+        Assert.All(upper.Colors, c => Assert.Equal(Colors.Get(BlockId.Grass), c));
+        Assert.All(upper.Positions, p => Assert.InRange(p.Y, 32f, 33f));
+    }
+
+    [Fact]
+    public void EmptyChunk_IsEmpty()
+    {
+        var w = World(64);
+        w.SetBlock(new Int3(40, 5, 5), BlockId.Stone);
+        Assert.True(ChunkMesher.Build(w, 0, 0, 0, 31, Colors).IsEmpty);
     }
 }
 

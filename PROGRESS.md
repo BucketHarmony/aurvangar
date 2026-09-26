@@ -223,3 +223,23 @@ Entry template:
   river step median ~0.09 ms.
 - Next: M2 is complete except the milestone check. Next unchecked task is M3-T1 (greedy chunk mesher, ViewCore).
   Reuse `IndexSort` for other hot index sorts. p95 on the 23k load reaches ~3.8 ms (the budget is on the median).
+
+## M3-T1 — Greedy chunk mesher (2026-09-26)
+- Done: `ViewCore.Meshing.ChunkMesher.Build` implemented (VIEW-03). It copies the chunk plus a one-cell border into a
+  34³ padded grid of visible block ids (WLD-04 out-of-bounds: Bedrock below, Air elsewhere; cells above `sliceY` count
+  as Air), then for each of the 6 face directions and 32 layers builds a 32x32 face mask (solid cell next to a
+  non-solid cell) and greedily merges runs of the same block id. Positions are in world coordinates. Quads are
+  wound counter-clockwise from the normal side (the `MeshData` contract). Colors come from `BlockColors`
+  (palette.json). ViewCore only; no Sim changes.
+- Tests: un-skipped all 6 `ChunkMesherTests` (all failed first with the M3-T1 `NotImplementedException`). Added
+  `QuadsWoundCounterClockwiseFromNormalSide`, `FacesCulledAcrossVerticalChunkBorder_AndColorsFromPalette`,
+  `EmptyChunk_IsEmpty`. check.sh: 112 passed, 84 skipped, 0 failed.
+- Decisions: none
+- Golden: unchanged
+- Perf: n/a (MESH-P1 is M3-T7)
+- Next: M3-T2 only has to add the cut flag. The mask value is the block id and has a `// M3-T2` hook where the
+  cut bit (for example `| 1 << 8`) goes, so cut and uncut faces never merge. Colors use `m & 0xFF`, so use
+  `colors.GetCut` when the bit is set and pass `isCut` to `AddQuad`. Slicing-as-Air is already in `FillPadded`.
+  M3-T4: Godot's default front face is clockwise, so the Godot layer must reverse the index order (or set cull
+  mode) when it copies `MeshData` into an `ArrayMesh`. Positions are in world space, so place chunk MeshInstances at
+  the origin.
