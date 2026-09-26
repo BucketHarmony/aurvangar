@@ -140,6 +140,7 @@ public static partial class SaveGame
     private static void WriteAgents(BinaryWriter w, Simulation sim)
     {
         w.Section(SaveSection.Agents);
+        w.Write(sim.Agents.ColonyLost);   // ECO-07
         var alive = sim.Agents.All.Where(a => a.IsAlive).ToList();   // SAV-06
         w.WriteCount(alive.Count);
         foreach (var a in alive)
@@ -152,13 +153,14 @@ public static partial class SaveGame
             w.Write(a.CurrentJob.Value); w.Write(a.StepIndex); w.Write(a.StepProgress);
             w.WriteCount(a.Path.Length); foreach (var c in a.Path) w.Write(c);
             w.Write(a.PathPos); w.Write((byte)a.Move); w.Write(a.Repathed);
-            w.Write(a.NextJobSearchTick);
+            w.Write(a.NextJobSearchTick); w.Write(a.NextDrinkTick); w.Write(a.NextEatTick);
         }
     }
 
     private static void ReadAgents(BinaryReader r, Simulation sim, ContentDb content)
     {
         r.ExpectSection(SaveSection.Agents);
+        sim.Agents.ColonyLost = r.ReadBoolean();
         int n = r.ReadCount(sim.World.CellCount, "agent");
         for (int k = 0; k < n; k++)
         {
@@ -173,7 +175,7 @@ public static partial class SaveGame
             for (int i = 0; i < path.Length; i++) path[i] = r.ReadInt3();
             a.Path = path;
             a.PathPos = r.ReadInt32(); a.Move = r.ReadEnum<MoveStatus>("move status"); a.Repathed = r.ReadBoolean();
-            a.NextJobSearchTick = r.ReadInt64();
+            a.NextJobSearchTick = r.ReadInt64(); a.NextDrinkTick = r.ReadInt64(); a.NextEatTick = r.ReadInt64();
             sim.Agents.Restore(a);
         }
     }

@@ -46,5 +46,9 @@ public sealed class Agent
     /// <summary>Tick before which the agent will not try to pick a job again (JOB-06 throttle).</summary>
     public long NextJobSearchTick { get; set; }
 
+    /// <summary>ECO-04: tick before which the agent will not try to post a Drink / Eat job again (NeedsSystem).</summary>
+    public long NextDrinkTick { get; set; }
+    public long NextEatTick { get; set; }
+
     public bool IsAlive => State != AgentState.Dead;
 }

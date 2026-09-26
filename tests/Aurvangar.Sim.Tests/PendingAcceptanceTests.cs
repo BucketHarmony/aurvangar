@@ -7,14 +7,6 @@ using Xunit;
 
 namespace Aurvangar.Sim.Tests
 {
-    public class NeedsTests
-    {
-        [Fact(Skip = "M5-T5")] public void Decay_Rates() => Placeholder.Write("ECO-03");
-        [Fact(Skip = "M5-T5")] public void Threshold_PostsDrinkBeforeEat() => Placeholder.Write("ECO-04, JOB-05 priorities");
-        [Fact(Skip = "M5-T5")] public void Consume_RestoresUntil9000() => Placeholder.Write("ECO-05");
-        [Fact(Skip = "M5-T5")] public void HealthRegen_WhenFed() => Placeholder.Write("ECO-06");
-    }
-
     public class BushTests
     {
         [Fact(Skip = "M6-T3")] public void Harvest_Gives2Berries_RegrowsIn1200() => Placeholder.Write("ECO-10");
@@ -31,14 +23,6 @@ namespace Aurvangar.Sim.Tests
 
 namespace Aurvangar.Sim.Tests.Scenarios
 {
-    [Trait("Category", "Scenario")]
-    public class StarvationScenarioTests
-    {
-        [Fact(Skip = "M5-T5")] public void NoFood_DiesStarvedAfter1000TicksAtZero() => Placeholder.Write("needs-economy.md scenario 2");
-        [Fact(Skip = "M5-T5")] public void AllDead_ColonyLostOnce() => Placeholder.Write("ECO-07");
-        [Fact(Skip = "M5-T5")] public void ThirstyAgent_PreemptsHaul_DropsCargo() => Placeholder.Write("JOB-07 / jobs-agents.md scenario 4");
-    }
-
     [Trait("Category", "Scenario")]
     public class FarmScenarioTests
     {

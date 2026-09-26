@@ -41,7 +41,9 @@ public class StrandScenarioTests
     [Fact]
     public void SmallPit_DiggerNeverStranded_LastStepTurnsUnreachable()
     {
-        var sim = new ScenarioBuilder().Ground(8).Hub(new Int3(20, 9, 20)).Agent(new Int3(5, 9, 5)).Build();
+        // M5-T5: the hub is provisioned so the dwarf does not die of thirst during the 8000 ticks (ECO-06).
+        var sim = new ScenarioBuilder().Ground(8).Hub(new Int3(20, 9, 20)).Stock("water", 20).Stock("berries", 20)
+            .Agent(new Int3(5, 9, 5)).Build();
         var hub = sim.Buildings.All.First();
         Int3 min = new(10, 6, 10), max = new(12, 8, 12);
         sim.Enqueue(new DesignateDig(min, max));

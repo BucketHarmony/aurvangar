@@ -52,7 +52,8 @@ public class TreeFloorScenarioTests
     {
         var sim = new ScenarioBuilder().Ground(8)
             .Layer(new Int3(12, 9, 12), "T")
-            .Hub(new Int3(24, 9, 24)).Agent(new Int3(4, 9, 4)).Agent(new Int3(5, 9, 4)).Agent(new Int3(6, 9, 4))
+            .Hub(new Int3(24, 9, 24)).Stock("water", 80).Stock("berries", 60)   // M5-T5: needs over up to 20000 ticks
+            .Agent(new Int3(4, 9, 4)).Agent(new Int3(5, 9, 4)).Agent(new Int3(6, 9, 4))
             .Build();
         var hub = sim.Buildings.All.First();
         Int3 min = new(8, 5, 8), max = new(16, 8, 16);

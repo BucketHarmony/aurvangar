@@ -176,6 +176,8 @@ public static class JobRunner
                 if (sim.Agents.AnyHolds(step.Cell + Int3.Up, a.Id))
                 {
                     // DSG-08: someone stands on the block; wait for them to move on (idle agents step aside).
+                    // Two diggers waiting on each other's floors would wait forever: this one gives way (ADR-043).
+                    if (WaitsOnMe(sim, a, step.Cell + Int3.Up)) { StandDown(sim, a, job); return; }
                     if (++a.StepProgress <= DigDeferLimit) return;
                     Fail(sim, a, job);
                     return;
@@ -187,7 +189,7 @@ public static class JobRunner
             case StepKind.PickUp: r = act.PickUp(a.Id, step.Cell, step.Item, step.Count); break;
             case StepKind.PickUpFromStorage: r = act.PickUpFromStorage(a.Id, new BuildingId(step.Target), step.Item, step.Count); break;
             case StepKind.DeliverTo: r = act.DeliverTo(a.Id, new BuildingId(step.Target)); break;
-            case StepKind.Consume: r = act.Consume(a.Id, new BuildingId(step.Target), step.Item); break;
+            case StepKind.Consume: ConsumeStep(sim, a, job, step); return;
             case StepKind.Drop: r = act.Drop(a.Id, step.Cell); break;
             default: throw new InvalidOperationException($"unknown step kind {step.Kind}");
         }
@@ -227,6 +229,37 @@ public static class JobRunner
         if (Buildings.Pumps.WorkDone(sim, job)) NextStep(sim, a, job);
     }
 
+    /// <summary>DSG-08 deadlock: an agent standing on <paramref name="top"/> is itself at the Dig step of a job whose
+    /// block is the floor of <paramref name="a"/>.</summary>
+    private static bool WaitsOnMe(Simulation sim, Agent a, Int3 top)
+    {
+        foreach (var other in sim.Agents.All)
+        {
+            if (!other.IsAlive || other.Id == a.Id || other.Cell != top) continue;
+            if (sim.Jobs.Get(other.CurrentJob) is { Kind: JobKind.Dig } j && j.ClaimedBy == other.Id
+                && j.Steps[other.StepIndex].Kind == StepKind.Dig && j.Steps[other.StepIndex].Cell == a.Cell + Int3.Down)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>ECO-05: one unit per tick until the need is sated; when the storage runs out after at least one unit
+    /// the job simply ends. A first unit that cannot be had fails the job (JOB-08; NeedsSystem tries again later).</summary>
+    private static void ConsumeStep(Simulation sim, Agent a, Job job, JobStep step)
+    {
+        var b = new BuildingId(step.Target);
+        var r = sim.Actions.Consume(a.Id, b, step.Item);
+        if (r == ActionResult.Ok)
+        {
+            sim.Jobs.UseStorageOut(job, b, step.Item, 1);
+            a.StepProgress++;
+            if (NeedsSystem.IsSated(a, job.Kind)) NextStep(sim, a, job);
+            return;
+        }
+        if (r == ActionResult.NotEnoughItems && a.StepProgress > 0) NextStep(sim, a, job);
+        else Fail(sim, a, job);
+    }
+
     private static void NextStep(Simulation sim, Agent a, Job job)
     {
         a.StepIndex++;
@@ -248,7 +281,11 @@ public static class JobRunner
         sim.Counters.JobsFailed++;
         job.Failures++;
         Unclaim(sim, a, job);
-        if (job.IsNeed) sim.Jobs.Remove(job);   // ADR-031: per-agent need jobs are re-posted by their owner, never retried
+        if (job.IsNeed)
+        {
+            sim.Jobs.Remove(job);   // ADR-031: per-agent need jobs are re-posted by their owner, never retried
+            NeedsSystem.OnFailed(sim, a, job.Kind);
+        }
         else if (job.Failures >= Job.MaxFailures)
         {
             sim.Jobs.Remove(job);   // cancelled

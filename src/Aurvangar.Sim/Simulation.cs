@@ -79,7 +79,7 @@ public sealed class Simulation
         Profiler?.End(TickPhase.Water);
         // 4  MoistureMap.Tick                    (M6-T1)
         Plants.Tick(Clock);                      // 5
-        // 6  NeedsSystem.Tick                    (M5-T5)
+        NeedsSystem.Tick(this);                  // 6
         Buildings.Tick(this);                    // 7
         DesignationSystem.Tick(this);            // 8
         HaulSystem.Tick(this);                   // 9

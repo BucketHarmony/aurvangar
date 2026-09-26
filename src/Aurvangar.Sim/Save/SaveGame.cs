@@ -11,7 +11,7 @@ namespace Aurvangar.Sim.Save;
 public static partial class SaveGame
 {
     public const string Magic = "CSAV";
-    public const int FormatVersion = 1;
+    public const int FormatVersion = 2;   // 2: M5-T5 need retry ticks, ColonyLost
 
     /// <summary>Largest world edge a save may declare (guards the allocation on corrupt input).</summary>
     private const int MaxWorldEdge = 1024;

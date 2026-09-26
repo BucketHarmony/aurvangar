@@ -21,6 +21,9 @@ public sealed class AgentSystem
 
     public int Count => _agents.Count;
 
+    /// <summary>ECO-07: set (and <see cref="Events.ColonyLost"/> emitted) once, when the last living agent dies. Hashed and saved.</summary>
+    public bool ColonyLost { get; internal set; }
+
     public Agent? Get(AgentId id) => _agents.TryGetValue(id.Value, out var a) ? a : null;
 
     public Agent Spawn(Int3 cell, string name)
@@ -61,7 +64,8 @@ public sealed class AgentSystem
     }
 
     /// <summary>Death (WAT-14, ECO-06): releases the agent's job (dropping its stack), stops it and marks it dead. The
-    /// agent stays in the list (JOB-02) and leaves the hash (SAV-06). Emits <see cref="AgentDied"/> once.</summary>
+    /// agent stays in the list (JOB-02) and leaves the hash (SAV-06). Emits <see cref="AgentDied"/> once, and
+    /// <see cref="Events.ColonyLost"/> once when it was the last living agent (ECO-07).</summary>
     public void Kill(Simulation sim, Agent a, DeathCause cause)
     {
         if (!a.IsAlive) return;
@@ -72,11 +76,17 @@ public sealed class AgentSystem
         a.State = AgentState.Dead;
         a.Death = cause;
         _events.Emit(new AgentDied(a.Id, cause.ToString()));
+        if (ColonyLost) return;
+        foreach (var other in _agents.Values)
+            if (other.IsAlive) return;
+        ColonyLost = true;   // ECO-07
+        _events.Emit(new Events.ColonyLost());
     }
 
     public void AddToHash(ref StateHasher h)
     {
         h.Add(Ids.Next);
+        h.Add(ColonyLost);
         int alive = 0;
         foreach (var a in _agents.Values) if (a.IsAlive) alive++;
         h.Add(alive);
@@ -89,7 +99,7 @@ public sealed class AgentSystem
             h.Add((byte)a.State); h.Add(a.CurrentJob.Value); h.Add(a.StepIndex); h.Add(a.StepProgress);
             h.Add(a.PathPos); h.Add(a.Path.Length); foreach (var c in a.Path) h.Add(c);
             h.Add((byte)a.Move); h.Add(a.Repathed);
-            h.Add(a.NextJobSearchTick);
+            h.Add(a.NextJobSearchTick); h.Add(a.NextDrinkTick); h.Add(a.NextEatTick);
         }
     }
 }

@@ -141,6 +141,19 @@ public sealed class JobBoard
 
     internal void TakeReservations(Job job) => Apply(job, +1);
 
+    /// <summary>ECO-05: <paramref name="n"/> reserved units were taken out of storage by the job itself, so the
+    /// reservation shrinks by that much (other jobs see the true unpromised stock). No-op without such a reservation.</summary>
+    internal void UseStorageOut(Job job, BuildingId b, ItemId item, int n)
+    {
+        int i = job.Reservations.FindIndex(r => r.Kind == ReservationKind.StorageOut && r.Building == b && r.Item == item);
+        if (i < 0 || !job.IsClaimed) return;
+        ReleaseReservations(job);
+        var res = job.Reservations[i];
+        if (res.Count > n) job.Reservations[i] = res with { Count = res.Count - n };
+        else job.Reservations.RemoveAt(i);
+        TakeReservations(job);
+    }
+
     internal void ReleaseReservations(Job job) => Apply(job, -1);
 
     /// <summary>Rebuilds the reservation tables from the claimed jobs (after a load).</summary>

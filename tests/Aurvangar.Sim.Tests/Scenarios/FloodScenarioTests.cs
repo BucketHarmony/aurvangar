@@ -128,7 +128,8 @@ public class FloodScenarioTests
         Assert.Empty(sim.Events.Drain().OfType<AgentDied>());
     }
 
-    /// <summary>WAT-14: the water drains away before the agent drowns → the damage stops and the agent lives.</summary>
+    /// <summary>WAT-14: the water drains away before the agent drowns → the damage stops and the agent lives. Health
+    /// regeneration (ECO-06) resumes once it is out of deep water.</summary>
     [Fact]
     public void TrappedAgent_WaterRecedes_StopsDamage()
     {
@@ -143,7 +144,8 @@ public class FloodScenarioTests
                 sim.Water.SetLevel(new Int3(x, 4, z), WaterGrid.Full / 4);
         sim.RunTicks(30);
         Assert.True(a.IsAlive);
-        Assert.Equal(Agent.HealthMax - 30, a.Health);
+        // No more damage; out of the water it heals 1 per 10 ticks again (ECO-06, M5-T5).
+        Assert.Equal(Agent.HealthMax - 30 + 2, a.Health);   // healed on ticks 40 and 50
     }
 
     /// <summary>JOB-07 / WAT-14: Flee preempts the current job, which returns to the board unclaimed with no failure

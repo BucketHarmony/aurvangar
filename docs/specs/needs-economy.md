@@ -9,12 +9,13 @@
 - **ECO-02** `hunger` and `thirst` range `0..10000` (10000 = satisfied). Start at 10000.
 - **ECO-03** Decay per tick: hunger −1 (empty in ~4.2 days), thirst −2 (empty in ~2.1 days).
 - **ECO-04** Thresholds: at `< 4000` the agent posts its own Eat/Drink job (JOB-07). If no storage has the item,
-  it retries every 100 ticks and the HUD shows "No food" / "No water".
+  it retries every 100 ticks and the HUD shows "No food" / "No water". A failed Drink/Eat job also waits 100 ticks
+  before that need is tried again (ADR-043).
 - **ECO-05** Consume: eating 1 berry restores 2500; 1 potato restores 4000; drinking 1 water restores 5000. The
   agent consumes one unit at a time until the need is ≥ 9000 or storage runs out.
 - **ECO-06** At 0 hunger or thirst, `health` (0..1000, starts 1000) drops 1 per tick. Health regenerates 1 per
   10 ticks when both needs are > 0. At health 0 the agent dies (`DeathCause.Starved` / `Dehydrated`,
-  whichever need is 0; thirst wins ties).
+  whichever need is 0; thirst wins ties). A trapped (drowning, WAT-14) agent does not regenerate (ADR-043).
 - **ECO-07** When every agent is dead, emit `ColonyLost` once. The sim keeps ticking (water still flows).
 
 ## Items (from `data/items.json`)

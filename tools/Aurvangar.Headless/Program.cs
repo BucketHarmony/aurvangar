@@ -34,13 +34,15 @@ if (opts.Script is not null)
 }
 
 var tickTimes = new List<double>(opts.Ticks);
+long colonyLostTick = -1;
 var runClock = Stopwatch.StartNew();
 for (int t = 0; t < opts.Ticks; t++)
 {
     long start = Stopwatch.GetTimestamp();
     sim.Tick();
     tickTimes.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
-    sim.Events.Drain();
+    foreach (var e in sim.Events.Drain())
+        if (e is Aurvangar.Sim.Events.ColonyLost) colonyLostTick = sim.Clock.Tick;   // ECO-07
     if (t == 0 && opts.Script is not null) baseline = Baseline.Capture(sim);
     if (opts.ReportEvery > 0 && (t + 1) % opts.ReportEvery == 0) PrintInterval(sim, tickTimes, baseline);
 }
@@ -48,6 +50,7 @@ for (int t = 0; t < opts.Ticks; t++)
 runClock.Stop();
 PrintInterval(sim, tickTimes, baseline);
 if (baseline is not null) PrintWorkSummary(sim, baseline);
+if (colonyLostTick >= 0) Console.WriteLine($"colony.lost tick={colonyLostTick} day={colonyLostTick / 2400}");
 double seconds = runClock.Elapsed.TotalSeconds;
 double tps = seconds > 0 ? opts.Ticks / seconds : 0;
 Console.WriteLine($"run: ticks={opts.Ticks} elapsed={seconds:F3} s ticks_per_sec={tps:F0}");

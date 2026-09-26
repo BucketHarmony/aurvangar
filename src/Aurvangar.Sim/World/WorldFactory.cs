@@ -19,11 +19,19 @@ public static class WorldFactory
         foreach (var b in terrain.BushBases) sim.Plants.AddBush(b);
         PreSettleRiver(sim, terrain);
         SpawnColonists(sim, hall.EntranceCell);
-        // M5-T5: starting stock (40 berries, 30 water, 30 logs).
+        StartingStock(sim, hall);
         sim.World.ClearChangeLog();
         sim.World.MarkAllDirty();
         sim.Events.Drain();   // the initial world (hub, colonists) is read by the view directly, not announced (ADR-026)
         return sim;
+    }
+
+    /// <summary>docs/00-overview.md: the Great Hall's starting stock.</summary>
+    public static readonly (string Item, int Count)[] StartStock = { ("berries", 40), ("water", 30), ("log", 30) };
+
+    private static void StartingStock(Simulation sim, Buildings.Building hall)
+    {
+        foreach (var (item, n) in StartStock) hall.Stored[sim.Content.Item(item).Value] = n;
     }
 
     /// <summary>GEN-08 pre-settle length in ticks.</summary>

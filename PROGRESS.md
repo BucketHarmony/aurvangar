@@ -1232,3 +1232,52 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   pile, which pile hauling takes to the hub.
 - Next: M5-T5 (needs). Drink jobs can now take water from the hub that pumps fill. HUD NoWater icon and pump
   rendering are M5-T6.
+
+## M5-T5 — Needs, eating, drinking, death, ColonyLost (2026-09-26)
+- Done: ECO-02..07, JOB-07.
+  - New `Agents/NeedsSystem.cs` runs at ARCH-01 step 6. Each tick it decays hunger by 1 and thirst by 2. While a
+    need is at 0, health drops 1 per tick; otherwise it regenerates 1 on every tick divisible by 10, but not while
+    Trapped. At health 0 the agent dies via `AgentSystem.Kill` (thirst wins ties).
+  - Below 4000 the agent posts Drink first, then Eat (`GoToBuilding -> Consume`), through `JobRunner.AssignNeed`.
+    It goes to the nearest region-reachable storage with unpromised stock and reserves the units needed to reach 9000.
+  - The Consume step takes one unit per tick until the need is sated. It ends cleanly if storage runs out after at
+    least one unit, and each consumed unit shrinks the reservation (`JobBoard.UseStorageOut`).
+  - Retries: new agent fields `NextDrinkTick` and `NextEatTick`. A try that finds no stock, or a failed need job,
+    waits 100 ticks.
+  - `NeedsSystem.NoWater` / `NoFood` are derived queries for the M5-T6 HUD.
+  - `AgentSystem.ColonyLost` is set, and the `ColonyLost` event emitted, once when the last agent dies.
+  - Save `FormatVersion` is now 2 (the retry ticks and ColonyLost are saved and hashed).
+  - `WorldFactory` gives the Great Hall its starting stock: 40 berries, 30 water, 30 logs.
+  - DSG-08 deadlock fix: two diggers each standing on the other's block used to both fail after 200 ticks. Now the
+    first one stands down.
+  - Headless runner prints `colony.lost tick=...`.
+- Tests: the 7 placeholders moved to `NeedsTests.cs` (8 tests) and `Scenarios/StarvationScenarioTests.cs` (3 tests),
+  with real bodies. They did not compile first (no `NeedsSystem`, no `ColonyLost`).
+  - Covered: decay, the exact threshold tick, Drink before Eat, consume counts (3 berries / 2 water, or the last unit
+    only), regen, the thirst tie, the 100-tick retry plus the NoWater query, save/load mid-need, and seed-1 starting
+    stock.
+  - Starvation: death after exactly 1000 ticks at 0 hunger (Starved). ColonyLost fires once at the last death, and a
+    save/load after it does not re-emit. A thirsty hauler drops its 8 logs, drinks, and the logs still reach the hub.
+  - Existing tests changed (ADR-043):
+    - `StrandScenarioTests.SmallPit...` (8,000 ticks) and `TreeFloorScenarioTests.DeepPit...` (up to 20,000 ticks)
+      now stock water and berries in their hubs; otherwise the dwarves die of thirst.
+    - `FloodScenarioTests.TrappedAgent_WaterRecedes_StopsDamage` now expects 972 (970 plus 2 regen ticks after the
+      water drops) instead of 970.
+    - DeepPit showed 3 failures (2 from the dig deadlock above, 1 path failure). After the deadlock fix it has 0.
+  - check.sh: 414 passed, 13 skipped, 0 failed; Godot csproj 0 warnings.
+- Review (sim-reviewer): no required fixes. Applied: the exact health value in the flood test, a simpler `WaitsOnMe`
+  check, and an ADR line on need death while trapped. Not applied: moving the starting stock into data (it is a
+  world-generation constant from docs/00-overview.md, not a building stat).
+- Decisions: ADR-043.
+- Golden: regenerated with `UPDATE_GOLDEN=1` (intentional). The hub starting stock changes the tick-0 hash, and needs
+  change agent state every tick.
+- Headless seed 1, no commands, 24,000 ticks: hash `854a3b12a197b9a6`, ~23,800 ticks/s. The colony is lost at tick
+  15,012 (day 6): 30 water lasts three drink rounds.
+  - `--script digchop`, 2400 ticks: hash `71219e5388fb912d`, 132 jobs done, 2 failed. The hub hits its 100-log cap
+    (30 start + 70), so 22 logs stay in piles (G2 answer 4).
+- Perf: perf.sh 6 passed, 2 skipped. No Godot code changed, so no screenshots.
+- Next: M5-T6.
+  - The HUD needs "No food" / "No water" from `NeedsSystem.NoFood/NoWater`, and the Colony-lost modal listens for
+    the `ColonyLost` event (or reads `sim.Agents.ColonyLost` after a load).
+  - `ColonistPanelModel` already labels Drinking/Eating and Starved/Died of thirst.
+  - Saves from before this task (v1) no longer load (SAV-04).

@@ -162,7 +162,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - Levee completion pushes water (WAT-12). Un-skip `Scenarios/LeveeScenarioTests.*`.
 - [x] **M5-T4** Pump · specs: BLD-13, BLD-14 · deps: M5-T3
   - Un-skip `Scenarios/PumpScenarioTests.*`.
-- [ ] **M5-T5** Needs, eating, drinking, death, ColonyLost · specs: ECO-01..07, JOB-07 · deps: M4-T8
+- [x] **M5-T5** Needs, eating, drinking, death, ColonyLost · specs: ECO-01..07, JOB-07 · deps: M4-T8
   - Un-skip `NeedsTests.*`, `Scenarios/StarvationScenarioTests.*`.
 - [ ] **M5-T6** Godot: build tool with ghost + reasons, building renderer, deconstruct tool, HUD top bar,
   Colony-lost modal · specs: VIEW-09, 12, 14, 15, 18 · deps: M5-T5, M5-T4

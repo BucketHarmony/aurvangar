@@ -822,3 +822,35 @@ Decision:
 Consequences: no save format change, golden hashes unchanged. A worked pump holds one dwarf until its buffer fills
 (10 cycles, 300 ticks); with priority 40 it goes before digs, chops and hauls. ADR-040's "pump at any bank edge"
 still applies; a pump placed on a dry edge just shows NoWater (flag for G3).
+
+## ADR-043: Needs details: retry ticks, consume loop, regen while drowning, ColonyLost flag, starting stock, dig deadlock (2026-09-26, M5-T5)
+Context: ECO-02..07 and JOB-07 leave open how often a failed need is retried, how many units a Drink/Eat job
+reserves, whether a drowning agent heals, where the ColonyLost "once" lives, and which food an Eat job picks.
+Decision:
+- `NeedsSystem` (ARCH-01 step 6) runs per living agent in ascending id: decay (hunger -1, thirst -2, floor 0), then
+  health -1 while either need is 0 (death at 0, thirst wins ties), else +1 on every tick with `tick % 10 == 0`,
+  except while `Trapped` in deep water (WAT-14 drowning stays exactly 1 damage per tick).
+- Below 4000 the agent posts Drink first, else Eat, through `JobRunner.AssignNeed` (claimed at once, preempts any
+  non-need job; Flee still preempts Drink/Eat). Nothing is posted while it runs a need job or is trapped.
+- Retry: new hashed + saved agent fields `NextDrinkTick` / `NextEatTick`. A try that finds no complete storage with
+  unpromised stock in the agent's region, or a need job that fails (JOB-08), waits 100 ticks before that need is tried
+  again (ECO-04). A completed or preempted need job allows an immediate re-post.
+- Storage choice: nearest complete storage by Manhattan to its entrance, ties by lower id, that has unpromised stock of
+  a matching item and a reach cell in the agent's region (PTH-13). Item: the lowest item id with stock (berries before
+  potatoes). The job reserves `ceil((9000 - need) / value)` units (at least 1, at most the stock); each consumed unit
+  shrinks the reservation (`JobBoard.UseStorageOut`). The Consume step eats/drinks one unit per tick until the need is
+  >= 9000; if storage runs out after at least one unit the job ends normally; a first unit that cannot be had fails it.
+  Drinking uses storage only (the hub); pump buffers reach it by BLD-14 hauls.
+- HUD "No water" / "No food" (ECO-04) is a derived query (`NeedsSystem.NoWater/NoFood`): some living agent is below
+  the threshold and no complete storage has unpromised stock. No extra state.
+- ECO-07: `AgentSystem.ColonyLost` is set in `Kill` when no living agent is left and the event is emitted then, once.
+  It is hashed and saved (in the agents section), so a load after the loss never re-emits it. Save `FormatVersion` 2.
+- Starting stock (docs/00-overview.md): the Great Hall gets 40 berries, 30 water and 30 logs in `WorldFactory` after the
+  river pre-settle and the colonists spawn.
+- DSG-08 deadlock: two agents at their Dig steps, each standing on the other's block, waited 200 ticks and both failed.
+  Now the one processed first stands down (no failure, JOB-08 cooldown; idle step-aside moves it off the marked floor).
+  The M4 tree-floor pit test hit this once drink trips changed the timing.
+A trapped agent whose need is also at 0 dies of that need (step 6 runs before the drowning damage at step 10).
+Consequences: golden regenerated. With no commands seed 1 loses the colony at tick 15,012 (day 6): 30 water covers
+three drink rounds. Long M4 scenario tests (8,000-20,000 ticks) now stock their hub with water and berries, and the
+WAT-14 "water recedes" test allows the ECO-06 regeneration that resumes after the water drops (still no damage).
