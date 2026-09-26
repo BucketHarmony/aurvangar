@@ -87,8 +87,7 @@ public sealed class Simulation
         h.Add(Rng.State);
         h.Add(World.SizeX); h.Add(World.SizeY); h.Add(World.SizeZ);
         h.Add(World.Blocks);
-        h.Add(Water.Levels);
-        h.Add(Water.SourceStrength);
+        Water.AddToHash(ref h);
         Plants.AddToHash(ref h);
         Buildings.AddToHash(ref h);
         Agents.AddToHash(ref h);

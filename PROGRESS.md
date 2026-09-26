@@ -78,3 +78,18 @@ Entry template:
   `WaterSources`, `WaterDrains`, `InitialWater`, `SpawnX/Z`, `SpawnSurfaceY`. Initial water covers every air cell
   with y ≤ 17 (channel plus lower bank cells). Reviewer note for M4-T3: flattening to the median can leave steps
   of several blocks at the flat edges; check `HubReachesRiverAndHill` when pathing lands.
+
+## M1-T4 — State hash and golden scaffold (2026-09-26)
+- Done: `StateHash()` now also covers water sources/drains (list order) and `WaterStats` (moved into
+  `WaterGrid.AddToHash`), the `IdAllocator.Next` of plants, buildings and agents, and every agent path cell (was
+  only the path length). Everything else that exists (clock, RNG, blocks, levels, source strength, plants,
+  buildings, agents) was already hashed. Added `tests/golden/*.txt text eol=lf` to `.gitattributes`.
+- Tests: un-skipped `GoldenHashTests.TwoRunsMatch` and `MatchesGoldenFile`. Added
+  `SimulationTests.StateHash_CoversAllExistingState` (theory, 11 mutations) and `StateHash_CoversAgentPathCells`;
+  7 of those failed before the change. check.sh: 62 passed, 108 skipped, 0 failed.
+- Decisions: none
+- Golden: created `tests/golden/seed1.txt` (seed 1, ticks 0/1200/3000/6000) via `UPDATE_GOLDEN=1`. Water/agents
+  are still inert, so all four hashes differ only by clock; expect regeneration at M2-T5.
+- Perf: n/a
+- Next: M1-T5 (headless runner). Any new sim state must be added to the owning system's `AddToHash` and to the
+  `StateMutations` list in `SimulationTests`.

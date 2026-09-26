@@ -25,14 +25,14 @@ public class GoldenHashTests
         return hashes.ToArray();
     }
 
-    [Fact(Skip = "M1-T4")]
+    [Fact]
     [Trait("Category", "Golden")]
     public void TwoRunsMatch()
     {
         Assert.Equal(RunSeed1(), RunSeed1());
     }
 
-    [Fact(Skip = "M1-T4")]
+    [Fact]
     [Trait("Category", "Golden")]
     public void MatchesGoldenFile()
     {

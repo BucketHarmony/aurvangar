@@ -60,6 +60,41 @@ public class SimulationTests
         Assert.NotEqual(a.StateHash(), b.StateHash());
     }
 
+    public static IEnumerable<object[]> StateMutations() => new[]
+    {
+        new object[] { "water level", (Action<Simulation>)(s => s.Water.SetLevel(new Int3(2, 5, 2), 100)) },
+        new object[] { "water source", (Action<Simulation>)(s => s.Water.AddSource(new Int3(2, 5, 2))) },
+        new object[] { "water drain", (Action<Simulation>)(s => s.Water.AddDrain(new Int3(2, 5, 2))) },
+        new object[] { "water stats", (Action<Simulation>)(s => s.Water.Stats.Evaporated += 1) },
+        new object[] { "source strength", (Action<Simulation>)(s => s.Water.SourceStrength = 50) },
+        new object[] { "plant", (Action<Simulation>)(s => s.Plants.AddBush(new Int3(2, 5, 2))) },
+        new object[] { "plant id allocator", (Action<Simulation>)(s => s.Plants.Ids.Allocate()) },
+        new object[] { "building id allocator", (Action<Simulation>)(s => s.Buildings.Ids.Allocate()) },
+        new object[] { "agent", (Action<Simulation>)(s => s.Agents.Spawn(new Int3(2, 5, 2), "Urist")) },
+        new object[] { "agent id allocator", (Action<Simulation>)(s => s.Agents.Ids.Allocate()) },
+        new object[] { "rng", (Action<Simulation>)(s => s.Rng.NextU64()) },
+    };
+
+    [Theory]
+    [MemberData(nameof(StateMutations))]
+    public void StateHash_CoversAllExistingState(string what, Action<Simulation> mutate) // ARCH-06
+    {
+        var a = new ScenarioBuilder().Ground(4).Build();
+        var b = new ScenarioBuilder().Ground(4).Build();
+        mutate(b);
+        Assert.True(a.StateHash() != b.StateHash(), $"StateHash does not cover: {what}");
+    }
+
+    [Fact]
+    public void StateHash_CoversAgentPathCells() // ARCH-06
+    {
+        var a = new ScenarioBuilder().Ground(4).Build();
+        var b = new ScenarioBuilder().Ground(4).Build();
+        a.Agents.Spawn(new Int3(2, 5, 2), "Urist").Path = new[] { new Int3(3, 5, 2) };
+        b.Agents.Spawn(new Int3(2, 5, 2), "Urist").Path = new[] { new Int3(2, 5, 3) };
+        Assert.NotEqual(a.StateHash(), b.StateHash());
+    }
+
     [Fact]
     public void ScenarioBuilder_RejectsUnknownChar()
     {

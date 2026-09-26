@@ -30,6 +30,7 @@ public sealed class AgentSystem
 
     public void AddToHash(ref StateHasher h)
     {
+        h.Add(Ids.Next);
         int alive = 0;
         foreach (var a in _agents.Values) if (a.IsAlive) alive++;
         h.Add(alive);
@@ -40,7 +41,7 @@ public sealed class AgentSystem
             h.Add(a.Hunger); h.Add(a.Thirst); h.Add(a.Health);
             h.Add(a.Carried.Item.Value); h.Add(a.Carried.Count);
             h.Add((byte)a.State); h.Add(a.CurrentJob.Value); h.Add(a.StepIndex); h.Add(a.StepProgress);
-            h.Add(a.PathPos); h.Add(a.Path.Length);
+            h.Add(a.PathPos); h.Add(a.Path.Length); foreach (var c in a.Path) h.Add(c);
             h.Add(a.NextJobSearchTick);
         }
     }

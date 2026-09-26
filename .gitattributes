@@ -9,3 +9,4 @@
 *.tscn    text eol=lf
 *.godot   text eol=lf
 *.png     binary
+tests/golden/*.txt text eol=lf

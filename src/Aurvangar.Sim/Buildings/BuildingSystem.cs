@@ -40,6 +40,7 @@ public sealed class BuildingSystem
 
     public void AddToHash(ref StateHasher h)
     {
+        h.Add(Ids.Next);
         h.Add(_buildings.Count);
         foreach (var b in _buildings.Values)
         {

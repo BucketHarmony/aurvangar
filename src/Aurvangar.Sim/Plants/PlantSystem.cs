@@ -85,6 +85,7 @@ public sealed class PlantSystem
 
     public void AddToHash(ref StateHasher h)
     {
+        h.Add(Ids.Next);
         h.Add(_plants.Count);
         foreach (var p in _plants.Values)
         {

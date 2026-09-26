@@ -72,6 +72,16 @@ public sealed class WaterGrid
         return sum;
     }
 
+    /// <summary>ARCH-06: levels, source strength, sources, drains (list order), and volume accounting.</summary>
+    public void AddToHash(ref StateHasher h)
+    {
+        h.Add(Levels);
+        h.Add(SourceStrength);
+        h.Add(_sources.Count); foreach (var i in _sources) h.Add(i);
+        h.Add(_drains.Count); foreach (var i in _drains) h.Add(i);
+        h.Add(Stats.SourceAdded); h.Add(Stats.Drained); h.Add(Stats.Evaporated); h.Add(Stats.Pumped);
+    }
+
     /// <summary>One CA step (WAT-03..16). M2-T1..T4.</summary>
     public void Tick(EventBus events)
     {
