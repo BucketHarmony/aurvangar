@@ -160,7 +160,7 @@ public class RiverTests
         sim.RunTicks(300);
         var s = sim.Water.Stats;
         Assert.True(s.Drained > 0, "river does not reach the drains");
-        Assert.Equal(initial + s.SourceAdded - s.Drained - s.Evaporated, sim.Water.TotalVolume());
+        Assert.Equal(initial + s.SourceAdded - s.Drained - s.Evaporated - s.Pumped, sim.Water.TotalVolume());
     }
 
     [Fact]

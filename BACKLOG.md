@@ -160,7 +160,7 @@ Milestone order is by risk: world and water before anything that depends on them
   - Deliver, construct, complete, cancel, deconstruct. Un-skip `Scenarios/ConstructionScenarioTests.*`.
 - [x] **M5-T3** Warehouse and levee · deps: M5-T2
   - Levee completion pushes water (WAT-12). Un-skip `Scenarios/LeveeScenarioTests.*`.
-- [ ] **M5-T4** Pump · specs: BLD-13, BLD-14 · deps: M5-T3
+- [x] **M5-T4** Pump · specs: BLD-13, BLD-14 · deps: M5-T3
   - Un-skip `Scenarios/PumpScenarioTests.*`.
 - [ ] **M5-T5** Needs, eating, drinking, death, ColonyLost · specs: ECO-01..07, JOB-07 · deps: M4-T8
   - Un-skip `NeedsTests.*`, `Scenarios/StarvationScenarioTests.*`.

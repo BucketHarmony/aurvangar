@@ -8,13 +8,14 @@ namespace Aurvangar.Sim.Actions;
 /// <summary>Storage actions (BLD-10, BLD-11, ECO-05) and ECO-08 pile placement.</summary>
 public sealed partial class WorldActions
 {
-    /// <summary>Takes <paramref name="count"/> of an item from a complete storage building into the carried stack. Stock
-    /// promised to other claimed jobs (BLD-10) is not available; the actor's own job's reservation is.</summary>
+    /// <summary>Takes <paramref name="count"/> of an item from a complete storage building, or of its output from a
+    /// complete producer's buffer (BLD-14), into the carried stack. Stock promised to other claimed jobs (BLD-10) is
+    /// not available; the actor's own job's reservation is.</summary>
     public ActionResult PickUpFromStorage(AgentId actor, BuildingId storage, ItemId item, int count)
     {
         var r = Actor(actor, out var a);
         if (r != ActionResult.Ok) return r;
-        var b = StorageBuilding(storage);
+        var b = StorageBuilding(storage) ?? OutputBuffer(storage, item);
         if (b is null || !item.IsValid || count <= 0) return ActionResult.InvalidTarget;
         if (!InReach(a.Cell, b)) return ActionResult.OutOfReach;
         r = CanCarry(a, item, count);
@@ -75,6 +76,15 @@ public sealed partial class WorldActions
     {
         var b = _sim.Buildings.Get(id);
         return b is { State: BuildingState.Complete, Def.Storage: not null } ? b : null;
+    }
+
+    /// <summary>A complete producer whose output is <paramref name="item"/> (its buffer is <see cref="Building.Stored"/>), or null.</summary>
+    private Building? OutputBuffer(BuildingId id, ItemId item)
+    {
+        var b = _sim.Buildings.Get(id);
+        if (b is not { State: BuildingState.Complete, Def.Producer: { } p } || !item.IsValid || item.Value >= _sim.Content.Items.Count)
+            return null;
+        return _sim.Content.ItemDef(item).Id == p.Output ? b : null;
     }
 
     public static int StoredCount(Building b, ItemId item) => b.Stored.TryGetValue(item.Value, out var n) ? n : 0;

@@ -8,7 +8,8 @@ namespace Aurvangar.Sim.Buildings;
 
 /// <summary>Placement, construction, storage, production. Spec: docs/specs/buildings.md.
 /// Placement validation and blueprints: BuildingSystem.Placement.cs (M5-T1). Construction jobs, completion,
-/// cancel and deconstruction: <see cref="Construction"/> and WorldActions.Construction.cs (M5-T2).</summary>
+/// cancel and deconstruction: <see cref="Construction"/> and WorldActions.Construction.cs (M5-T2). Pump jobs:
+/// <see cref="Pumps"/> (M5-T4).</summary>
 public sealed partial class BuildingSystem
 {
     private readonly VoxelWorld _world;
@@ -89,7 +90,7 @@ public sealed partial class BuildingSystem
     public void Tick(Simulation sim)
     {
         Construction.Tick(sim);   // M5-T2: BLD-06 delivers, BLD-08 construct, BLD-09 deconstruct jobs
-        // M5-T4: pump production.
+        Pumps.Tick(sim);          // M5-T4: BLD-13 NoWater and OperatePump jobs, BLD-14 buffer hauls
         _totals.Clear();
         foreach (var b in _buildings.Values)
         {

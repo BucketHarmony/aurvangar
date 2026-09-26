@@ -1188,3 +1188,47 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
 - Next: M5-T4 (pump). ADR-040 allows a pump at any bank edge; water is only read at production (BLD-13).
   `WorkOnBuilding` already accepts work ticks on a Complete building (it returns Ok and does nothing), so it is the
   hook for pump cycles. Pumped water must leave the world through `WaterStats.Pumped` (WAT-11 conservation).
+
+## M5-T4 — Pump (2026-09-26)
+- Done: BLD-13/14.
+  - New `Buildings/Pumps.cs` runs at ARCH-01 step 7 after `Construction`. Every tick it refreshes `NoWater` from the
+    intake level (so a dry pump is flagged without a worker and clears when water returns).
+  - It keeps one OperatePump job (`GoTo(entrance, Exact) -> Work(pump)`) while the buffer is under 10 and the pump
+    has water, and one buffer Haul job (`GoTo(pump) -> PickUpFromStorage(pump) -> GoTo(storage) -> DeliverTo`) while
+    the unpromised buffer is at least 5.
+  - The cycle is `WorldActions.Work` on a complete producer (`PumpTick`): 30 ticks counted on `Building.Progress`
+    (reset to 0 when a producer completes). It removes 64 units through the new `WaterGrid.Pump` (counted in
+    `WaterStats.Pumped`) and adds 1 water to the buffer (`Building.Stored`), or sets NoWater. On a full buffer the
+    result is `StorageFull`.
+  - `JobRunner.PumpWork` cycles until the buffer is full, the pump is NoWater or it is no longer complete ("repeat
+    until relieved").
+  - `PickUpFromStorage` accepts a complete producer's output.
+  - WAT-11 in water.md now subtracts `Pumped`; BLD-13/14 text updated.
+- Tests: the 3 placeholders moved to `Scenarios/PumpScenarioTests.cs` with real bodies. They failed first (no water
+  made: "condition not reached", NoWater never set). New `PumpTests.cs` (3): the cycle through `Work` (29 ticks
+  nothing, tick 30 = 1 water and -64 at the intake, full buffer refuses, buffer gives out water only); deconstructing
+  a worked pump stops the worker and its buffer reaches the hub as a pile; a claimed haul from a deconstructed pump
+  is withdrawn.
+  - `Pump_FillsHubWithWater`: 2 dwarves build the pump from 12 hub logs, then one works it and the water is hauled;
+    the hub reaches 10 water, the buffer never exceeds 10, 0 failures, `Pumped == 64 x water items`.
+  - `Pump_DryIntake_FlagsNoWater`: a dry bank flags NoWater, no job, dwarf idle; water at 320 at a walled intake
+    gives 2 water (320 -> 256 -> 192), then NoWater again and the worker stops.
+  - `Pump_RemovesWaterFromWorld`: 30-cell basin, the books balance exactly (WAT-11 with Pumped), >= 20 water made in
+    ~1,500 ticks, and a save in the middle of a cycle continues with an identical hash for 300 ticks.
+  - `WaterScenarioTests` river conservation formula now includes `- Pumped` (no pump there; matches the spec).
+  - check.sh: 403 passed, 20 skipped, 0 failed; Godot csproj 0 warnings.
+- Review (sim-reviewer): required fix applied. A buffer haul was identified by its pump still existing, so a haul
+  whose pump was torn down could stay on the board forever. It is now identified by shape alone. Also applied:
+  claimed hauls that have not picked up yet are cancelled when the pump goes; NoWater is false while the pump is not
+  complete. Noted (not changed): an OperatePump job whose Exact entrance is unreachable fails 5 times and is posted
+  again, like other kept jobs.
+- Decisions: ADR-042.
+- Golden: unchanged (no pumps in the golden run). Headless seed 1, 24,000 ticks: hash `d8a1e43aeeb5d540`
+  (unchanged), ~23,400 ticks/s.
+- Perf: perf.sh 6 passed, 2 skipped (touched water: only the new `Pump` method, not the CA step). No Godot code
+  changed, so no screenshots.
+- For G3 / next: ADR-040 still lets a pump go on any bank edge; on a dry one it just shows NoWater. A worked pump holds
+  one dwarf until its buffer fills (priority 40, above digs/chops/hauls). Deconstruct drops the buffer as a water
+  pile, which pile hauling takes to the hub.
+- Next: M5-T5 (needs). Drink jobs can now take water from the hub that pumps fill. HUD NoWater icon and pump
+  rendering are M5-T6.

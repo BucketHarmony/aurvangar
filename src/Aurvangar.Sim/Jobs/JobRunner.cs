@@ -162,6 +162,11 @@ public static class JobRunner
                     BuildWork(sim, a, job, step);
                     return;
                 }
+                if (Buildings.Pumps.IsOperate(job))
+                {
+                    PumpWork(sim, a, job, step);
+                    return;
+                }
                 var target = step.Goal == GoalMode.Building
                     ? WorkTarget.AtBuilding(new BuildingId(step.Target)) : WorkTarget.AtCell(step.Cell);
                 r = act.Work(a.Id, target);
@@ -209,6 +214,17 @@ public static class JobRunner
         if (r != ActionResult.Ok) { Fail(sim, a, job); return; }
         a.StepProgress = 0;   // progress lives on the building; StepProgress only counts a blocked wait
         if (Buildings.Construction.WorkDone(sim, job)) NextStep(sim, a, job);
+    }
+
+    /// <summary>M5-T4 (BLD-13): the worker runs production cycles until the pump's buffer is full, its intake is dry
+    /// or it stops being a complete pump (<see cref="Buildings.Pumps.WorkDone"/>, checked before every tick); the job
+    /// is then done. Cycle progress lives on the building.</summary>
+    private static void PumpWork(Simulation sim, Agent a, Job job, JobStep step)
+    {
+        if (Buildings.Pumps.WorkDone(sim, job)) { NextStep(sim, a, job); return; }
+        var r = sim.Actions.Work(a.Id, WorkTarget.AtBuilding(new BuildingId(step.Target)));
+        if (r != ActionResult.Ok) { Fail(sim, a, job); return; }
+        if (Buildings.Pumps.WorkDone(sim, job)) NextStep(sim, a, job);
     }
 
     private static void NextStep(Simulation sim, Agent a, Job job)

@@ -32,14 +32,6 @@ namespace Aurvangar.Sim.Tests
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class PumpScenarioTests
-    {
-        [Fact(Skip = "M5-T4")] public void Pump_FillsHubWithWater() => Placeholder.Write("buildings.md scenario 4, BLD-13/14");
-        [Fact(Skip = "M5-T4")] public void Pump_DryIntake_FlagsNoWater() => Placeholder.Write("BLD-13");
-        [Fact(Skip = "M5-T4")] public void Pump_RemovesWaterFromWorld() => Placeholder.Write("BLD-13: WaterStats.Pumped and conservation");
-    }
-
-    [Trait("Category", "Scenario")]
     public class StarvationScenarioTests
     {
         [Fact(Skip = "M5-T5")] public void NoFood_DiesStarvedAfter1000TicksAtZero() => Placeholder.Write("needs-economy.md scenario 2");

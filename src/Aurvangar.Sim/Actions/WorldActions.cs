@@ -143,7 +143,7 @@ public sealed partial class WorldActions
 
     /// <summary>One tick of work on a cell or building. Validates the actor and reach; the step's progress lives on
     /// the agent (JOB-01). Building work (construction BLD-08, deconstruction BLD-09) is
-    /// <see cref="WorkOnBuilding"/>; pump cycles (BLD-13) come with M5-T4.</summary>
+    /// <see cref="WorkOnBuilding"/>, which also runs pump cycles (BLD-13).</summary>
     public ActionResult Work(AgentId actor, WorkTarget target)
     {
         var r = Actor(actor, out var a);

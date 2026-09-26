@@ -86,7 +86,10 @@ materials, are built by colonists, then operate. Definitions live in `data/build
   entrance and does `Work` in 30-tick cycles; each cycle checks intake level ≥ 256 and, if so, removes 64 units
   from the intake cell (water leaves the world; counted in `WaterStats.Pumped`) and adds 1 water to the buffer.
   If intake is too low, the cycle produces nothing and the building flags `NoWater` (HUD icon).
-- **BLD-14** When the buffer is ≥ 5, a Haul job moves water to the hub.
+  NoWater is also refreshed from the intake level every tick, and no OperatePump job is kept while it is set.
+  The worker cycles until the buffer is full or the pump is NoWater (ADR-042).
+- **BLD-14** When the buffer is ≥ 5, a Haul job moves water to the hub (all unpromised buffer stock, at most 10;
+  ADR-042).
 
 ## Acceptance scenarios
 

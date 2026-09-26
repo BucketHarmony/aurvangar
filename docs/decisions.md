@@ -790,3 +790,35 @@ Decision:
   the blocked wait. The last-resort refund placement never uses a cell inside any building footprint.
 Consequences: site jobs and blocking are derived and stateless beyond the building fields that are already saved,
 so there is no save format change and the golden hashes are unchanged. BLD-04 ordering is now enforced for delivery.
+
+## ADR-042: Pump details: cycle on the building, NoWater from the intake each tick, worker runs until relieved, buffer hauls (2026-09-26, M5-T4)
+Context: BLD-13/14 leave open where the cycle counts, when NoWater is set and cleared, how long one OperatePump job
+lasts, and how the buffer is hauled.
+Decision:
+- The buffer is the pump's `Building.Stored` (output item only). A complete producer's `Progress` counts the ticks of
+  the current cycle; `Complete` resets it to 0 for producers (other buildings keep `Progress == buildTicks`). So a
+  new worker carries on a cycle, and no new state, save field or hash field is needed.
+- The cycle is `WorldActions.Work` on the complete pump. At `cycleTicks` the intake is read: at least
+  `minIntakeLevel` removes `unitsPerCycle` through the new `WaterGrid.Pump` (counted in `WaterStats.Pumped`; WAT-11
+  now reads `... - Evaporated - Pumped`) and adds 1 output; below it nothing is made and `NoWater` is set. `Work` on
+  a full buffer is `StorageFull` and changes nothing.
+- `NoWater` is also refreshed from the intake level every tick at ARCH-01 step 7 (`Pumps.Tick`), so a dry pump is
+  flagged without a worker and clears on its own when water returns.
+- One OperatePump job (`GoTo(entrance, Exact) -> Work(pump)`) exists while the buffer is below `buffer` and the pump
+  is not NoWater. Its Work step runs cycle after cycle (jobs-agents.md "repeat until relieved") and the job is done
+  when the buffer is full, the pump is NoWater, or the pump stops being complete; the check runs before every tick,
+  so a worker never works a pump being deconstructed. An unclaimed job is withdrawn when not wanted; the job is
+  cancelled when the pump is gone or deconstructing. Need jobs (JOB-07) still preempt it.
+- BLD-14: one buffer Haul job per pump (`GoTo(pump) -> PickUpFromStorage(pump) -> GoTo(storage) -> DeliverTo`) while
+  the buffer stock not promised to a claimed haul is at least `haulAt`. It carries all of that stock (at most 10 and
+  the destination's room) to the nearest complete storage that accepts the item with room (Manhattan from the pump
+  entrance, ties by lower id). Unclaimed hauls are re-planned every tick. `PickUpFromStorage` accepts a complete
+  producer's output (and nothing else from it). The haul is recognised by its shape alone (a Haul whose second step
+  is `PickUpFromStorage`), so it is never mistaken for a pile haul or a construction Deliver and is still found after
+  its pump is gone. When the pump is gone or deconstructing, unclaimed hauls and claimed ones that have not picked up
+  yet are cancelled; a haul already carrying the water delivers it. `NoWater` is false while a pump is not complete.
+- Deconstructing a pump drops its buffer as a water pile at the stand cell (BLD-09 "anything stored"); pile hauling
+  takes it to the hub.
+Consequences: no save format change, golden hashes unchanged. A worked pump holds one dwarf until its buffer fills
+(10 cycles, 300 ticks); with priority 40 it goes before digs, chops and hauls. ADR-040's "pump at any bank edge"
+still applies; a pump placed on a dry edge just shows NoWater (flag for G3).

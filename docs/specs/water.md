@@ -41,7 +41,7 @@ levels. No pressure, no currents. Integer math only.
   where `strength` comes from `WeatherSystem` (100 in Wet season, 0 in Drought). Added volume goes to
   `WaterStats.SourceAdded`.
 - **WAT-10** Drain cells are set to 0 at the end of each step. Removed volume goes to `WaterStats.Drained`.
-- **WAT-11** Conservation: over any run, `initial + SourceAdded - Drained - Evaporated == current total`
+- **WAT-11** Conservation: over any run, `initial + SourceAdded - Drained - Evaporated - Pumped == current total`
   exactly. Tested.
 
 ## Interaction with the world

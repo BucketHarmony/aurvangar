@@ -66,6 +66,18 @@ public sealed partial class WaterGrid
         ActivateAround(i);
     }
 
+    /// <summary>BLD-13: takes up to <paramref name="units"/> out of the cell; the water leaves the world and is counted
+    /// in <see cref="WaterStats.Pumped"/> (WAT-11). Returns the units removed.</summary>
+    public int Pump(Int3 c, int units)
+    {
+        int level = GetLevel(c);
+        int n = Math.Min(Math.Max(units, 0), level);
+        if (n == 0) return 0;
+        SetLevel(c, level - n);
+        Stats.Pumped += n;
+        return n;
+    }
+
     /// <summary>SaveGame load: levels are already written raw. Rebuilds the active set, sources and drains from saved
     /// indices and takes the current levels as the WAT-15 baseline (the view remeshes everything after a load).</summary>
     internal void RestoreAfterLoad(IEnumerable<int> active, IEnumerable<int> sources, IEnumerable<int> drains)

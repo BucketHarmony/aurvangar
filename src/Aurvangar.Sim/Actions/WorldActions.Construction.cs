@@ -1,5 +1,6 @@
 using Aurvangar.Sim.Agents;
 using Aurvangar.Sim.Buildings;
+using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Events;
 using Aurvangar.Sim.Items;
@@ -36,7 +37,8 @@ public sealed partial class WorldActions
     /// <summary>One tick of work on a building. A construction site needs every cost item delivered (else
     /// InvalidTarget) and completes at BuildTicks (BLD-08). A building being deconstructed is removed after
     /// half its build ticks (BLD-09); that last tick is Blocked while an agent holds a cell on top of it. A
-    /// blueprint takes no work (InvalidTarget); a complete building accepts the tick (pumps: M5-T4).</summary>
+    /// blueprint takes no work (InvalidTarget); a complete producer runs its cycle (<see cref="PumpTick"/>, BLD-13), any
+    /// other complete building accepts the tick and nothing happens.</summary>
     private ActionResult WorkOnBuilding(Agent a, Building b)
     {
         if (!InReach(a.Cell, b)) return ActionResult.OutOfReach;
@@ -51,7 +53,7 @@ public sealed partial class WorldActions
                 if (++b.Progress >= Construction.DeconstructTicks(b.Def)) TearDown(b);
                 return ActionResult.Ok;
             case BuildingState.Complete:
-                return ActionResult.Ok;
+                return b.Def.Producer is { } producer ? PumpTick(b, producer) : ActionResult.Ok;
             default:
                 return ActionResult.InvalidTarget;
         }
@@ -66,7 +68,27 @@ public sealed partial class WorldActions
             foreach (var c in b.FootprintCells()) _sim.World.SetBlock(c, BlockId.BuildingSolid);
         b.State = BuildingState.Complete;
         b.Delivered.Clear();
+        if (b.Def.Producer is not null) b.Progress = 0;   // from now on Progress counts the production cycle (BLD-13)
         _sim.Events.Emit(new BuildingCompleted(b.Id));
+    }
+
+    /// <summary>BLD-13: one work tick of a production cycle. The cycle's progress is on the building (a new worker
+    /// carries on). At <c>cycleTicks</c> the cycle ends: with the intake level at least <c>minIntakeLevel</c>,
+    /// <c>unitsPerCycle</c> leave the intake cell (<see cref="Water.WaterGrid.Pump"/>) and one output item goes into
+    /// the buffer, else nothing is made and the building flags NoWater. StorageFull (nothing changes) while the buffer
+    /// is full.</summary>
+    private ActionResult PumpTick(Building b, ProducerDef p)
+    {
+        var output = _sim.Content.Item(p.Output);
+        if (StoredCount(b, output) >= p.Buffer) return ActionResult.StorageFull;
+        if (++b.Progress < p.CycleTicks) return ActionResult.Ok;
+        b.Progress = 0;
+        var intake = BuildingShape.Intake(b.Def, b.Origin, b.Rotation);
+        b.NoWater = _sim.Water.GetLevel(intake) < p.MinIntakeLevel;
+        if (b.NoWater) return ActionResult.Ok;
+        _sim.Water.Pump(intake, p.UnitsPerCycle);
+        b.Stored[output.Value] = StoredCount(b, output) + 1;
+        return ActionResult.Ok;
     }
 
     /// <summary>BLD-09: the footprint turns to air; half the cost (rounded down) and everything stored are dropped
