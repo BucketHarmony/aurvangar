@@ -21,7 +21,7 @@ Entry template:
   loop, commands, events, state hash), scaffolds with typed stubs for water, pathing, agents, actions, buildings,
   save. ViewCore mesher stubs. Headless runner. Godot project shell with fixed-tick GameRoot. Scripts, hooks,
   agents, CI.
-- Tests: 35 foundation tests pass. 118 acceptance tests are skipped with their backlog task id.
+- Tests: 35 foundation tests pass. 124 acceptance tests are skipped with their backlog task id.
 - Verified in the scaffolding environment: Colony.Sim, Colony.ViewCore and Colony.Headless build with .NET 8.0.131;
   the test sources compile and the non-skipped tests pass under a local xUnit stand-in. NOT verified there (NuGet
   was unreachable): the real xUnit run and the Godot.NET.Sdk build. M0-T1 verifies both.
