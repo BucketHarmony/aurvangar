@@ -43,6 +43,9 @@
 8. `DesignationSystem.Tick` — post jobs for new/changed designations.
 9. `HaulSystem.Tick` — post haul jobs for loose item piles and full producers.
 10. `AgentSystem.Tick` — each agent in ascending id order: pick job if idle, advance current job step.
+    Then `WaterGrid.EndTick` — apply block changes made after step 3 (WAT-12 push, WAT-13 activation) and emit
+    `WaterDirty` (ADR-013) — and `PathGrid.Invalidate(World.ChangedCells)`. Nothing may call `SetBlock` after this
+    point in the tick: the change log is cleared at the end of the tick.
 11. `Regions.RebuildIfDirty` — recompute reachability regions if topology changed this tick.
 12. `Clock.Advance`.
 

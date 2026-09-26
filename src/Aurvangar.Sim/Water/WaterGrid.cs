@@ -37,6 +37,10 @@ public sealed partial class WaterGrid
         _active = new WaterActiveSet(world.CellCount);
         _delta = new int[world.CellCount];
         _touchedFlag = new bool[world.CellCount];
+        _emitted = new ushort[world.CellCount];
+        _drift = new bool[world.CellCount];
+        _chunkDrift = new List<int>?[world.ChunkCount];
+        _chunkEmit = new bool[world.ChunkCount];
     }
 
     public int GetLevel(Int3 c) => _world.InBounds(c) ? _level[_world.Index(c)] : 0;
@@ -56,6 +60,7 @@ public sealed partial class WaterGrid
         ushort v = _world.IsSolidAt(i) ? (ushort)0 : (ushort)Math.Clamp(level, 0, Full);
         if (_level[i] == v) return;
         _level[i] = v;
+        NoteLevelChange(i);
         ActivateAround(i);
     }
 

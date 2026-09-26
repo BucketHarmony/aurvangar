@@ -76,7 +76,7 @@ public class WaterScenarioTests
         Assert.True(outside > 0, "basin never overflowed");
     }
 
-    [Fact(Skip = "M2-T4")]
+    [Fact]
     public void BreachFloodsTunnel() // water.md scenario 4, WAT-13
     {
         // Solid rock to y=9. Reservoir x1..5 z1..5 y5..6 full. Wall at x=6. Tunnel x7..16 at z=3, y5..6.
@@ -97,7 +97,7 @@ public class WaterScenarioTests
         Assert.True(sim.Water.GetLevel(new Int3(16, 5, 3)) > 0, "flood did not reach the tunnel end");
     }
 
-    [Fact(Skip = "M2-T4")]
+    [Fact]
     public void LeveePushConservesVolume() // water.md scenario 5, WAT-12
     {
         var sim = new ScenarioBuilder().Ground(4)
@@ -115,7 +115,7 @@ public class WaterScenarioTests
         Assert.Equal(before, sim.Water.TotalVolume() + sim.Water.Stats.Evaporated);
     }
 
-    [Fact(Skip = "M2-T4")]
+    [Fact]
     public void WaterDirty_EmittedForChangedChunks() // WAT-15
     {
         var sim = new ScenarioBuilder().Ground(4).Water(new Int3(5, 6, 5), Full).Build();

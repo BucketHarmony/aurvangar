@@ -124,3 +124,26 @@ to (1,8,1), where it still pours into the corner of the basin and overflows once
 and overflow assertions are unchanged.
 Consequences: A source only drives water up to its own cell height. Scenarios that expect a source to overflow a
 container must place the source at or above the rim.
+
+## ADR-013: Water consumes world changes twice per tick; WaterDirty baselines are not state (2026-09-26, M2-T4)
+Context: (1) The water step runs third in ARCH-01, but buildings (7) and agents (10) change blocks later in the
+tick, and `Simulation` clears `VoxelWorld.ChangedCells` at the end of each tick. Reading the log only at the start
+of `Water.Tick` would miss those changes, and a new solid cell would keep its water until something else touched it.
+(2) WAT-12 does not say how shares interact with a neighbor that has less free room than its share. (3) WAT-15 needs
+a per-cell "level at the chunk's last event" to measure drift; it only throttles view events.
+Decision: (1) `WaterGrid` reads the log through a cursor: `Tick` consumes the entries made before the step (commands,
+setup, test edits between ticks) and `EndTick`, called right after `Agents.Tick` and before `PathGrid.Invalidate`
+and `ClearChangeLog`, consumes the rest and resets the cursor. Each entry is judged by the cell's current block.
+Every changed cell and its 6 neighbors are activated (WAT-13; ADR-010 still admits only wet cells), and a cell that is
+now solid with water in it is pushed out (WAT-12). (2) Push: equal shares `L / n` to the open horizontal neighbors,
+each capped at `Full - level`; the division remainder plus whatever did not fit goes to the cell above if it is open
+and in the world (also capped); the rest is counted in `Evaporated`. (3) WaterDirty fires for the chunk that contains
+the changed cell, when that cell's level is ≥ 32 from its baseline or crossed 0 ↔ wet. When a chunk emits, the
+baselines of all its cells that changed since its last event are reset. Events are emitted at the end of `Tick` and
+of `EndTick`, chunks in ascending order. The baselines are view-notification state: they are not hashed and not
+saved (after a load the view remeshes everything anyway, so the loader may start the baselines at the current levels). No sim system may react to WaterDirty; if one
+ever needs to, the baselines become state and must be hashed and saved. Nothing may call `SetBlock` after `EndTick` in
+a tick. If the log is cleared outside `Simulation.Tick` while the cursor is ahead of it, the cursor restarts at 0.
+Consequences: Neighbor chunks are not dirtied by a border cell change; a water side face at a chunk seam can stay stale
+until the neighboring chunk gets its own WaterDirty (M3-T3/T4 may revisit if seams show). Water level changes from the push are visible to the
+`PathGrid` in the same tick.

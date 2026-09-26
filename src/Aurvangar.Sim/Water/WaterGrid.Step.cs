@@ -17,16 +17,23 @@ public sealed partial class WaterGrid
     /// <summary>WAT-07: below this level a film on a floor evaporates.</summary>
     public const int FilmLevel = 16;
 
-    /// <summary>One CA step (WAT-02..11, WAT-16). World interaction: M2-T4.</summary>
+    /// <summary>One CA step (WAT-02..16). World changes made before the step are applied first (WAT-12, WAT-13);
+    /// WaterDirty events (WAT-15) are emitted at the end.</summary>
     public void Tick(EventBus events)
     {
+        ConsumeWorldChanges();
         ApplySources();
         _active.TakeSorted(_stepCells);                    // WAT-03: sorted for stable iteration
         foreach (var c in _stepCells) ComputeFlows(c);
         ApplyDeltas();
         ApplyDrains();
-        foreach (var c in _changed) ActivateAround(c);     // WAT-02: changed cells and their neighbors
+        foreach (var c in _changed)
+        {
+            ActivateAround(c);                             // WAT-02: changed cells and their neighbors
+            NoteLevelChange(c);                            // WAT-15
+        }
         _changed.Clear();
+        FlushDirty(events);
     }
 
     /// <summary>WAT-09: raise each source cell to <c>Full * strength / 100</c> before the step. A source never
@@ -39,6 +46,7 @@ public sealed partial class WaterGrid
             if (_world.IsSolidAt(s) || _level[s] >= target) continue;
             Stats.SourceAdded += target - _level[s];
             _level[s] = (ushort)target;
+            NoteLevelChange(s);
             ActivateAround(s);
         }
     }

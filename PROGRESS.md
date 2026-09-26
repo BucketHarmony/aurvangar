@@ -163,3 +163,25 @@ Entry template:
 - Next: M2-T4 (world interaction). `WaterGrid` does not yet consume `World.CellChanged`, and it emits no `WaterDirty`
   events (the `events` parameter of `Tick` is still unused). Drain cells are only zeroed at the end of the step, so
   they hold water while that step is computed, and neighbors see a drain as an empty cell only from the next step.
+
+## M2-T4 — World interaction (2026-09-26)
+- Done: New `WaterGrid.World.cs`. `WaterGrid` reads `World.ChangedCells` through a cursor, at the start of `Tick`
+  (commands, setup) and in the new `Water.EndTick(Events)`, which `Simulation.Tick` calls after `Agents.Tick` and
+  before `PathGrid.Invalidate`/`ClearChangeLog`. Each changed cell and its neighbors are activated (WAT-13). A cell that
+  is now solid pushes its water out (WAT-12: equal capped shares to the open horizontal neighbors, the rest goes up,
+  and any overflow is counted as `Evaporated`). WaterDirty (WAT-15) fires per chunk on a drift of 32 or more from the
+  per-cell baseline, or on a 0 ↔ wet crossing. ARCH-01 in `docs/01-architecture.md` documents the EndTick step.
+- Tests: un-skipped `WaterScenarioTests.BreachFloodsTunnel`, `LeveePushConservesVolume`,
+  `WaterDirty_EmittedForChangedChunks` (all 3 failed first for the right reasons). Added `WaterWorldTests` (6 tests:
+  push split/remainder, neighbor cap, enclosed evaporation, dig activation, throttle at 31/32, wet/dry crossing).
+  check.sh: 94 passed, 92 skipped, 0 failed. The Sim diff is about 150 lines. The sim-reviewer's one required fix (the
+  ARCH-01 doc step) is applied, plus these suggestions: reset the cursor if the log was cleared, and a
+  "WaterDirty is view-only" note.
+- Decisions: ADR-013 (the change-log cursor with two consume points, push capping, WaterDirty baselines not hashed or
+  saved).
+- Golden: unchanged (seed 1 has no water; headless 1000-tick hash is still `951258ed499b8b08`).
+- Perf: n/a (the water perf tests are still skipped until M2-T6).
+- Next: M2-T5 pre-settle in `WorldFactory` must run through `Simulation.Tick` (or call `Water.EndTick` after each
+  `Water.Tick`) so the change cursor and WaterDirty stay consistent. Reviewer notes for later: `ChunkOfCell` uses
+  `CellOf` + `ChunkIndexOf` per changed cell (check it in M2-T6 perf). A chunk can get WaterDirty twice in one tick, so
+  the view queue must dedupe (M3-T4). Border cells do not dirty neighbor chunks (M3-T3).

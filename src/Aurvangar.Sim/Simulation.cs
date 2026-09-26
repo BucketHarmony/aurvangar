@@ -67,6 +67,7 @@ public sealed class Simulation
         // 8  DesignationSystem.Tick              (M4-T7)
         // 9  HaulSystem.Tick                     (M4-T8)
         Agents.Tick(this);                       // 10
+        Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)
         PathGrid.Invalidate(World.ChangedCells);
         Regions.RebuildIfDirty();                // 11
         foreach (var ci in World.TakeDirtyChunks()) Events.Emit(new ChunkDirty(ci));

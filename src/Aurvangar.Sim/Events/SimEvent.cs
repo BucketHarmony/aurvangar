@@ -6,6 +6,7 @@ namespace Aurvangar.Sim.Events;
 public abstract record SimEvent;
 
 public sealed record ChunkDirty(int ChunkIndex) : SimEvent;
+/// <summary>WAT-15. View only: no sim system may react to it, because its throttle baselines are not hashed (ADR-013).</summary>
 public sealed record WaterDirty(int ChunkIndex) : SimEvent;
 public sealed record AgentSpawned(AgentId Agent) : SimEvent;
 public sealed record AgentDied(AgentId Agent, string Cause) : SimEvent;
