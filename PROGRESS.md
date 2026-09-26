@@ -685,3 +685,10 @@ The Godot side (M3-T4..T6) ran on the first try. Faces turned away from the sun 
   leave an unclaimable job (re-post or cancel it). M4-T10: save the board (`Ids.Next`, all job fields), designation
   marks, agent `NextJobSearchTick/CurrentJob/StepIndex/StepProgress`, then `Jobs.RebuildReservations()`. M5-T5: a
   dead agent's claimed job must be released.
+
+## G2 early answers (human, 2026-09-26)
+- Q (palette / sRGB): should vertex colors be marked sRGB so Forward+ matches `data/palette.json` exactly?
+  **No.** Keep the current look (lighter and greyer than the palette hex values). Do not set `VertexColorIsSrgb`
+  or otherwise darken the scene.
+- Q (screenshot renderer): should gate screenshots use the renderer the game plays in? **Yes.** Added M4-T13 to
+  switch `screenshot.sh` to Forward+; it is now a dep of M4-GATE.
