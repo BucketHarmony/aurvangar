@@ -86,7 +86,8 @@ plays in, so they show the same lighting and colors as play (ADR-035). There is 
 On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env options: `SEED`, `TICKS` (1200),
 `SHOTS`, `OUT`, and `SCRIPT=digchop` (dig a pit and chop trees near the hub, so colonists are at work;
 `TICKS=400` shows the marks, 1200 shows the piles) or `SCRIPT=build` (chop plus a warehouse, a pump and a levee line
-near the hub; `TICKS=500` catches them mid-build, 1600 shows them complete, ADR-048) or `SCRIPT=farm` (a 5×5 field on
+near the hub; `TICKS=500` catches them mid-build, 1600 shows them complete, ADR-048; add `GHOST=levee` for a green
+levee ghost at the end of the line with no entrance tile, M11-T1, `SHOTS=hub`) or `SCRIPT=farm` (a 5×5 field on
 the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the first mature ones and harvests) or
 `SCRIPT=survival` (the timed `SurvivalScript`, each command enqueued at its tick, M7-T7). Useful survival shots:
 `TICKS=7700 SHOTS=tunnel` (flooded tunnel, breach levee sites), `TICKS=8400 SHOTS=tunnel` (levees complete),

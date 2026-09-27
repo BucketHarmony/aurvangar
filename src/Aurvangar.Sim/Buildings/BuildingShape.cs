@@ -29,9 +29,30 @@ public static class BuildingShape
                 yield return origin + new Int3(x, 0, z).RotateY(rotation);
     }
 
-    /// <summary>The standable cell agents use (BLD-01: the entrance offset rotates with the building).</summary>
-    public static Int3 Entrance(BuildingDef def, Int3 origin, int rotation) =>
-        origin + new Int3(def.Entrance[0], def.Entrance[1], def.Entrance[2]).RotateY(rotation);
+    /// <summary>The standable cell agents use (BLD-01: the entrance offset rotates with the building). Only for a
+    /// definition that has one (<see cref="BuildingDef.HasEntrance"/>; the levee has none, ADR-076).</summary>
+    public static Int3 Entrance(BuildingDef def, Int3 origin, int rotation)
+    {
+        var e = def.Entrance ?? throw new InvalidOperationException($"Building '{def.Id}' has no entrance (ADR-076).");
+        return origin + new Int3(e[0], e[1], e[2]).RotateY(rotation);
+    }
+
+    /// <summary>ADR-076 (M11-T1): the cells in reach of the footprint (ARCH-07, the 26-neighbourhood of any footprint
+    /// cell) that are not footprint cells themselves: beside it, and one level up or down. Each once, in footprint order
+    /// then dy, dz, dx (callers sort by cell index).</summary>
+    public static IEnumerable<Int3> ReachRing(BuildingDef def, Int3 origin, int rotation)
+    {
+        var fp = new HashSet<Int3>(Footprint(def, origin, rotation));
+        var seen = new HashSet<Int3>();
+        foreach (var f in Footprint(def, origin, rotation))   // defined order (never HashSet order)
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dz = -1; dz <= 1; dz++)
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        var c = f + new Int3(dx, dy, dz);
+                        if (!fp.Contains(c) && seen.Add(c)) yield return c;
+                    }
+    }
 
     /// <summary>BLD-03: the cell in front of the intake side, the side opposite the entrance. At rotation 0 the
     /// entrance lies outside the footprint along one axis; the front cell is on the far side of the footprint along
@@ -39,7 +60,8 @@ public static class BuildingShape
     public static Int3 IntakeFront(BuildingDef def, Int3 origin, int rotation)
     {
         int fx = def.Footprint[0], fz = def.Footprint[2];
-        int ex = def.Entrance[0], ez = def.Entrance[2];
+        var entrance = def.Entrance ?? throw new InvalidOperationException($"Building '{def.Id}' has no entrance (ADR-076).");
+        int ex = entrance[0], ez = entrance[2];
         Int3 local;
         if (ez < 0) local = new Int3(Math.Clamp(ex, 0, fx - 1), 0, fz);
         else if (ez >= fz) local = new Int3(Math.Clamp(ex, 0, fx - 1), 0, -1);

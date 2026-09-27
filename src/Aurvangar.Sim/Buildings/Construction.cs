@@ -90,9 +90,14 @@ public static partial class Construction
 
     /// <summary>Where refunds land, agents are moved to and a pump's worker stands: the entrance cell; when it is not
     /// standable, the cell below it (stacked levees, ADR-040), else for a <c>waterEdge</c> building (the pump) the
-    /// cell above it when standable (the entrance is inside the next bank step, ADR-055).</summary>
+    /// cell above it when standable (the entrance is inside the next bank step, ADR-055). A building with no entrance
+    /// (the levee, ADR-076) uses the first free standable cell in reach of its footprint, else the cell above its top
+    /// (refunds then spiral out from there, ECO-08).</summary>
     public static Int3 StandCell(Simulation sim, Building b)
     {
+        if (!b.HasEntrance)
+            return sim.Buildings.ReachStandCells(b.Def, b.Origin, b.Rotation) is { Count: > 0 } free
+                ? free[0] : b.Origin + new Int3(0, b.Def.Footprint[1], 0);
         var e = b.EntranceCell;
         if (sim.PathGrid.IsStandable(e)) return e;
         if (sim.PathGrid.IsStandable(e + Int3.Down)) return e + Int3.Down;

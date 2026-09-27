@@ -35,7 +35,7 @@ public partial class GameRoot
     }
 
     /// <summary>Toolbar Build menu: choose the building and switch to the build tool.</summary>
-    private void ChooseBuilding(string defId)
+    public void ChooseBuilding(string defId)
     {
         _build.Select(defId);
         SetTool(ToolKind.Build);
@@ -96,7 +96,7 @@ public partial class GameRoot
             {
                 Ghost = g;
                 _toolPreview.Show(g.Min, g.Max, g.Ok ? GhostOk : GhostBad);
-                _entrancePreview.ShowTile(g.Entrance, EntranceTile);
+                if (g.Entrance is { } entrance) _entrancePreview.ShowTile(entrance, EntranceTile);   // none for a levee (ADR-076)
             }
             else _toolPreview.Visible = false;
         }

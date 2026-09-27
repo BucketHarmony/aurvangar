@@ -10,7 +10,8 @@ materials, are built by colonists, then operate. Definitions live in `data/build
   "id": "warehouse",
   "name": "Warehouse",
   "footprint": [2, 2, 2],          // x, y (height), z at rotation 0
-  "entrance": [0, 0, -1],          // offset from origin to the standable cell agents use; rotates with the building
+  "entrance": [0, 0, -1],          // offset from origin to the standable cell agents use; rotates with the building.
+                                   // null for a building with no workers, no storage and no producer (the levee, ADR-076)
   "cost": { "log": 20 },
   "buildTicks": 300,
   "placement": "ground",           // ground | waterEdge
@@ -31,15 +32,20 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 | `hub` | 3×2×3 | – (pre-placed, complete) | – | Storage: every item, 100 each. Spawn point. Eat/drink source |
 | `warehouse` | 2×2×2 | 20 log | 300 | Storage: 150 total, solid goods only |
 | `pump` | 2×1×1 | 12 log | 200 | `waterEdge`. 1 worker. Produces 1 water per 30 work ticks while intake level ≥ 256; output goes to its internal buffer (10), hauled to storage |
-| `levee` | 1×1×1 | 2 log | 40 | Becomes BuildingSolid. Blocks water. Stackable (can be placed on top of another levee) |
+| `levee` | 1×1×1 | 2 log | 40 | Becomes BuildingSolid. Blocks water. Stackable (can be placed on top of another levee). No entrance (ADR-076) |
 
 ## Placement (BLD-01..04)
 
 - **BLD-01** Rotation ∈ {0, 90, 180, 270}. Footprint and entrance offset rotate about the origin cell.
+  A building with no workers, no storage and no producer may have no entrance (`"entrance": null`, M11-T1,
+  ADR-076; the levee). Its stand cells are the standable cells in reach of the footprint (ARCH-07: beside it, or one
+  level up or down, diagonals included) outside every building. Nothing around it is reserved: no entrance for
+  `Overlaps`, CON-08 or CON-13. Its jobs are posted at its origin.
 - **BLD-02** `ground` placement: every footprint cell is Air and has no plant, no building, no agent-reserved
   construction, and is not another building's entrance; every cell directly below the bottom layer is solid
   (natural block or BuildingSolid of a complete `stackable` building such as the levee);
-  the entrance cell is standable (PTH-01) and outside every building. `CanPlace` checks in a fixed order and
+  the entrance cell is standable (PTH-01) and outside every building; a building with no entrance instead needs at
+  least one stand cell (BLD-01), else `NoStandCell`. `CanPlace` checks in a fixed order and
   returns the first failure (ADR-040). Water in footprint cells is allowed at blueprint time; it is pushed out
   on completion (WAT-12).
 - **BLD-03** `waterEdge` placement (pump): as `ground`, plus the cell in front of the pump's intake side
@@ -52,7 +58,8 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 - **BLD-04** Levee may be placed on top of a completed or blueprinted levee (placement checks the stack
   ordering: construction of an upper levee cannot start until the one below is complete). Data: `stackable`.
   A stacked building whose entrance cell is not standable may use the standable cell one level below it
-  (ADR-040), so levees stack two high from open ground.
+  (ADR-040). The levee has no entrance (ADR-076): its stand cells one level down beside the levee below let levees
+  stack two high from open ground.
 
 M8-T2 adds a BLD-02 failure, `PlannedBlocks`: a footprint, entrance or stand cell holds a block plan entry. It is
 checked right after `Overlaps` (CON-08).
@@ -69,7 +76,8 @@ checked right after `Overlaps` (CON-08).
   another building posts none until that building is complete (BLD-04).
 - **BLD-07** On first delivery the building moves to `UnderConstruction`; footprint cells become non-walkable
   (PTH-02). Agents inside the footprint at that moment are moved to the entrance cell (for a stacked building
-  whose entrance is not standable, the cell below it), and loose piles in it move out (ECO-08).
+  whose entrance is not standable, the cell below it; for a building with no entrance, its first stand cell by cell
+  index), and loose piles in it move out (ECO-08).
 - **BLD-08** When all materials are delivered, one Construct job is open at a time per site; work adds
   `progress` by 1 per tick. At `buildTicks`, the building is `Complete`: if `setsBlocks`, footprint cells
   become BuildingSolid (WAT-12 water push, PathGrid dirty, Regions dirty).

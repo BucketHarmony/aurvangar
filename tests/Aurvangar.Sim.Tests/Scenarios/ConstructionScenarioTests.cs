@@ -99,9 +99,9 @@ public class ConstructionScenarioTests
         var levee = Site(sim, "levee");
 
         // No stock and no agents: the jobs are posted anyway (they cannot be claimed yet), and stay stable.
-        var whJobs = Delivers(sim).Where(j => j.Target == wh.EntranceCell).ToList();
+        var whJobs = Delivers(sim).Where(j => j.Target == wh.JobCell).ToList();
         Assert.Equal(new[] { 10, 10 }, whJobs.Select(DeliverCount));
-        Assert.Equal(new[] { 2 }, Delivers(sim).Where(j => j.Target == levee.EntranceCell).Select(DeliverCount));
+        Assert.Equal(new[] { 2 }, Delivers(sim).Where(j => j.Target == levee.JobCell).Select(DeliverCount));
         Assert.All(Delivers(sim), j => Assert.Equal(Log, j.Steps[1].Item));
 
         // Stock appears and an agent works: at every tick the open (unclaimed) delivers cover what is neither
@@ -114,7 +114,7 @@ public class ConstructionScenarioTests
             foreach (var site in new[] { wh, levee })
             {
                 if (site.State != BuildingState.Blueprint && site.State != BuildingState.UnderConstruction) continue;
-                var jobs = Delivers(sim).Where(j => j.Target == site.EntranceCell).ToList();
+                var jobs = Delivers(sim).Where(j => j.Target == site.JobCell).ToList();
                 int remaining = site.Def.Cost["log"] - Delivered(site, "log");
                 int claimed = jobs.Where(j => j.IsClaimed).Sum(DeliverCount);
                 int open = remaining - claimed;
@@ -122,7 +122,7 @@ public class ConstructionScenarioTests
                 Assert.Equal((open + 9) / 10, unclaimed.Count);
                 Assert.Equal(open, unclaimed.Sum(DeliverCount));
                 Assert.All(jobs, j => Assert.InRange(DeliverCount(j), 1, 10));
-                var constructs = sim.Jobs.All.Count(j => j.Kind == JobKind.Construct && j.Target == site.EntranceCell);
+                var constructs = sim.Jobs.All.Count(j => j.Kind == JobKind.Construct && j.Target == site.JobCell);
                 if (remaining > 0) Assert.Equal(0, constructs);
                 else { Assert.Equal(1, constructs); sawConstruct = true; }
             }

@@ -1802,3 +1802,34 @@ Decision:
 - The pump's 12 logs come from the starting stock; the Planks and Beam samples still have enough (6 logs left).
 Consequences: `--script materials --ticks 24000` ends with 5 of 5 alive. A longer drought or more dwarves would
 need the SurvivalScript reservoir. `MaterialsScenarioTests` checks the samples at 12,000 and 5 alive at day 10.
+
+## ADR-076: Levees have no entrance (2026-09-27, M11-T1)
+Context: G6: "Not sure why levees have doors, what are they for?" Every building had an `entrance` from the shared
+template. The levee has no worker and no storage, so its entrance only told the builder where to stand, and it
+reserved a cell that no footprint, block or plan could use. The ghost drew it as a door tile.
+Decision:
+- `entrance` may be `null` in data (`BuildingDef.HasEntrance`). ContentDb allows it only for a `ground` building
+  with no workers, no storage, no producer and not prebuilt-only. The levee is the only one.
+- Stand cells of such a building are the standable cells in reach of its footprint (ARCH-07, the 26-neighbourhood:
+  beside it, and one level up or down, diagonals included) outside every building, by ascending cell index
+  (`BuildingSystem.ReachStandCells`). Builders already walked to any reach cell (JobGoals `Building` mode), so the
+  job goals are unchanged.
+- Placement (BLD-02): instead of the entrance check, at least one stand cell must exist now, else the new
+  `PlacementResult.NoStandCell` ("No room for a builder beside it"; added at the end of the enum). A stacked levee
+  finds its stand cells one level down beside the levee below, so the old ADR-040 fallback is covered. A third
+  levee on a blueprinted stack on open ground still has none.
+- Nothing around a levee is reserved: `IsAnyEntrance` (Overlaps), CON-08 and CON-13 skip buildings with no
+  entrance. A later footprint may take a levee's last stand cell; its jobs then wait until one frees up. Accepted:
+  the same happens to a dig or a block, and the player sees the site not progress.
+- Jobs of a building with no entrance are posted at its origin (`Building.JobCell`), which is also where Deliver
+  sources measure distance from. `StandCell` (agents pushed out on BLD-07, refund piles on BLD-09) is the first
+  stand cell, else the cell above the top (piles then spiral out, ECO-08).
+- The ghost's `Entrance` is null for a levee, and the Godot layer draws no entrance tile.
+- The `build` screenshot script steps its levee line along +x (it used the entrance direction). The screenshot
+  harness gained `--ghost <building id>` (`GHOST=levee`) to show a green ghost of that building.
+- Old tests that asserted the levee's entrance (`LeveeInRiver_LowersDownstream`, `Levee_StacksOnLevee`, the pump
+  stand-cell test's levee line, and Deliver/Construct job targets) now assert the new rule: `JobCell`,
+  `NoStandCell`, and a levee on the bank edge being placeable.
+Consequences: the survival session's levees (including the reservoir seal at (67,17,71)) build as before; its hash
+`e1ddb97096eb0267` and every golden are unchanged, because builders already stood on any reach cell. A levee can now
+be built into a notch reached from one side at any rotation.

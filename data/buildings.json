@@ -49,7 +49,7 @@
       "id": "levee",
       "name": "Levee",
       "footprint": [1, 1, 1],
-      "entrance": [0, 0, -1],
+      "entrance": null,
       "cost": { "log": 2 },
       "buildTicks": 40,
       "placement": "ground",

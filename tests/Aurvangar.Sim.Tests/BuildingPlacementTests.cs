@@ -158,8 +158,9 @@ public class BuildingPlacementTests
         Assert.Equal(new Int3(10, G + 1, 12), sim.Buildings.PlannedStandCell(pump, origin, 0));
         // The cell above the step is not standable (a block on it): still blocked.
         Assert.Equal(PlacementResult.EntranceBlocked, sim.Buildings.CanPlace(pump, new Int3(20, G, 13), 0));
-        // Only the pump gets the raised stand cell; other buildings keep BLD-02 (the warehouse test above).
-        Assert.Equal(PlacementResult.EntranceBlocked, sim.Buildings.CanPlace(Def("levee"), new Int3(10, G, 13), 0));
+        // Only the pump gets the raised stand cell; other buildings with an entrance keep BLD-02 (the warehouse test
+        // above). A levee has no entrance (M11-T1, ADR-076): the bank cells beside it are stand cells.
+        Assert.Equal(PlacementResult.Ok, sim.Buildings.CanPlace(Def("levee"), new Int3(10, G, 13), 0));
 
         // The raised stand cell is reserved like an entrance: no footprint may cover it.
         Assert.Equal(PlacementResult.Ok, Blueprint(sim, "pump", origin));
@@ -209,11 +210,11 @@ public class BuildingPlacementTests
     {
         var sim = Flat();
         var levee = Def("levee");
-        // On a blueprinted levee (BLD-04). Its entrance is in the air, so the builder stands one level down.
+        // On a blueprinted levee (BLD-04). It has no entrance (ADR-076); the builder stands one level down.
         Assert.Equal(PlacementResult.Ok, Blueprint(sim, "levee", new Int3(10, G, 10)));
         Assert.Equal(PlacementResult.Ok, Blueprint(sim, "levee", new Int3(10, G + 1, 10)));
         // A third level has no standable cell in reach of the builder.
-        Assert.Equal(PlacementResult.EntranceBlocked, sim.Buildings.CanPlace(levee, new Int3(10, G + 2, 10), 0));
+        Assert.Equal(PlacementResult.NoStandCell, sim.Buildings.CanPlace(levee, new Int3(10, G + 2, 10), 0));
         // Other buildings do not stand on a blueprinted levee.
         Blueprint(sim, "levee", new Int3(15, G, 10));
         Blueprint(sim, "levee", new Int3(16, G, 10));

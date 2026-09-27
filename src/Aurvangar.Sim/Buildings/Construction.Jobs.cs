@@ -103,14 +103,14 @@ public static partial class Construction
             left -= n;
             if (!Source(sim, b, item, n, out var src, out int count)) break;
             if (k < open.Count) Replan(open[k], b, item, src, count);
-            else sim.Jobs.Post(JobKind.Deliver, b.EntranceCell, DeliverSteps(b.Id, item, src, count), DeliverRes(item, src, count));
+            else sim.Jobs.Post(JobKind.Deliver, b.JobCell, DeliverSteps(b.Id, item, src, count), DeliverRes(item, src, count));
             k++;
         }
         for (; k < open.Count; k++) JobRunner.Cancel(sim, open[k]);
     }
 
     /// <summary>Source of a Deliver job (ADR-041): complete storage buildings that accept the item. The nearest (Manhattan
-    /// from entrance to the site's entrance, ties by lower id) with n unpromised in stock; else the one with the most
+    /// from entrance to the site's job cell, ties by lower id) with n unpromised in stock; else the one with the most
     /// stock, carrying only that much; else the nearest, carrying n (the job waits for stock, JOB-06 CanReserve).
     /// False when there is no such storage.</summary>
     private static bool Source(Simulation sim, Building site, ItemId item, int n, out BuildingId src, out int count)
@@ -122,7 +122,7 @@ public static partial class Construction
         foreach (var s in sim.Buildings.All)   // ascending id: strict comparisons keep the lower id on ties
         {
             if (s.State != BuildingState.Complete || s.Def.Storage is null || !sim.Actions.Accepts(s, item)) continue;
-            int d = Manhattan(s.EntranceCell, site.EntranceCell);
+            int d = Manhattan(s.EntranceCell, site.JobCell);
             int stock = sim.Jobs.StorageStock(s, item);
             if (d < dNear) { nearest = s; dNear = d; }
             if (stock >= n && d < dFull) { nearFull = s; dFull = d; }
@@ -158,7 +158,7 @@ public static partial class Construction
     {
         foreach (var j in jobs)
             if (j.Kind == kind) return;
-        sim.Jobs.Post(kind, b.EntranceCell, new[] { JobStep.GoToBuilding(b.Id), JobStep.WorkOn(b.Id, ticks) });
+        sim.Jobs.Post(kind, b.JobCell, new[] { JobStep.GoToBuilding(b.Id), JobStep.WorkOn(b.Id, ticks) });
     }
 
     /// <summary>BLD-08: the site's Construct job, posted by the delivery that completes its materials (so it exists

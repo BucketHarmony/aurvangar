@@ -12,7 +12,7 @@ namespace Aurvangar.Sim.Tests.Scenarios;
 /// <summary>M5-T3: levees built by colonists hold water back (BLD-08 completion writes BuildingSolid, which pushes
 /// the cell's water out per WAT-12), and a warehouse takes goods the hub has no room for. Worlds are stone to y = 4
 /// with a stone layer at y = 5 cut by open channels, so agents walk on y = 6 and step down into a channel.
-/// A levee at rotation 90 has its entrance one cell toward +x (downstream here).</summary>
+/// A levee has no entrance (M11-T1, ADR-076): its builders stand on the bank beside it.</summary>
 [Trait("Category", "Scenario")]
 public class LeveeScenarioTests
 {
@@ -46,12 +46,11 @@ public class LeveeScenarioTests
         sim.RunTicks(600);
         Assert.True(sim.Water.GetLevel(leveeCell) > 0, "the river does not reach the levee cell");
         Assert.True(sim.Water.GetLevel(downstream) > 0, "the river does not reach the downstream cell");
-        Assert.False(sim.Water.IsDeep(new Int3(23, C, 10)), "the levee entrance is deep water");
 
         sim.Enqueue(new PlaceBuilding("levee", leveeCell, 90));
         sim.Tick();
         var levee = Site(sim, "levee");
-        Assert.Equal(new Int3(23, C, 10), levee.EntranceCell);
+        Assert.False(levee.HasEntrance);
 
         bool pushChecked = false;
         RunUntil(sim, () => levee.State == BuildingState.Complete, 3000, () =>

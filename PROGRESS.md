@@ -3332,3 +3332,34 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - **Gameplay:** "There are missing overall gameplay elements." Asked which matters most, the human picked
   **economy and crafting**: workshops that refine materials (sawmill, stonecutter), and trade wagons. -> M11-T3..T7.
 - **Not taken up:** surface stone (the starting wagon and trade answer the stone question) and vertical deconstruct.
+
+## M11-T1 — Levees have no entrance (2026-09-27)
+- Done: G6 "why do levees have doors" (ADR-076). `data/buildings.json` levee `"entrance": null`;
+  `BuildingDef.HasEntrance`. ContentDb allows no entrance only for a `ground` building with no workers, storage or
+  producer. Builders of such a building stand on any standable cell in reach of the footprint (beside it, or a level
+  up or down) outside every building (`BuildingSystem.ReachStandCells`). Placement needs one of them, else the new
+  `PlacementResult.NoStandCell` ("No room for a builder beside it"). Nothing around a levee is reserved (Overlaps,
+  CON-08, CON-13). Its jobs are posted at its origin (`Building.JobCell`). `Construction.StandCell` (agents pushed out,
+  refund piles) uses the first stand cell. The build ghost's `Entrance` is null for a levee and Godot draws no tile.
+  - Screenshot harness: new `--ghost <id>` arg (`GHOST=levee` in screenshot.sh, `ScreenshotScripts.GhostPickFor`).
+    The `build` script's levee line steps along +x.
+  - Docs: buildings.md (schema, table, BLD-01/02/04/07), testing.md (GHOST), SurvivalScript comments.
+- Tests: new `Scenarios/LeveeStandScenarioTests` (4): no entrance in data or ghost, nothing reserved; a levee in a
+  notch reachable from one side only, at rotation 0 (old entrance in stone), builds, a second stacked on it builds from
+  the same cell one level down, and its deconstruct refund lands; a closed notch and a third stacked level give
+  `NoStandCell`; the `--ghost levee` pick is a green ghost with no entrance. They failed first on the missing API
+  (`HasEntrance`, `JobCell`, `NoStandCell`).
+  - Updated old tests that asserted the levee's entrance (ADR-076): `LeveeInRiver_LowersDownstream` (no entrance
+    cell), `Levee_StacksOnLevee` (third level `NoStandCell`), the pump stand-cell test (a levee on the bank edge is
+    now Ok), and Deliver/Construct job targets in `ConstructionTests`/`ConstructionScenarioTests` (`JobCell`).
+  - check.sh: 636 passed, 0 skipped, 0 failed. 0 warnings.
+- Decisions: ADR-076.
+- Golden: unchanged. Headless `--script survival --ticks 24000`: hash `e1ddb97096eb0267` (same as G6), 5/5 alive,
+  444 jobs, 0 failed, levees 8 built, pump dry 855 ticks, 0 in the drought. The reservoir works as before.
+- Perf: perf.sh (serial, Release) 9 of 9 pass.
+- sim-reviewer: not run (the Aurvangar.Sim diff is about 100 lines; ReachRing iterates the footprint in order and
+  callers sort by cell index).
+- Screenshot (Forward+, seed 1, looked at): `artifacts/screens/m11t1_levee/hub.png` (`SCRIPT=build TICKS=1600
+  GHOST=levee SHOTS=hub`). The three built levees by the hall and a green levee ghost at the end of the line, with no
+  white entrance tile; tooltip "Levee (2 log) / R rotate, B next building, Shift keeps the tool".
+- Next: M11-T2 (starting wagon). A storage building needs an entrance (ContentDb enforces it), so the Wagon keeps one.

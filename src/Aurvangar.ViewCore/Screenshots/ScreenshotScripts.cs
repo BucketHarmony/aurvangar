@@ -139,6 +139,22 @@ public static class ScreenshotScripts
         return new PickHit(new Int3((int)focus.X, top, (int)focus.Z), Int3.Up);
     }
 
+    /// <summary>M11-T1: a pick that shows a green ghost of <paramref name="def"/> beside the existing buildings of the
+    /// same type (for the <c>build</c> script's levee line: the first free cell further along +x), else beside the
+    /// hub's nearest valid site (<see cref="FindSite"/>). The pick is the ground block under that origin, top face.
+    /// Null when there is no valid site.</summary>
+    public static PickHit? GhostPickFor(Simulation sim, BuildingDef def)
+    {
+        var last = sim.Buildings.All.Where(b => b.Def.Id == def.Id).OrderBy(b => b.Id.Value).LastOrDefault();
+        if (last is not null)
+            for (int k = 1; k <= 6; k++)
+            {
+                var o = last.Origin + new Int3(k, 0, 0);
+                if (sim.Buildings.CanPlace(def, o, 0) == PlacementResult.Ok) return new PickHit(o + Int3.Down, Int3.Up);
+            }
+        return FindSite(sim, def, new HashSet<Int3>()) is { } site ? new PickHit(site.Origin + Int3.Down, Int3.Up) : null;
+    }
+
     /// <summary>The nearest <see cref="FarmSize"/>-square field to the hub (ring by ring on its min corner, like
     /// <see cref="FindSite"/>) whose every column would become a farm tile (ECO-11: top block Grass or Dirt with
     /// standable air above, no building) and is moist. Moisture is not computed before the first tick, so it is
@@ -194,15 +210,14 @@ public static class ScreenshotScripts
         // one level up, ADR-055), else to the nearest valid one.
         var pump = content.Building("pump");
         if ((FindSite(sim, pump, taken, wet: true) ?? FindSite(sim, pump, taken)) is { } ps) list.Add(ps);
-        // A levee line: the first site, then the cells beside it (across the entrance direction, so no levee covers
-        // another's entrance) while they stay valid and clear of the earlier buildings.
+        // A levee line: the first site, then the cells beside it along +x (a levee has no entrance, ADR-076) while they
+        // stay valid and clear of the earlier buildings.
         var levee = content.Building("levee");
         var earlier = new HashSet<Int3>(taken);
         if (FindSite(sim, levee, taken) is { } first)
         {
             list.Add(first);
-            var e = BuildingShape.Entrance(levee, first.Origin, first.Rotation) - first.Origin;
-            var step = e.Z != 0 ? new Int3(1, 0, 0) : new Int3(0, 0, 1);
+            var step = new Int3(1, 0, 0);
             for (int i = 1; i < LeveeCount; i++)
             {
                 var o = first.Origin + new Int3(step.X * i, 0, step.Z * i);
@@ -245,12 +260,13 @@ public static class ScreenshotScripts
     private static bool Free(Simulation sim, BuildingDef def, Int3 origin, int rot, HashSet<Int3> taken)
     {
         foreach (var c in BuildingShape.Footprint(def, origin, rot)) if (taken.Contains(c)) return false;
-        return !taken.Contains(BuildingShape.Entrance(def, origin, rot));
+        return !def.HasEntrance || !taken.Contains(BuildingShape.Entrance(def, origin, rot));
     }
 
     private static void Take(Simulation sim, BuildingDef def, Int3 origin, int rot, HashSet<Int3> taken)
     {
-        var cells = BuildingShape.Footprint(def, origin, rot).Append(BuildingShape.Entrance(def, origin, rot)).ToList();
+        var cells = BuildingShape.Footprint(def, origin, rot).ToList();
+        if (def.HasEntrance) cells.Add(BuildingShape.Entrance(def, origin, rot));
         foreach (var c in cells)
             for (int dz = -1; dz <= 1; dz++)
                 for (int dy = -1; dy <= 1; dy++)

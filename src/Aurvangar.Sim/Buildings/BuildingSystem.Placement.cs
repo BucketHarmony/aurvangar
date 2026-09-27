@@ -10,17 +10,19 @@ public sealed partial class BuildingSystem
     /// Checks run in a fixed order and the first failure is returned: rotation, prebuilt-only, bounds, overlap with
     /// any building (any state, including covering another building's entrance), plan entries (CON-08
     /// <c>PlannedBlocks</c>: footprint, entrance or stand cell), footprint cells (air, no plant),
-    /// ground under the bottom layer, the entrance cell, then the water edge for <c>waterEdge</c> buildings.</summary>
+    /// ground under the bottom layer, the entrance cell (for a building with no entrance, a stand cell in reach:
+    /// <c>NoStandCell</c>, ADR-076), then the water edge for <c>waterEdge</c> buildings.</summary>
     public PlacementResult CanPlace(BuildingDef def, Int3 origin, int rotation)
     {
         if (!BuildingShape.IsValidRotation(rotation)) return PlacementResult.BadRotation;
         if (def.PrebuiltOnly) return PlacementResult.PrebuiltOnly;
 
         var footprint = BuildingShape.Footprint(def, origin, rotation).ToList();
-        var entrance = BuildingShape.Entrance(def, origin, rotation);
+        bool hasEntrance = def.HasEntrance;
+        var entrance = hasEntrance ? BuildingShape.Entrance(def, origin, rotation) : origin;
         foreach (var c in footprint)
             if (!_world.InBounds(c)) return PlacementResult.OutOfBounds;
-        if (!_world.InBounds(entrance)) return PlacementResult.OutOfBounds;
+        if (hasEntrance && !_world.InBounds(entrance)) return PlacementResult.OutOfBounds;
 
         foreach (var c in footprint)
             if (BuildingAt(c) is not null || IsAnyEntrance(c)) return PlacementResult.Overlaps;
@@ -29,8 +31,8 @@ public sealed partial class BuildingSystem
         {
             foreach (var c in footprint)
                 if (_plans.Has(c)) return PlacementResult.PlannedBlocks;
-            if (_plans.Has(entrance) || (def.Stackable && _plans.Has(entrance + Int3.Down))
-                || (RaisesStand(def) && _plans.Has(entrance + Int3.Up)))
+            if (hasEntrance && (_plans.Has(entrance) || (def.Stackable && _plans.Has(entrance + Int3.Down))
+                || (RaisesStand(def) && _plans.Has(entrance + Int3.Up))))
                 return PlacementResult.PlannedBlocks;
         }
 
@@ -53,7 +55,11 @@ public sealed partial class BuildingSystem
             if (!ground) return PlacementResult.NotOnGround;
         }
 
-        if (!EntranceOk(def, entrance, stacked)) return PlacementResult.EntranceBlocked;
+        if (!hasEntrance)
+        {
+            if (ReachStandCells(def, origin, rotation).Count == 0) return PlacementResult.NoStandCell;
+        }
+        else if (!EntranceOk(def, entrance, stacked)) return PlacementResult.EntranceBlocked;
 
         if (def.Placement == "waterEdge")
         {
@@ -93,9 +99,12 @@ public sealed partial class BuildingSystem
 
     /// <summary>The cell a builder or worker would stand on for <paramref name="def"/> at this spot (the build ghost
     /// shows it): the entrance when it is free, else for a stackable building the cell below it (ADR-040), else for a
-    /// <c>waterEdge</c> building the cell above it (ADR-055), else the entrance. A read-only query.</summary>
+    /// <c>waterEdge</c> building the cell above it (ADR-055), else the entrance. For a building with no entrance
+    /// (ADR-076) the first free stand cell in reach, else the origin. A read-only query.</summary>
     public Int3 PlannedStandCell(BuildingDef def, Int3 origin, int rotation)
     {
+        if (!def.HasEntrance)
+            return ReachStandCells(def, origin, rotation) is { Count: > 0 } free ? free[0] : origin;
         var e = BuildingShape.Entrance(def, origin, rotation);
         if (FreeStand(e)) return e;
         if (def.Stackable && FreeStand(e + Int3.Down)) return e + Int3.Down;
@@ -109,6 +118,18 @@ public sealed partial class BuildingSystem
 
     private bool FreeStand(Int3 c) => BuildingAt(c) is null && _paths.IsStandable(c);
 
+    /// <summary>ADR-076 (M11-T1): where the builders of a building with no entrance may stand: the standable cells in
+    /// reach of the footprint (<see cref="BuildingShape.ReachRing"/>: beside it, or one level up or down) outside
+    /// every building, in ascending cell index.</summary>
+    public List<Int3> ReachStandCells(BuildingDef def, Int3 origin, int rotation)
+    {
+        var idx = new List<int>();
+        foreach (var c in BuildingShape.ReachRing(def, origin, rotation))
+            if (_world.InBounds(c) && FreeStand(c)) idx.Add(_world.Index(c));
+        idx.Sort();
+        return idx.ConvertAll(_world.CellOf);
+    }
+
     /// <summary>CON-08 check 3 and CON-13 (M8-T2): the cell is a building's entrance or a possible stand cell of it (the
     /// cell below a stackable building's entrance, ADR-040; the cell above a <c>waterEdge</c> building's, ADR-055).
     /// Any state. A block there would take the builders' or workers' place.</summary>
@@ -116,6 +137,7 @@ public sealed partial class BuildingSystem
     {
         foreach (var b in _buildings.Values)
         {
+            if (!b.HasEntrance) continue;   // ADR-076: nothing around a building with no entrance is reserved
             var e = b.EntranceCell;
             if (e == c || (b.Def.Stackable && e + Int3.Down == c) || (RaisesStand(b.Def) && e + Int3.Up == c)) return true;
         }
@@ -128,6 +150,7 @@ public sealed partial class BuildingSystem
     {
         foreach (var b in _buildings.Values)
         {
+            if (!b.HasEntrance) continue;
             var e = b.EntranceCell;
             if (e == c || (RaisesStand(b.Def) && e + Int3.Up == c)) return true;
         }

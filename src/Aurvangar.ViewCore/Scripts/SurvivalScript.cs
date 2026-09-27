@@ -28,8 +28,8 @@ namespace Aurvangar.ViewCore.Scripts;
 /// its north half is stone.</item>
 /// <item>Tick <see cref="BreachTick"/> (DoD step 7): dig the bank cells <see cref="BreachA"/>..<see cref="BreachB"/>
 /// between the tunnel mouth and the river. The river floods the tunnel.</item>
-/// <item>Tick <see cref="RepairTick"/>: a levee on each breach cell, entrance in the tunnel; the builders stand on the
-/// dry bank beside the breach. Once they are complete the flood is walled off.</item>
+/// <item>Tick <see cref="RepairTick"/>: a levee on each breach cell; the builders stand on the dry bank beside the
+/// breach (a levee has no entrance, ADR-076). Once they are complete the flood is walled off.</item>
 /// <item>Tick <see cref="ReservoirSealTick"/> (DoD step 8, M7-T3): a levee on the reservoir's mouth. The reservoir
 /// keeps its water when the river drains in the drought: the pump keeps running and the field stays moist.</item>
 /// </list>
@@ -62,7 +62,7 @@ public static class SurvivalScript
     /// <summary>Well before the drought (day 5) so the levee is complete in time; the reservoir then holds ~10 cells of
     /// water, enough for the pump from day 4 to day 10.</summary>
     public const long ReservoirSealTick = 9600;
-    /// <summary>The seal levee's entrance is one cell north, in the reservoir (like the breach repair).</summary>
+    /// <summary>The seal levee's rotation. A levee has no entrance (ADR-076), so it only has to be a valid one.</summary>
     public const int SealRotation = 0;
 
     public static readonly Int3 WarehouseOrigin = new(34, 24, 54);
@@ -94,7 +94,7 @@ public static class SurvivalScript
     public static readonly Int3 BreachB = new(85, 17, 66);
     public const long BreachTick = 7200;
 
-    /// <summary>Levees on the breach cells, rotation 0 (entrance one cell north, in the tunnel).</summary>
+    /// <summary>Levees on the breach cells, rotation 0 (a levee has no entrance, ADR-076).</summary>
     public const long RepairTick = BreachTick + 300;
     public const int RepairRotation = 0;
 

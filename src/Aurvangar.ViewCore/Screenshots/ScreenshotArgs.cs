@@ -4,9 +4,10 @@ namespace Aurvangar.ViewCore.Screenshots;
 
 /// <summary>Command-line user args of the screenshot harness (VIEW-20), i.e. what follows <c>--</c> on the Godot
 /// command line: <c>--seed 1 --ticks 1200 --shots overview,river,hub,slice --out artifacts/screens</c>.
-/// Every key is optional; bad input throws <see cref="ArgumentException"/> naming the key.</summary>
+/// <c>--ghost levee</c> (M11-T1) shows that building's ghost (<see cref="ScreenshotScripts.GhostPickFor"/>) instead of
+/// the script's own. Every key is optional; bad input throws <see cref="ArgumentException"/> naming the key.</summary>
 public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string> Shots, string OutDir,
-    string Script = ScreenshotArgs.DefaultScript)
+    string Script = ScreenshotArgs.DefaultScript, string? Ghost = null)
 {
     public const ulong DefaultSeed = 1;
     public const int DefaultTicks = 1200;
@@ -20,6 +21,7 @@ public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string>
         IReadOnlyList<string> shots = ScreenshotPresets.DefaultShots;
         string outDir = DefaultOutDir;
         string script = DefaultScript;
+        string? ghost = null;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -49,11 +51,15 @@ public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string>
                             $"screenshot args: unknown script '{value}' (known: {string.Join(",", ScreenshotScripts.Names)})");
                     script = value;
                     break;
+                case "--ghost":
+                    if (value.Length == 0) throw new ArgumentException("screenshot args: --ghost is empty");
+                    ghost = value;
+                    break;
                 default:
                     throw new ArgumentException($"screenshot args: unknown key '{key}'");
             }
         }
-        return new ScreenshotArgs(seed, ticks, shots, outDir, script);
+        return new ScreenshotArgs(seed, ticks, shots, outDir, script, ghost);
     }
 
     /// <summary>PNG path for a preset: <c>&lt;out&gt;/&lt;preset&gt;.png</c>.</summary>

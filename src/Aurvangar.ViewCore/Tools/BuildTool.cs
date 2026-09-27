@@ -9,8 +9,9 @@ namespace Aurvangar.ViewCore.Tools;
 
 /// <summary>The build ghost under the cursor (VIEW-14): the footprint box (inclusive cells, min first), the entrance
 /// cell (where the builder and worker will stand: <see cref="BuildingSystem.PlannedStandCell"/>, one level up for a
-/// pump on a stepped bank, ADR-055), and the sim's placement verdict. Green when <see cref="Ok"/>, red otherwise with <see cref="Reason"/>.</summary>
-public readonly record struct BuildGhost(BuildingDef Def, Int3 Origin, int Rotation, Int3 Min, Int3 Max, Int3 Entrance,
+/// pump on a stepped bank, ADR-055; null for a building with no entrance, the levee, ADR-076), and the sim's placement
+/// verdict. Green when <see cref="Ok"/>, red otherwise with <see cref="Reason"/>.</summary>
+public readonly record struct BuildGhost(BuildingDef Def, Int3 Origin, int Rotation, Int3 Min, Int3 Max, Int3? Entrance,
     PlacementResult Result)
 {
     public bool Ok => Result == PlacementResult.Ok;
@@ -82,8 +83,8 @@ public sealed class BuildTool
             min = new Int3(Math.Min(min.X, c.X), Math.Min(min.Y, c.Y), Math.Min(min.Z, c.Z));
             max = new Int3(Math.Max(max.X, c.X), Math.Max(max.Y, c.Y), Math.Max(max.Z, c.Z));
         }
-        return new BuildGhost(def, origin, rotation, min, max, sim.Buildings.PlannedStandCell(def, origin, rotation),
-            sim.Buildings.CanPlace(def, origin, rotation));
+        Int3? entrance = def.HasEntrance ? sim.Buildings.PlannedStandCell(def, origin, rotation) : null;
+        return new BuildGhost(def, origin, rotation, min, max, entrance, sim.Buildings.CanPlace(def, origin, rotation));
     }
 
     /// <summary>Left button down.</summary>
@@ -134,6 +135,7 @@ public sealed class BuildTool
         PlacementResult.PrebuiltOnly => "Cannot be built",
         PlacementResult.BadRotation => "Bad rotation",
         PlacementResult.PlannedBlocks => "Blocks are planned here",
+        PlacementResult.NoStandCell => "No room for a builder beside it",
         _ => r.ToString(),
     };
 }

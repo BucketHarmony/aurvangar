@@ -18,6 +18,8 @@ public enum PlacementResult : byte
     BadRotation,
     /// <summary>CON-08 (M8-T2): a footprint, entrance or stand cell holds a block plan entry.</summary>
     PlannedBlocks,
+    /// <summary>ADR-076 (M11-T1): a building with no entrance has no standable cell in reach of its footprint.</summary>
+    NoStandCell,
 }
 
 /// <summary>A placed building instance. Spec: docs/specs/buildings.md.</summary>
@@ -41,7 +43,14 @@ public sealed class Building
     /// <summary>Footprint cells in world space, deterministic order (y, z, x).</summary>
     public IEnumerable<Int3> FootprintCells() => BuildingShape.Footprint(Def, Origin, Rotation);
 
+    /// <summary>The entrance cell (BLD-01). Only for a building whose definition has one; see <see cref="JobCell"/>.</summary>
     public Int3 EntranceCell => BuildingShape.Entrance(Def, Origin, Rotation);
+
+    public bool HasEntrance => Def.HasEntrance;
+
+    /// <summary>The cell the building's jobs are posted at and distances are measured from: the entrance, or the origin
+    /// for a building with no entrance (the levee, ADR-076).</summary>
+    public Int3 JobCell => Def.HasEntrance ? EntranceCell : Origin;
 
     /// <summary>True when the cell is one of this building's footprint cells.</summary>
     public bool Covers(Int3 c)

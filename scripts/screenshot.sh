@@ -9,6 +9,7 @@
 # survival = the timed SurvivalScript (commands at their ticks): TICKS=7700 SHOTS=tunnel flooded tunnel, 14400 SHOTS=reservoir,tunnel drought;
 # paint = single blocks painted with the block tool, TICKS=1500 SHOTS=paint; wall = the same with a vertical drag held, SHOTS=wall; materials = one sample of every
 # construction block, TICKS=12000 SHOTS=materials; blocks, monument: see docs/testing.md).
+# GHOST (none): a building id whose build ghost is shown, e.g. GHOST=levee SCRIPT=build (M11-T1).
 # Run `dotnet build src/Aurvangar.Godot` first after code changes (--build-solutions may not rebuild).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -46,6 +47,7 @@ echo "== building C# solution (Godot $VERSION)"
 # Forward+ on the default driver (Vulkan), the renderer the game plays in (M4-T13, ADR-035).
 ARGS=(--path "$ROOT/src/Aurvangar.Godot" --rendering-method forward_plus res://scenes/Screenshot.tscn
       -- --seed "${SEED:-1}" --ticks "${TICKS:-1200}" --shots "$SHOTS" --out "$OUT" --script "${SCRIPT:-none}")
+if [ -n "${GHOST:-}" ]; then ARGS+=(--ghost "$GHOST"); fi
 echo "== rendering $SHOTS"
 if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
   command -v xvfb-run >/dev/null || die "no DISPLAY and xvfb-run is not installed (Godot needs a window to render)."

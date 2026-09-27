@@ -42,6 +42,12 @@ public partial class ScreenshotRunner : Node
             root.PickOverride = ghost;          // M5-T6: show the build ghost and its tooltip in the shots
             root.SetTool(Aurvangar.ViewCore.Tools.ToolKind.Build);
         }
+        if (args.Ghost is { } ghostDef && root.Sim.Content.FindBuilding(ghostDef) is { } gd
+            && ScreenshotScripts.GhostPickFor(root.Sim, gd) is { } ghostPick)
+        {
+            root.PickOverride = ghostPick;      // M11-T1: --ghost levee shows that building's ghost (no entrance tile)
+            root.ChooseBuilding(gd.Id);
+        }
         if (args.Script == "blocks" && Aurvangar.ViewCore.Scripts.BlocksScript.GhostDrag(root.Sim) is { } drag)
             root.ShowBlockPaint(drag.From, new[] { drag.To.Adjacent }, Aurvangar.Sim.World.BlockId.Masonry);   // M8-T5, M9-T1
         if (args.Script == "paint" && Aurvangar.ViewCore.Scripts.PaintScript.LiveDrag(root.Sim) is { } paint)

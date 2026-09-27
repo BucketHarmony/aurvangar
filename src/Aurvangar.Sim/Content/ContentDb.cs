@@ -166,10 +166,17 @@ public sealed class ContentDb
                 throw new InvalidDataException($"buildings.json: building '{b.Id}' produces unknown item '{b.Producer.Output}'");
             if (b.Footprint.Length != 3 || b.Footprint.Any(v => v <= 0))
                 throw new InvalidDataException($"buildings.json: building '{b.Id}' footprint must be 3 positive ints");
-            if (b.Entrance.Length != 3)
-                throw new InvalidDataException($"buildings.json: building '{b.Id}' entrance must be 3 ints");
             if (b.Placement is not ("ground" or "waterEdge"))
                 throw new InvalidDataException($"buildings.json: building '{b.Id}' has unknown placement '{b.Placement}'");
+            if (b.Entrance is null)
+            {
+                // ADR-076 (M11-T1): only a building nobody works in or stores at may have no entrance.
+                if (b.Workers != 0 || b.Storage is not null || b.Producer is not null || b.Placement != "ground" || b.PrebuiltOnly)
+                    throw new InvalidDataException($"buildings.json: building '{b.Id}' needs an entrance (it has workers, storage, a producer or a water edge)");
+                continue;
+            }
+            if (b.Entrance.Length != 3)
+                throw new InvalidDataException($"buildings.json: building '{b.Id}' entrance must be 3 ints");
             bool inside = b.Entrance[0] >= 0 && b.Entrance[0] < b.Footprint[0] && b.Entrance[2] >= 0 && b.Entrance[2] < b.Footprint[2];
             if (inside || b.Entrance[1] != 0)
                 throw new InvalidDataException($"buildings.json: building '{b.Id}' entrance must be outside the footprint at y = 0");

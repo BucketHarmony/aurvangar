@@ -342,7 +342,7 @@ Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is de
 Human answers are in PROGRESS.md under "G6 answers". Surface stone and vertical deconstruct are not taken up. The
 starting wagon answers "I dont know where to get stone from".
 
-- [ ] **M11-T1** Levees have no entrance · specs: BLD-01, BLD-02 · deps: M10-GATE
+- [x] **M11-T1** Levees have no entrance · specs: BLD-01, BLD-02 · deps: M10-GATE
   - G6: "Not sure why levees have doors, what are they for?" A levee has no worker, so it needs no entrance.
   - Buildings with no workers and no storage (the levee) have no entrance in data. The builder may stand on any
     standable cell next to the footprint, or on one a level up or down as for stacked levees. The ghost shows no

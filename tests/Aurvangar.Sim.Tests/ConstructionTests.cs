@@ -86,7 +86,7 @@ public class ConstructionTests
             if (lower.State != BuildingState.Complete)
             {
                 Assert.Equal(BuildingState.Blueprint, upper.State);
-                Assert.DoesNotContain(sim.Jobs.All, j => j.Kind == JobKind.Deliver && j.Target == upper.EntranceCell);
+                Assert.DoesNotContain(sim.Jobs.All, j => j.Kind == JobKind.Deliver && j.Target == upper.JobCell);
             }
         });
         Assert.Equal(BlockId.BuildingSolid, sim.World.GetBlock(lowerAt));
