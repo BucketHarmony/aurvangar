@@ -192,6 +192,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     the command was accepted holds the teardown back: the last Deconstruct tick is `Blocked` in `WorldActions` and
     the job stands down (no failure) until the block is gone (ADR-063).
   - The search is depth-first and tries the down step first, so a column or wall answers in about its height.
+  - M11-T9 (GRV-09): a dig that would collapse a building (its last floor cell) also counts that building's
+    footprint, and those of the buildings that would come down with it, as removed.
 
 ## Build jobs (CON-11..15)
 

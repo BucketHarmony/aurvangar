@@ -20,7 +20,7 @@ public enum DigWait : byte
     WouldTrap,
     /// <summary>A plant stands on it, or a tree marked for chopping holds it (DSG-03).</summary>
     Plant,
-    /// <summary>A built block rests on it (CON-10).</summary>
+    /// <summary>A built block rests on it (CON-10), or a building that holds its floor (GRV-05/06, GRV-09).</summary>
     Support,
     /// <summary>No living dwarf can reach a cell to dig it from, or it was given up (JOB-08).</summary>
     Unreachable,

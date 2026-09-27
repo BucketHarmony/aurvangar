@@ -84,8 +84,19 @@ public static class Support
     }
 
     /// <summary>CON-10: removing the solid block at <paramref name="x"/> would unground a built block, i.e. a built
-    /// block among its up and 4 horizontal neighbors is not grounded without it.</summary>
-    public static bool Depends(Simulation sim, Int3 x) => Depends(sim, new[] { x });
+    /// block among its up and 4 horizontal neighbors is not grounded without it. GRV-09 (M11-T9): the footprints of the
+    /// buildings that the removal would collapse (<see cref="Physics.Gravity.WouldCollapse"/>) count as removed too.
+    /// GRV-05/06: the floor of a building that holds its floor (<see cref="Physics.Gravity.HoldsFloor(Simulation, Int3)"/>)
+    /// always depends, so every dig caller (posting, claiming, starting, digging) waits on it.</summary>
+    public static bool Depends(Simulation sim, Int3 x)
+    {
+        if (Physics.Gravity.HoldsFloor(sim, x)) return true;
+        var falls = Physics.Gravity.WouldCollapse(sim, x);
+        if (falls.Count == 0) return Depends(sim, new[] { x });
+        var removed = new List<Int3> { x };
+        foreach (var b in falls) removed.AddRange(b.FootprintCells());
+        return Depends(sim, removed);
+    }
 
     /// <summary>CON-10 for a set of cells removed together (a building's footprint, BLD-09): some built block among
     /// the up and horizontal neighbors of the removed cells is not grounded without them. Each neighbor gets its own

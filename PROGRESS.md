@@ -3463,3 +3463,64 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     lower slice shows the deeper steps.
 - Next: M11-T9 (gravity). `DigStatus` is a read-only query and can be reused for any "why is this waiting" UI.
   `ToolController.Release` throws in stair mode; view code should call `ReleaseCommands`.
+
+## M11-T9 — Gravity for piles and buildings (2026-09-27)
+- Done:
+  - New spec `docs/specs/gravity.md` (GRV-01..10) and ADR-079. The new `Physics/Gravity.cs` runs at ARCH-01 step 10b,
+    after the agents and before `WaterGrid.EndTick`. First, buildings that no longer stand collapse (repeated until
+    none do, so stacks cascade). Then piles whose cell below is not solid fall, **at once**, to their rest cell and
+    merge per ECO-08. Felled logs, dig drops and refunds fall the same way.
+  - The writes are `WorldActions.FallPile`, `DropFalling` and `Collapse` (`WorldActions.Gravity.cs`). A collapse:
+    - cancels the jobs that name the building;
+    - turns the footprint to air;
+    - moves dwarves on or in the building to a standable cell near its stand cell;
+    - drops half the cost plus all stock as falling piles.
+    A blueprint or site that loses its support is cancelled (BLD-09).
+  - Undermining: the floor of a complete building may now be marked and dug (DSG-02, `Dig`). The Great Hall is
+    anchored (never collapses, and its floor is never dug). Floors of blueprints, sites and buildings being
+    deconstructed are protected through `Support.Depends`.
+  - CON-10 is extended (GRV-09): a dig that would collapse a building a built block rests on waits.
+  - The wagon collapses like a warehouse. A levee stack comes down whole, 1 log per levee.
+  - Falls are instant, so there is no new state, `FormatVersion` is unchanged and nothing new goes into `StateHash`.
+    The DigWait.Support hover now reads "something built rests on it".
+  - Docs updated: ARCH-01 (step 10b), DSG-02, CON-10, BLD, ECO-08.
+- Tests: new `GravityScenarioTests` (12). They cover:
+  - a pile falls and merges;
+  - a pile spirals out, and a dig drop falls;
+  - a fallen pile is hauled with no failures;
+  - a stocked warehouse dug out collapses into its pit, then is hauled to the hall with nothing floating at any
+    tick and 0 failed jobs;
+  - a levee stack cascades;
+  - a blueprint on top is cancelled and the rider is moved off;
+  - a walled-in levee's rider lands on standable ground;
+  - the wagon collapses;
+  - the hall is anchored;
+  - a block on a building holds its last floor, and a floor under deconstruction is protected;
+  - a Dig job posted before a Deconstruct order waits without failing;
+  - save/load after a collapse gives the same hash.
+  `Grounding` gained `FloatingPiles` and `UnsupportedBuildings`, and the monument run now also asserts that nothing
+  floats. check.sh green: 673 passed, 0 skipped. The tests were written alongside the implementation (new API, so
+  they failed to compile first).
+- Decisions: ADR-079.
+- Golden: regenerated. Tick 6000 changed `00cbef7a70242f9b` → `8b191a1f75cb3f26`; ticks 0, 1200 and 3000 are
+  unchanged. Cause: in the survival script's two-level quarry (x 84..85, y 18, z 56..60), stone drops left on the
+  upper layer now fall when the cell under them is dug (ticks 3904..4627). No building collapses in that run.
+- Headless (seed 1, 24,000 ticks):
+  - No commands: `2d55f196360b3034` (unchanged).
+  - `--script survival`: `dd94bfaa6d6283b2` (was `6a16f70cd54b1c0c`). Changed by the same pile falls. 5/5 alive,
+    435 jobs, 1 failed, stored log 84 and stone 82.
+  - The one failure is a Flee need job at tick 8045 (GoTo from (85,17,65)). That is on the changed timeline, well
+    after the last fall; nothing gravity-related happens then. Need jobs are re-posted (ADR-031).
+- Perf: perf.sh (serial, Release) 9 of 9 pass.
+- sim-reviewer: run (the Sim diff is about 250 lines). Required fixes, all applied with a test each:
+  1. A Dig job posted before a Deconstruct order used to fail repeatedly. `Gravity.HoldsFloor` is now folded into
+     `Support.Depends`, so it waits.
+  2. A collapse could leave a dwarf on air (a walled-in levee's stand cell is the cell on top of it). The move-to
+     cell is now picked after the footprint turns to air, and must be standable.
+  3. The golden change is now recorded in ADR-079 and here.
+  Not done (optional): skip the building pass when nothing changed. Perf is well within budget.
+- Screenshot: skipped. Falls are instant (a pile or building just appears in its new place, using existing
+  ItemPile and Building events), and no rendering code changed. The only view change is one hover string.
+- Next: M11-T10 (fine block shapes). Built blocks still never fall (CON-09 support). If shapes add non-full blocks,
+  decide whether a pile or a building rests on a slab or stair: `Gravity.Rests` and `Stands` use
+  `World.IsSolid(below)`. `Support.Depends(sim, cell)` now also means "a building holds this floor".

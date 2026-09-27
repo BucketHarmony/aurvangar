@@ -75,6 +75,8 @@ public sealed class MonumentRun
                 if (Sim.Regions.RegionOf(a.Cell) != hall) WalledIn.Add($"tick {Sim.Clock.Tick}: {a.Name} at {a.Cell}");
             }
             foreach (var c in Grounding.Floating(Sim)) Floating.Add($"tick {Sim.Clock.Tick}: {c}");
+            foreach (var c in Grounding.FloatingPiles(Sim)) Floating.Add($"tick {Sim.Clock.Tick}: pile {c}");   // GRV-01
+            foreach (var b in Grounding.UnsupportedBuildings(Sim)) Floating.Add($"tick {Sim.Clock.Tick}: {b.Def.Id} {b.Origin}");
             if (CompletedAt < 0 && MonumentScript.PlannedCells.All(c => Sim.World.GetBlock(c) == BlockId.Masonry))
                 CompletedAt = Sim.Clock.Tick;
         }
@@ -184,6 +186,8 @@ public class MonumentScenarioTests : IClassFixture<MonumentRun>
         Assert.True(_run.WalledIn.Count == 0, string.Join("; ", _run.WalledIn.Take(10)));
         Assert.True(_run.Floating.Count == 0, string.Join("; ", _run.Floating.Take(10)));
         Assert.Empty(Grounding.Floating(_run.Sim));
+        Assert.Empty(Grounding.FloatingPiles(_run.Sim));          // M11-T9 GRV-01
+        Assert.Empty(Grounding.UnsupportedBuildings(_run.Sim));
     }
 
     /// <summary>SAV-03 mid-build: saved at tick 12,000 (lower courses up, the next ones released course by course by

@@ -94,6 +94,10 @@ checked right after `Overlaps` (CON-08).
   `BuildingOnTop`). A block placed against a building after its deconstruction started holds the teardown back:
   the last Deconstruct tick stands down until the block is gone (ADR-063).
 
+M11-T9 (`gravity.md`, ADR-079): a building none of whose bottom cells has ground (or another building) under it
+collapses at the gravity step (GRV-07): half its cost and its stock fall as piles; a site is cancelled. The ground
+under a complete building other than the Great Hall may be dug (GRV-06).
+
 ## Storage (BLD-10..12)
 
 - **BLD-10** Storage buildings hold `Dictionary<ItemId,int>` contents plus `Reserved` in/out counts. Iterate by

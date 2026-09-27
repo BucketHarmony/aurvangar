@@ -51,9 +51,11 @@ public sealed partial class WorldActions
 
     /// <summary>Solid, diggable (WLD-05) → Air. Spawns the block's drop as an item pile at the cell. The world records
     /// the change (ChangedCells, chunk dirtying), which water and paths consume. Blocked when the cell is the floor
-    /// of an agent (JOB-09 and every other agent), of a plant, or of a building in any state (BuildingSolid or a
-    /// footprint above, ADR-041), and when a built block depends on it for support (CON-10). A built block drops its
-    /// whole cost (CON-17).</summary>
+    /// of an agent (JOB-09 and every other agent), of a plant, of a building that holds its floor (GRV-05/06: the
+    /// Great Hall, a blueprint, a site or a building being deconstructed; the floor of a complete building may be dug,
+    /// and the gravity step collapses it once none is left), or of BuildingSolid that belongs to no building, and when
+    /// a built block depends on it for support (CON-10, with GRV-09). A built block drops its whole cost (CON-17); a
+    /// drop over air falls at the gravity step (GRV-03).</summary>
     public ActionResult Dig(AgentId actor, Int3 cell)
     {
         var r = Actor(actor, out var a);
@@ -64,8 +66,9 @@ public sealed partial class WorldActions
         var def = _sim.Content.Block(world.GetBlock(cell));
         if (!def.Solid || !def.Diggable) return ActionResult.InvalidTarget;
         var above = cell + Int3.Up;
-        if (AgentHolds(above) || _sim.Plants.IsOccupied(above) || world.GetBlock(above) == BlockId.BuildingSolid
-            || _sim.Buildings.BuildingAt(above) is not null)
+        if (AgentHolds(above) || _sim.Plants.IsOccupied(above)) return ActionResult.Blocked;
+        if (_sim.Buildings.BuildingAt(above) is { } over ? Physics.Gravity.HoldsFloor(over)
+            : world.GetBlock(above) == BlockId.BuildingSolid)
             return ActionResult.Blocked;
         if (Blocks.Support.Depends(_sim, cell)) return ActionResult.Blocked;   // CON-10: never unground a built block
 

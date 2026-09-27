@@ -58,9 +58,19 @@ public static partial class Construction
         b.State = BuildingState.UnderConstruction;
         var stand = StandCell(sim, b);
         foreach (var c in b.FootprintCells()) sim.PathGrid.SetSite(c, true);
+        MoveAgentsOut(sim, b, stand, alsoOnTop: false);
+        foreach (var c in b.FootprintCells())
+            if (!sim.Piles.At(c).IsEmpty) sim.Actions.MovePile(c, stand);
+    }
+
+    /// <summary>BLD-07 and GRV-07: living agents standing in (or stepping into) a footprint cell, and with
+    /// <paramref name="alsoOnTop"/> a cell right above the footprint, are moved to <paramref name="stand"/>. A walk in
+    /// progress is planned again from there.</summary>
+    internal static void MoveAgentsOut(Simulation sim, Building b, Int3 stand, bool alsoOnTop)
+    {
         foreach (var a in sim.Agents.All)
         {
-            if (!a.IsAlive || !b.Covers(a.Cell)) continue;
+            if (!a.IsAlive || !(On(a.Cell) || (alsoOnTop && On(a.NextCell)))) continue;
             AgentMovement.Halt(a);
             a.Cell = stand;
             a.NextCell = stand;
@@ -69,8 +79,8 @@ public static partial class Construction
                 && job.Steps[a.StepIndex].Kind == StepKind.GoTo)
                 a.StepProgress = 0;
         }
-        foreach (var c in b.FootprintCells())
-            if (!sim.Piles.At(c).IsEmpty) sim.Actions.MovePile(c, stand);
+
+        bool On(Int3 c) => b.Covers(c) || (alsoOnTop && b.Covers(c + Int3.Down));
     }
 
     /// <summary>BLD-09 cancel: every job of the site is cancelled (carried materials are dropped by their agents), the

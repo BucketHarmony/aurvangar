@@ -25,7 +25,8 @@ public static class DesignationSystem
     // ---- commands ----
 
     /// <summary>DSG-02. Solid, diggable cells (never y = 0, WLD-05) that are not a building's footprint or the floor
-    /// under it get <c>Dig</c>, including a plant's floor (M4-T15: its job waits until the plant is gone, DSG-03); <c>DigUnreachable</c> becomes <c>Dig</c> again (a retry); others are unchanged.</summary>
+    /// of a building that holds its floor (GRV-05/06: the hall, a blueprint, a site or a building being deconstructed;
+    /// a complete building's floor is marked, M11-T9) get <c>Dig</c>, including a plant's floor (M4-T15: its job waits until the plant is gone, DSG-03); <c>DigUnreachable</c> becomes <c>Dig</c> again (a retry); others are unchanged.</summary>
     public static void DesignateDig(Simulation sim, string tag, Int3 a, Int3 b)
     {
         if (!Clamp(sim.World, a, b, out var min, out var max)) { Reject(sim, tag); return; }
@@ -55,7 +56,7 @@ public static class DesignationSystem
                     var block = world.GetBlock(c);
                     var def = sim.Content.Block(block);
                     if (!def.Solid || !def.Diggable || (builtOnly && !def.IsConstruction)) continue;
-                    if (building.Contains(world.Index(c)) || building.Contains(world.Index(c + Int3.Up))) continue;
+                    if (building.Contains(world.Index(c)) || Physics.Gravity.HoldsFloor(sim, c)) continue;
                     if (sim.Designations.Get(c) != DesignationMark.Dig) sim.Designations.Set(c, DesignationMark.Dig);
                     marked++;
                 }
@@ -175,7 +176,7 @@ public static class DesignationSystem
             var def = sim.Content.Block(world.GetBlock(c));
             if (!def.Solid || !def.Diggable || !Exposed(world, c)) continue;
             if (held || sim.Plants.IsOccupied(c + Int3.Up)) continue;   // M4-T15: a plant's floor waits for the plant
-            if (Blocks.Support.Depends(sim, c)) continue;   // CON-10: a built block rests on it; it waits (never red)
+            if (Blocks.Support.Depends(sim, c)) continue;   // CON-10, GRV-06: something built rests on it; it waits (never red)
             sim.Jobs.Post(JobKind.Dig, c,
                 new[] { JobStep.GoTo(c, GoalMode.Dig), JobStep.Work(c, def.Hardness), JobStep.Dig(c) },
                 new[] { Reservation.OnCell(c) }, priority);

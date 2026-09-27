@@ -16,7 +16,7 @@ public static class DigHover
         DigWait.Neighbour => "Dig: waiting for a cell beside it to be dug",
         DigWait.WouldTrap => "Dig: would trap a dwarf (a dwarf climbs 1 level; dig a stair down, T)",
         DigWait.Plant => "Dig: waiting for the plant on it",
-        DigWait.Support => "Dig: a built block rests on it",
+        DigWait.Support => "Dig: something built rests on it",
         DigWait.Unreachable => "Dig: unreachable, no dwarf can get to it",
         _ => "",
     };

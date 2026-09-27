@@ -32,6 +32,7 @@
 
 - **ECO-08** Item piles: at most one item type per cell, unlimited count. Dropping a different type onto an
   occupied pile cell uses the nearest free standable cell within radius 3 (deterministic spiral order).
+  M11-T9 (GRV-03): a pile whose cell below is not solid falls at once to the next floor and merges there by this rule.
 
 ## Plants
 

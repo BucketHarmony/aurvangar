@@ -104,6 +104,7 @@ public sealed class Simulation
         Profiler?.End(TickPhase.BlockBuild);
         HaulSystem.Tick(this);                   // 9
         Agents.Tick(this);                       // 10
+        Physics.Gravity.Tick(this);              // 10b GRV-02: collapses, then falling piles (ADR-079)
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)
         PathGrid.SyncWorldChanges();             // PTH-03: before the change log is cleared
         Profiler?.Begin(TickPhase.Regions);

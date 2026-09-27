@@ -3,7 +3,9 @@
 - **DSG-01** `Designations` stores a `byte[]` per cell: `None`, `Dig`, `DigUnreachable`. Chop designations are
   stored on the tree entity (`tree.MarkedForChop`). Farm tiles live in `FarmSystem`.
 - **DSG-02** `DesignateDig(box)`: for every cell in the box that is diggable (WLD block table) and not under a
-  building, set `Dig`. Cells already designated are unchanged. Air cells in the box are ignored. (M4-T15, ADR-038)
+  building that holds its floor, set `Dig`. M11-T9 (GRV-05/06, ADR-079): the floor of a complete building other than
+  the Great Hall is marked and may be dug; the building collapses when none of it is left. The floor of the hall, a
+  blueprint, a site or a building being deconstructed is not marked (and a mark there gets no job). Cells already designated are unchanged. Air cells in the box are ignored. (M4-T15, ADR-038)
   Cells under plants are marked too; their dig job waits until the plant is gone (DSG-03).
 - **DSG-03** `DesignationSystem.Tick` posts one Dig job per designated cell that has no open job and is
   **exposed** (at least one of its 6 neighbors is non-solid). Unexposed cells wait; digging their neighbor

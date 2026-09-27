@@ -35,4 +35,24 @@ public static class Grounding
         }
         return built.Where(c => !grounded.Contains(c)).ToList();
     }
+
+    /// <summary>GRV-01 invariant for tests: every pile whose cell below is not solid (and is above y = 0), in index
+    /// order. Empty when nothing floats.</summary>
+    public static List<Int3> FloatingPiles(Simulation sim) =>
+        sim.Piles.All.Select(p => p.Cell).Where(c => c.Y > 0 && !sim.World.IsSolid(c + Int3.Down)).ToList();
+
+    /// <summary>GRV-01/05 invariant for tests: every building none of whose bottom-layer cells has a solid cell or
+    /// another building's footprint below it. Empty when every building stands.</summary>
+    public static List<Buildings.Building> UnsupportedBuildings(Simulation sim)
+    {
+        var list = new List<Buildings.Building>();
+        foreach (var b in sim.Buildings.All)
+        {
+            var bottom = b.FootprintCells().Where(c => c.Y == b.Origin.Y).ToList();
+            bool stands = bottom.Any(c => sim.World.IsSolid(c + Int3.Down)
+                || (sim.Buildings.BuildingAt(c + Int3.Down) is { } under && under != b));
+            if (!stands) list.Add(b);
+        }
+        return list;
+    }
 }

@@ -1888,3 +1888,47 @@ Decision:
   slice then hid the stair. The scenario test keeps the east site down the slope (a harder case for the strand rule).
 Consequences: no goldens change. Digging deep is a two-step habit (lower the view level, drag a stair) that the HUD
 now spells out. A stair is a covered tunnel after the first steps, so it is seen through the slice, not from above.
+
+## ADR-079: Gravity for piles and buildings: instant falls, whole-building collapse, a new tick slot (2026-09-27, M11-T9)
+Context: G6 follow-up: "buildings, items, log piles with no ground beneath them should fall down to ground." Piles
+could float (a dig under a pile, a dig drop or CON-17 refund over a cave), and no building could lose its ground
+because DSG-02 never marked, and `Dig` refused, any cell under a building. Spec: `docs/specs/gravity.md`.
+Decision:
+- **Instant falls.** A pile that does not rest moves straight to its rest cell in the same tick (GRV-03), rather than
+  one cell per tick. No in-flight state, so no save format bump and no new hashed state; the view sees a normal
+  `ItemPileChanged` pair. Landing merges per ECO-08, else `PlacePile` from the rest cell.
+- **Tick slot.** `Gravity.Tick` is ARCH-01 step 10b, after the agents (where every dig and teardown happens) and
+  before `WaterGrid.EndTick` / `PathGrid.SyncWorldChanges`, because a collapse writes Air over a footprint and nothing
+  may call `SetBlock` after that point. Buildings first (to a fixed point, so stacks cascade), then piles, so the
+  refunds of a collapse fall in the same tick.
+- **The mutations are WorldActions.** `WorldActions.FallPile` and `WorldActions.Collapse` (internal, like `PlacePile`
+  and `TearDown`) do the writes; `Gravity` only finds what must fall (hard rule: one action API).
+- **Undermining is allowed** for complete, not anchored buildings only (GRV-06): DSG-02 marks their floor and
+  `Dig` digs it. Floors of blueprints, sites and buildings being deconstructed stay protected (a site's jobs, the
+  BLD-07 push-out and the teardown all assume their ground). This is the only rule change for digs.
+- **Anchored buildings** (`prebuiltOnly` and not `removableWhenEmpty`: the Great Hall) never collapse and their
+  floor is never dug. The whole colony depends on the hall (spawn, food, water, the strand rule's region), and losing
+  it to one stray dig drag would be a trap. The wagon is not anchored: it collapses like a warehouse.
+- **Partial support holds** (GRV-01): a building stands while any bottom cell has solid ground (or another building)
+  under it. No overhang physics.
+- **Collapse, not a fall.** A building does not fall intact; it is removed and drops half its cost (the BLD-09 rate,
+  so a collapse is no cheaper than a teardown) plus all stock, as falling piles from its origin. Jobs naming it are
+  cancelled (not failed). Agents on it or in it are moved after its footprint turned to air: to its stand cell if they
+  can stand there, else the first standable cell of the ECO-08 spiral around its rest cell (a walled-in levee's stand
+  cell is the cell on top of it, which is air after the collapse).
+- **Levee stacks** collapse whole (GRV-08): when the bottom levee goes, the one on it no longer stands and collapses in
+  the next pass of the same step. A blueprint or site that loses its support is cancelled (BLD-09 refunds).
+- **CON-10 extended** (GRV-09): `Support.Depends(sim, cell)` adds the footprints of the buildings a removal would
+  collapse, so a built block resting on a building keeps that building's last floor cell from being dug. It also
+  returns true for the floor of a building that holds its floor (GRV-05/06: the hall, a blueprint, a site, a building
+  being deconstructed). So a Dig job posted before a Deconstruct order waits (stand-down, no JOB-08 failure) like any
+  CON-10 dig. All dig callers (poster, job selection, work start, the dig step, `Dig`, `DigStatus`) get this through
+  the one function.
+- `DigStatus` reports `Support` for a protected building floor; the hover text now reads "something built rests on
+  it" (it covers built blocks and buildings).
+Consequences: piles never float; a player can dig out a building (except the hall) and it collapses into its pit. Dig
+drags that cover the ground under complete buildings now mark it (they used to skip it). The seed-1 golden changes at
+tick 6000 (ticks 0, 1200 and 3000 unchanged): in the survival script's two-level quarry (x 84..85, y 18, z 56..60)
+stone drops left on the upper layer now fall when the cell under them is dug (ticks 3904..4627). No building
+collapses in that run. The headless survival hash changes for the same reason (5/5 alive; one Flee need job fails at
+tick 8045 on the changed timeline, well after the last fall; need jobs are re-posted, ADR-031).

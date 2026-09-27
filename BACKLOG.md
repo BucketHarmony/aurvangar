@@ -369,7 +369,7 @@ starting wagon answers "I dont know where to get stone from".
   - Scenario test on seed 1: a staircase dug to stone depth lets dwarves quarry stone at the bottom and climb out.
     A straight-sided pit reports "would trap a dwarf" for its waiting cells.
   - Keep the logic in ViewCore with tests. Render screenshots and look at them.
-- [ ] **M11-T9** Gravity for piles and buildings · specs: new GRV-* in docs/specs/gravity.md · deps: M11-T8
+- [x] **M11-T9** Gravity for piles and buildings · specs: new GRV-* in docs/specs/gravity.md · deps: M11-T8
   - G6 follow-up: "buildings, items, log piles with no ground beneath them should fall down to ground. Physics
     should be explored."
   - Write the GRV spec and ADR first.

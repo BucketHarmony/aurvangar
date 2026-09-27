@@ -46,6 +46,9 @@
     Then `WaterGrid.EndTick` — apply block changes made after step 3 (WAT-12 push, WAT-13 activation) and emit
     `WaterDirty` (ADR-013) — and `PathGrid.Invalidate(World.ChangedCells)`. Nothing may call `SetBlock` after this
     point in the tick: the change log is cleared at the end of the tick.
+    **10b.** `Gravity.Tick` (M11-T9, GRV-02, ADR-079) runs between `AgentSystem.Tick` and `WaterGrid.EndTick`:
+    buildings that no longer stand collapse (to a fixed point), then piles that no longer rest fall, at once
+    (`specs/gravity.md`). It is the last step that may call `SetBlock`.
 11. `Regions.RebuildIfDirty` — recompute reachability regions if topology changed this tick. Then
     `JobGiveUp.Tick` (JOB-12, ADR-058): reset give-up marks near this tick's walkability changes, drop stale ones,
     and every 50 ticks strike or recover sources by region reachability.
