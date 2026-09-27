@@ -102,5 +102,8 @@ the survival scenario (`SurvivalScenarioTests`), and `run-headless.sh --script s
 
 `run-headless.sh --script digchop` (also `none`, `build`, `farm` and `survival`) runs the screenshot harness's `ScreenshotScripts` command list
 (ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a
-`work:` line per report (marks left, piles, stored items, path searches, trapped agents) and a final `summary:`
-(jobs completed/failed, cells dug, trees felled, items hauled into storage).
+`work:` line (marks left, piles, stored items, path searches, trapped agents) and a `colony:` line (season, complete
+buildings by type, pumps flagged NoWater, farm tiles and crop states, storage by item) per report, and a final
+`summary:` (jobs completed/failed, cells dug, trees felled, net change in storage, crops harvested and withered, pump
+NoWater ticks by season). Dig, chop and crop counts are observed after every tick, so they include designations a
+timed script (`survival`) adds after tick 1 (ADR-053).

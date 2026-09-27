@@ -2,6 +2,7 @@ using Aurvangar.Sim.Agents;
 using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Events;
+using Aurvangar.Sim.Save;
 using Aurvangar.Sim.Tests.Support;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Scripts;
@@ -114,5 +115,30 @@ public class SurvivalScenarioTests
         Assert.All(sim.Agents.All, a => Assert.False(a.IsAlive));
         Assert.Contains(sim.Agents.All, a => a.Death == DeathCause.Dehydrated);
         Assert.Empty(sim.Commands.Log);
+    }
+
+    /// <summary>DoD step 10 (M6-T8): the player saves mid-session, quits, loads and plays on. The save is taken in the
+    /// flooded tunnel before the levee repair (the repair command is still to come); the loaded game, run on with the
+    /// rest of the script past the levee repair and into the drought's drain, ends on the same <c>StateHash</c> as the
+    /// uninterrupted run. (The day-5 save of SAV-05 and the golden hashes cover the rest of the session.)</summary>
+    [Fact]
+    public void Seed1_SurvivalScript_SaveLoadMidSession_ContinuesIdentically()
+    {
+        const long saveAt = SurvivalScript.BreachTick + 200, compareAt = 5 * Day + 600;
+        var sim = WorldFactory.Create(SurvivalScript.Seed, TestContent.Db);
+        SurvivalScript.Run(sim, saveAt);
+        sim.Events.Drain();
+        byte[] save;
+        using (var ms = new MemoryStream()) { SaveGame.Save(sim, ms); save = ms.ToArray(); }
+        SurvivalScript.Run(sim, compareAt - sim.Clock.Tick);
+
+        Simulation loaded;
+        using (var ms = new MemoryStream(save)) loaded = SaveGame.Load(ms, TestContent.Db);
+        Assert.Equal(saveAt, loaded.Clock.Tick);
+        SurvivalScript.Run(loaded, compareAt - loaded.Clock.Tick);
+        Assert.True(sim.StateHash() == loaded.StateHash(), "hash differs after save, load and continue");
+        Assert.Equal(2, loaded.Buildings.All.Count(b => SurvivalScript.BreachCells().Contains(b.Origin)
+            && b.State == BuildingState.Complete));
+        Assert.Equal(5, loaded.Agents.All.Count(a => a.IsAlive));
     }
 }

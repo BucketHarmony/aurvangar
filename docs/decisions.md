@@ -1111,3 +1111,26 @@ Decision:
 - No budget changes.
 Consequences: in-suite PTH-P1 p95 ~0.60 ms (6/6 runs), SIM-P1 median ~2.3 ms. Seed-1 survival hash is unchanged
 (`7344b913cc2909c9`); goldens unchanged. On a non-hybrid or non-Windows CI runner the QoS call is a no-op.
+
+## ADR-053: DoD walkthrough evidence: cumulative headless counts, a reservoir-pump scenario, a mid-session save (2026-09-26, M6-T8)
+Context: M6-T8 maps each DoD step (docs/00-overview.md) to evidence. Three gaps: (1) the headless `summary:` measured
+dig/chop work against the marks present after tick 1, so `--script survival` reported 1 cell dug and 0 trees felled;
+(2) DoD 8 ends "colonies that built a levee reservoir keep their pump running", but the survival script's pump draws
+from the open river and goes NoWater for the whole drought (the colony lives on stored water), and no test built a
+levee reservoir; (3) DoD 10 (save, quit, load, continue) was tested on small setups and on a day-5 save's hash, not
+on a save taken mid-session and played on.
+Decision:
+- Headless: a `WorkTracker` observes the sim after every tick (outside the timed section): a dig mark that vanishes
+  over a non-solid cell counts as dug, a marked tree that leaves the plant list as felled, a farm tile going
+  Growing → Empty as withered (ECO-13) and Mature → Empty as harvested; it also counts ticks with a NoWater pump by
+  season. A `colony:` line per report shows season, complete buildings, pump NoWater, crops and storage. Sim output
+  and hashes are unchanged.
+- DoD 8 reservoir: a synthetic scenario (`ReservoirScenarioTests`, 32³ world, real weather cycle) instead of changing
+  the survival script, which would need a new pump site and a golden regeneration for a step the colony already
+  survives. With two levees across the mouth of a side pool the pump never flags NoWater through the drought and
+  keeps pumping while the river bed beside it is dry; the control without levees runs dry.
+- DoD 10: `SurvivalScenarioTests.Seed1_SurvivalScript_SaveLoadMidSession_ContinuesIdentically` saves at tick 7,400
+  (flooded tunnel, repair not yet ordered), loads, and runs both games with the rest of the script to tick 12,600.
+Consequences: evidence for every DoD step is a test or a headless stat. check.sh gains ~15 s (Debug) for the save
+test. The survival session itself still has no reservoir pump; G3 may ask for one in the script.
+

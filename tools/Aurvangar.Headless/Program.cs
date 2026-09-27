@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Aurvangar.Sim;
 using Aurvangar.Sim.Content;
+using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Plants;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Screenshots;
@@ -42,6 +43,8 @@ else if (opts.Script is not null)
 
 var tickTimes = new List<double>(opts.Ticks);
 long colonyLostTick = -1;
+// M6-T8: cumulative dig/chop counts, so timed scripts (survival) count designations made after tick 1 too.
+WorkTracker? tracker = opts.Script is not null ? new WorkTracker() : null;
 var runClock = Stopwatch.StartNew();
 for (int t = 0; t < opts.Ticks; t++)
 {
@@ -52,12 +55,18 @@ for (int t = 0; t < opts.Ticks; t++)
     foreach (var e in sim.Events.Drain())
         if (e is Aurvangar.Sim.Events.ColonyLost) colonyLostTick = sim.Clock.Tick;   // ECO-07
     if (t == 0 && opts.Script is not null) baseline = Baseline.Capture(sim);
+    if (tracker is not null)
+    {
+        runClock.Stop();
+        tracker.Observe(sim);
+        runClock.Start();
+    }
     if (opts.ReportEvery > 0 && (t + 1) % opts.ReportEvery == 0) PrintInterval(sim, tickTimes, baseline);
 }
 
 runClock.Stop();
 PrintInterval(sim, tickTimes, baseline);
-if (baseline is not null) PrintWorkSummary(sim, baseline);
+if (baseline is not null && tracker is not null) PrintWorkSummary(sim, baseline, tracker);
 if (colonyLostTick >= 0) Console.WriteLine($"colony.lost tick={colonyLostTick} day={colonyLostTick / 2400}");
 double seconds = runClock.Elapsed.TotalSeconds;
 double tps = seconds > 0 ? opts.Ticks / seconds : 0;
@@ -98,23 +107,98 @@ static void PrintInterval(Simulation sim, List<double> tickTimes, Baseline? base
         $"trees.unreachable={w.ChopUnreachable} piles={w.Piles} pile.items={w.PileItems} carried={w.Carried} " +
         $"stored={w.Stored - baseline.Stored} path.searches={sim.Counters.PathSearches} agents.trapped={w.Trapped} " +
         $"agents.idle={w.Idle} regions.of.agents={w.AgentRegions}");
+    var built = sim.Buildings.All.Where(b => b.State == Aurvangar.Sim.Buildings.BuildingState.Complete)
+        .GroupBy(b => b.Def.Id).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key}:{g.Count()}");
+    var farms = sim.Farms.All.ToList();
+    Console.WriteLine(
+        $"  colony: season={Aurvangar.Sim.Water.WeatherSystem.SeasonAt(sim.Clock.Tick)} built={string.Join(",", built)} " +
+        $"pump.nowater={sim.Buildings.All.Count(b => b.Def.Id == "pump" && b.NoWater)} farm.tiles={farms.Count} " +
+        $"crops.growing={farms.Count(f => f.State == Aurvangar.Sim.Farming.CropState.Growing)} " +
+        $"crops.mature={farms.Count(f => f.State == Aurvangar.Sim.Farming.CropState.Mature)} " +
+        $"stored={string.Join(",", w.StoredByItem.Select(x => $"{x.Item}:{x.Count}"))}");
 }
 
-static void PrintWorkSummary(Simulation sim, Baseline b)
+static void PrintWorkSummary(Simulation sim, Baseline b, WorkTracker tr)
 {
     var w = WorkStats.Of(sim);
     Console.WriteLine("summary:");
     Console.WriteLine($"  jobs.completed   {sim.Counters.JobsCompleted,9}");
     Console.WriteLine($"  jobs.failed      {sim.Counters.JobsFailed,9}");
-    Console.WriteLine($"  cells.dug        {b.DigMarks - w.DigMarks,9}  (of {b.DigMarks} marked; {w.DigUnreachable} left unreachable)");
-    Console.WriteLine($"  trees.felled     {b.Trees - w.Trees,9}  (of {b.MarkedTrees} marked; {w.ChopUnreachable} left unreachable)");
-    Console.WriteLine($"  items.hauled     {w.Stored - b.Stored,9}  (into hub storage)");
+    Console.WriteLine($"  cells.dug        {tr.CellsDug,9}  (of {tr.CellsMarked} ever marked; {w.DigMarks} still marked, {w.DigUnreachable} unreachable)");
+    Console.WriteLine($"  trees.felled     {tr.TreesFelled,9}  (of {tr.TreesMarked} ever marked; {w.MarkedTrees} still marked, {w.ChopUnreachable} unreachable)");
+    Console.WriteLine($"  items.hauled     {w.Stored - b.Stored,9}  (net change in storage since tick 1)");
+    Console.WriteLine($"  crops.harvested  {tr.CropsHarvested,9}");
+    Console.WriteLine($"  crops.withered   {tr.CropsWithered,9}");
+    Console.WriteLine($"  pump.dry.ticks   {tr.PumpDryTicksWet + tr.PumpDryTicksDrought,9}  ({tr.PumpDryTicksWet} wet season, {tr.PumpDryTicksDrought} drought)");
     Console.WriteLine($"  items.on.ground  {w.PileItems,9}  (in {w.Piles} piles; {w.Carried} carried)");
     foreach (var (item, count) in w.StoredByItem)
         Console.WriteLine($"  stored.{item,-10} {count,9}");
     Console.WriteLine($"  path.searches    {sim.Counters.PathSearches,9}");
     Console.WriteLine($"  region.rebuilds  {sim.Counters.RegionRebuilds,9}");
     Console.WriteLine($"  agents.trapped   {w.Trapped,9}");
+}
+
+/// <summary>Cumulative dig and chop results, observed after every tick (M6-T8). A dig mark counts as dug when it
+/// disappears and its cell is no longer solid (a cancelled mark leaves the block in place); a marked tree counts as
+/// felled when it is gone from the plant list. Unlike <see cref="Baseline"/>, this also sees designations that a timed
+/// script adds after tick 1.</summary>
+internal sealed class WorkTracker
+{
+    private readonly HashSet<Int3> _everDig = new();
+    private readonly HashSet<Int3> _digNow = new();
+    private readonly HashSet<int> _everTrees = new();
+    private readonly HashSet<int> _treesNow = new();
+
+    public int CellsMarked => _everDig.Count;
+    public int CellsDug { get; private set; }
+    public int TreesMarked => _everTrees.Count;
+    public int TreesFelled { get; private set; }
+
+    private readonly Dictionary<Int3, Aurvangar.Sim.Farming.CropState> _crops = new();   // lookups only
+
+    public int CropsHarvested { get; private set; }
+    public int CropsWithered { get; private set; }
+    /// <summary>Ticks on which at least one complete pump flagged NoWater, by season.</summary>
+    public int PumpDryTicksWet { get; private set; }
+    public int PumpDryTicksDrought { get; private set; }
+
+    public void Observe(Simulation sim)
+    {
+        foreach (var t in sim.Farms.All)
+        {
+            if (_crops.TryGetValue(t.Cell, out var before) && t.State == Aurvangar.Sim.Farming.CropState.Empty)
+            {
+                if (before == Aurvangar.Sim.Farming.CropState.Mature) CropsHarvested++;
+                else if (before == Aurvangar.Sim.Farming.CropState.Growing) CropsWithered++;   // ECO-13
+            }
+            _crops[t.Cell] = t.State;
+        }
+        if (sim.Buildings.All.Any(b => b.Def.Id == "pump" && b.State == Aurvangar.Sim.Buildings.BuildingState.Complete && b.NoWater))
+        {
+            if (Aurvangar.Sim.Water.WeatherSystem.SeasonAt(sim.Clock.Tick) == Aurvangar.Sim.Water.Season.Wet) PumpDryTicksWet++;
+            else PumpDryTicksDrought++;
+        }
+
+        var dig = new HashSet<Int3>();
+        foreach (var (cell, mark) in sim.Designations.All)
+            if (mark is Aurvangar.Sim.Designations.DesignationMark.Dig or Aurvangar.Sim.Designations.DesignationMark.DigUnreachable)
+                dig.Add(cell);
+        foreach (var cell in _digNow)
+            if (!dig.Contains(cell) && !sim.World.IsSolid(cell)) CellsDug++;
+        _digNow.Clear(); _digNow.UnionWith(dig); _everDig.UnionWith(dig);
+
+        var alive = new HashSet<int>();
+        var marked = new HashSet<int>();
+        foreach (var p in sim.Plants.All)
+        {
+            if (p.Kind != PlantKind.Tree) continue;
+            alive.Add(p.Id.Value);
+            if (p.MarkedForChop) marked.Add(p.Id.Value);
+        }
+        foreach (var id in _treesNow)
+            if (!alive.Contains(id)) TreesFelled++;
+        _treesNow.Clear(); _treesNow.UnionWith(marked); _everTrees.UnionWith(marked);
+    }
 }
 
 /// <summary>Work counts after tick 1, when the script's commands have been applied. No dig or chop can finish in the

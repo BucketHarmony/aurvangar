@@ -1638,3 +1638,67 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
 - Next: M6-T8 (DoD walkthrough). If the tick cost ever matters, the next lever is incremental region updates, or
   skipping rebuilds when the changed cells do not change connectivity, during river drain and refill. The headless
   `summary:` dig/chop counts still cover only the tick-0 marks for timed scripts (see the M6-T6 note).
+
+## M6-T8 — Definition-of-done walkthrough, headless (2026-09-26)
+- Done: every DoD step (docs/00-overview.md) mapped to evidence below (ADR-053). No sim code changed.
+  - Headless runner: dig/chop/crop counts are now cumulative (observed after every tick, outside the timed section),
+    so `--script survival` reports the real work (43 cells dug, 23 trees felled; was 1 / 0). New `colony:` line per
+    report (season, complete buildings, pump NoWater, crop states, storage by item) and summary rows for crops
+    harvested/withered and pump NoWater ticks by season. Hash unchanged.
+  - Two new evidence tests for the parts of DoD 8 and 10 that nothing covered yet (see checklist).
+- Tests: new `Scenarios/ReservoirScenarioTests` (2): `LeveeReservoir_PumpRunsThroughDrought` and its control
+  `OpenPool_PumpRunsDryInDrought` (same world without the levees: the pool drains and the pump flags NoWater, which
+  is what makes the first test fail without levees). New
+  `SurvivalScenarioTests.Seed1_SurvivalScript_SaveLoadMidSession_ContinuesIdentically`. All three passed on their
+  first run (the behavior already existed; these are evidence, not new features). The control's first draft also
+  asserted the river bed at the mouth was 0 mid-drought; the open pool is still draining into it then (level 154), so
+  that check was dropped from the control only.
+  - check.sh: 513 passed, 0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-053.
+- Golden: unchanged.
+- Perf (perf.sh, Release): 8 passed. WAT-P1 1.28 ms median (23,048 active) / 0.85 ms at 128×128; WAT-P2 699 active;
+  PTH-P1 p95 0.64 ms; PTH-P2 warm 2.20 / cold 2.53 ms; ECO-16 0.88 ms; MESH-P1 0.64 ms; SIM-P1 median 2.46 ms
+  (p95 2.64, max 3.72; regions 943 ms of 500 ticks, 407 rebuilds). SAV-05 (in check.sh): day-5 save under 3 MB.
+
+### Headless run: `./scripts/run-headless.sh --seed 1 --script survival --ticks 24000 --report-every 2400`
+Hash `7344b913cc2909c9` (same as M6-T6/T7), 3,670 ticks/s, tick median 0.077 ms, p95 1.18 ms.
+
+| Day | Season | Complete buildings | Pump NoWater | Farm (growing/mature) | Storage | Water volume |
+|---|---|---|---|---|---|---|
+| 1 | Wet | hub, pump, warehouse, 5 levees | 0 | – | log 72, berries 68, water 56 | 4,905,333 |
+| 2 | Wet | same | 0 | 36 tiles (35/0) | log 80, stone 8, berries 68, water 84 | 4,905,352 |
+| 3 | Wet | same | 0 | 35/0 | log 80, stone 22, berries 69, water 110 | 4,905,361 |
+| 4 | Wet | + 2 breach levees (7) | 0 | 35/0 | log 76, stone 22, berries 69, water 105 | 4,919,267 |
+| 5 | Drought | 7 levees | 0 | 35/0 (harvest done) | + potato 105, water 110 | 4,919,320 |
+| 6 | Drought | 7 levees | 1 | 36/0 (replanted, drying) | berries 54, water 100 | 15,125 |
+| 7 | Wet | 7 levees | 1 | 36/0 | berries 54, water 90 | 15,125 |
+| 8 | Wet | 7 levees | 0 | 36/0 | berries 39, water 110 | 4,914,894 |
+| 10 | Wet | 7 levees | 0 | 24/12 | log 76, stone 22, berries 39, potato 105, water 110 | 4,914,948 |
+
+Summary: 5/5 alive, 406 jobs done, 0 failed, 43 of 43 marked cells dug, 23 of 23 marked trees felled, 0 items on the
+ground, 35 crops harvested (105 potatoes), 41 crops withered (all in or right after the drought), pump NoWater on
+5,004 ticks (4,712 in the drought, 292 while the river refilled), 568 path searches, 978 region rebuilds, 0 trapped.
+During the drought the whole river drains: 15,125 water units stay in the world, which is the walled-off tunnel.
+
+### DoD checklist (seed 1)
+| # | DoD step | Evidence |
+|---|---|---|
+| 1 | Map loads: 128×128×64, hill, river W→E, trees, bushes, Great Hall on a flat by the river, 5 dwarves, 40 berries / 30 water / 30 logs | Headless: size 128x64x128, 150 trees, 24 bushes, 1 building, 5 agents. Tests: `TerrainGeneratorTests.{Heights_WithinSpecRange, River_CrossesMap_WithSourcesAndDrains, Plants_CountsAndSpacing, HubOnSpawnFlat_BushesNearRiverAndHub}`, `RiverTests.Seed1_RiverFlowsAcrossMap`, `WorldInvariantTests.*`, `NeedsTests.Seed1_HubStartingStock`. Screenshots `artifacts/screens/{overview,river,hub}.png` (G1/G2). |
+| 2 | Pump on the bank; built; fills storage with water | Headless: pump complete by day 1, stored water 56 → 110 by day 3. Tests: `SurvivalScriptTests.Seed1_BuildsPumpWarehouseAndLevees_AllAccepted`, `SurvivalScriptTests.Seed1_PumpOutlastsStartingWater_NoOneDiesOfThirst`, `PumpScenarioTests.Pump_FillsHubWithWater`. Screenshots `build1200/`. |
+| 3 | Farm field near the river; planted; potatoes grow only on moist tiles | Headless: 36 tiles on day 2, 35 harvested before the drought (potato 105). Tests: `FarmScenarioTests.{MoistTile_MaturesAt7200, DryTile_NeverGrows, Harvest_Yields3Potatoes}`, `MoistureTests.Seed1_RiverBanksMoist`, `SurvivalScenarioTests.Seed1_SurvivalScript_AllAliveAtDay10` (36 tiles, potatoes by day 5). Screenshots `farm4000/`, `farm7700/`, `farm9000/`. |
+| 4 | Chop; trees felled; logs hauled to storage | Headless: 23 of 23 marked trees felled, 0 items left on the ground, logs 72-80 stored. Tests: `DigScenarioTests.Chop_MarkedTrees_LogsHauled`, `TreeFloorScenarioTests.*`. Screenshot `digchop/hub.png`. |
+| 5 | Warehouse placed and built | Headless: warehouse complete by day 1. Tests: `ConstructionScenarioTests.Warehouse_BuiltByTwoAgents`, `SurvivalScriptTests.Seed1_BuildsPumpWarehouseAndLevees_AllAccepted`, `LeveeScenarioTests.Warehouse_TakesHubOverflow_NotWater`. |
+| 6 | Dig into the hill to stone; dig and haul stone | Headless: 43 cells dug (40 of them the tunnel), stone 22 stored by day 3. Tests: `SurvivalScenarioTests.Seed1_SurvivalScript_AllAliveAtDay10` (tunnel dug, ≥ 10 stone stored before the breach), `DigScenarioTests.{DigStone_EndsInHubStorage, Tunnel_DugFromExposedSideInward}`. |
+| 7 | Dig through the bank; tunnel floods; dwarves in deep water path out; levees wall the breach, flood stops | Headless: 2 breach levees complete by day 4 (7 levees); 15,125 units stay in the tunnel through the drought. Tests: `SurvivalScenarioTests.Seed1_SurvivalScript_AllAliveAtDay10` (tunnel deep after the breach, a dwarf caught in the flood got out and lived, repair levees complete, tunnel keeps its water while the river beside it is 0), `FloodScenarioTests.AgentFleesRisingWater`, `LeveeScenarioTests.LeveeLine_StopsBreachFlood`, `WaterScenarioTests.BreachFloodsTunnel`. |
+| 8 | Drought (source off 2 days); river drains; dry crops wither; a levee reservoir keeps its pump running | Headless: season Drought days 5-7, world water 4.9 M → 15,125, 41 crops withered, pump NoWater on 4,712 drought ticks, the colony lives on stored water (110 → 90). Tests: `RiverTests.DroughtDrainsRiver`, `WeatherTests.*`, `FarmScenarioTests.DryForADay_Withers`, new `ReservoirScenarioTests.LeveeReservoir_PumpRunsThroughDrought` (+ control `OpenPool_PumpRunsDryInDrought`). Screenshot `farm13200/farm.png` (drought HUD, empty river bed, straw crops). The survival session itself has no reservoir pump (ADR-053). |
+| 9 | All dead of hunger or thirst → "Colony lost", no win screen | Tests: `SurvivalScenarioTests.Seed1_NoCommands_ColonyLost` (seed 1 without commands, all Dehydrated before day 7), `StarvationScenarioTests.AllDead_ColonyLostOnce`, `BuildingViewTests.Alerts_NoFoodNoWater_ThenColonyLost`. Screenshots `lost/` (M5-T6). |
+| 10 | Save at any point, quit, load, continue with identical results | Tests: new `SurvivalScenarioTests.Seed1_SurvivalScript_SaveLoadMidSession_ContinuesIdentically` (save at tick 7,400 in the flooded tunnel, load, play on to 12,600: same hash, repair levees built after the load), `SaveLoadTests.{RoundTrip_FutureEqual, MidFlee_RoundTrip_ContinuesIdentically, SaveSize_Day5_Under3MB}`, `WeatherTests.SaveLoad_MidDrought_MatchesContinuousRun`, `GoldenHashTests.*`. |
+| – | All tests green | check.sh 513 passed, 0 skipped; perf.sh 8 of 8 within budget. |
+
+- Screenshots: none new (no rendering or Godot code changed); the table cites screenshots of earlier tasks. The
+  harness still cannot run `SCRIPT=survival` (it enqueues every command at tick 1).
+- Weak spots for G3: the survival pump is on the open river and is dry for the whole drought plus ~300 ticks of
+  refill (the colony relies on 110 stored water); replanted crops all wither in the drought (41 withers, no second
+  harvest by day 10); berries fall 69 → 39 while 105 potatoes sit untouched to day 10; region rebuilds are ~77% of
+  tick time while the river drains (SIM-P1 2.46 ms of 8).
+- Next: M6-GATE (HUMAN-GATE G3: POC review).
