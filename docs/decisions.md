@@ -1630,3 +1630,30 @@ Consequences:
 - `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the 2-cell ledge at y + 1 now waits (`CourseBelow`) for the
   held column 5 cells away, instead of getting a job. The assertion was updated to the new rule.
 - Goldens are unchanged (the survival session has no plan entries).
+
+## ADR-069: The top bar wraps beside the toolbar; invalid cells are outlined red and drawn through blocks (2026-09-27, M9-T3)
+Context: G4 follow-up. In the monument shot at tick 14000 the top bar's first row (with the "Pump has no water"
+alert) and its plan line made the bar wider than the space right of the toolbar, and "Day 6" was drawn over
+"Cancel (Z)". The block tool's red cells were faint: a red cell sits in the solid block that makes it invalid, and
+the ghost was only 0.02 larger than that block, so the m9t1 blocks shot hid it almost fully. Stuck plan ghosts
+(VIEW-22) were a pink tint on light stone. The M9-T1 paint shot had the mouse label over the painted L.
+Decision:
+- **Wrap, then drop.** `HudLayout.ArrangeTopBar` (ViewCore) wraps the top bar's items (first row by item; the plan
+  line by `PlanText.Atoms`, each item with its header and the separator before it, which is dropped at a line
+  start) to the width between the toolbar (+ 12 px) and the right margin. The bar stays right-aligned at the top.
+  Only if one item is wider than that space does the bar move below the toolbar and wrap to the screen width. The
+  first row and the plan line each start their own line, as before. Wrapping was chosen over moving the bar,
+  because the bar then stays where the player looks for it; the colonist panel keeps the left side.
+- **Invalid cell style** (`InvalidCellStyle`): the unreachable red at alpha 0.8 plus 12 opaque dark red edge bars
+  0.1 cells thick. The tool ghost's invalid cells are their own mesh, 0.06 larger than the cell, drawn without a
+  depth test (`TranslucentMesh.XRay`), so a red cell inside or behind a block shows. Stuck Released plan ghosts use
+  the same fill and outline, inset like the other plan ghosts, with the depth test (there can be many of them).
+- **The mouse label avoids the tool ghost.** With the block tool, the ghost's projected box joins the billboards
+  that `LabelLayout.PlaceTooltip` keeps clear of (`ScreenRect.Bounding`, `BlockGhost.Bounds`).
+Consequences:
+- `BlockGhostMesher.Build` now holds only the valid cells, and `BuildInvalid` the red ones. The test
+  `ToolGhostMesh_PaletteColourOrRed` was updated to count the red cell in the second mesh (the behaviour changed on
+  purpose). `BadAlpha` and `PlanGhostMesher.StuckTint` are gone.
+- A red tool cell shows through hills and walls in front of it. That is wanted for the cursor's own ghost, where
+  the player is looking.
+- The mouse label can sit further from the cursor during a long drag (below or beside the whole drag).

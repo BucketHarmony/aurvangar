@@ -42,6 +42,28 @@ public sealed record PlanText(IReadOnlyList<PlanItem> Building, IReadOnlyList<Pl
         return runs;
     }
 
+    /// <summary>The line in wrap units (M9-T3): each item with the separator before it (", " or <see cref="Separator"/>,
+    /// dropped when the unit starts a line) and its runs; a part's header ("Building: ") stays with its first item.
+    /// Concatenated with their leads, the units are <see cref="Text"/>.</summary>
+    public List<PlanAtom> Atoms()
+    {
+        var atoms = new List<PlanAtom>();
+        void Part(string head, IReadOnlyList<PlanItem> items)
+        {
+            for (int i = 0; i < items.Count; i++)
+            {
+                string lead = i > 0 ? ", " : atoms.Count > 0 ? Separator : "";
+                var runs = new List<(string, bool)>(2);
+                if (i == 0) runs.Add((head, false));
+                runs.Add((items[i].Text, items[i].Short));
+                atoms.Add(new PlanAtom(lead, runs));
+            }
+        }
+        Part("Building: ", Building);
+        Part("Planned: ", Planned);
+        return atoms;
+    }
+
     private string Compose(Func<PlanItem, string> item)
     {
         var parts = new List<string>(2);
@@ -50,3 +72,7 @@ public sealed record PlanText(IReadOnlyList<PlanItem> Building, IReadOnlyList<Pl
         return string.Join(Separator, parts);
     }
 }
+
+/// <summary>One wrap unit of the plan line (<see cref="PlanText.Atoms"/>): the separator before it and its coloured
+/// runs.</summary>
+public sealed record PlanAtom(string Lead, IReadOnlyList<(string Text, bool Short)> Runs);

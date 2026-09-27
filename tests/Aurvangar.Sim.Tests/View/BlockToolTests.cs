@@ -189,9 +189,10 @@ public class BlockToolTests
         var blocks = new BlockColors(TestContent.Db);
         var entities = new EntityColors(TestContent.Db);
         var m = BlockGhostMesher.Build(ghost, blocks, entities);
-        Assert.Equal(4 * 6, m.QuadCount);
+        Assert.Equal(3 * 6, m.QuadCount);   // M9-T3: the red cell is its own mesh (drawn without a depth test)
         Assert.Equal(3 * 24, m.Colors.Count(c => c == blocks.Get(BlockId.Planks) with { W = BlockGhostMesher.Alpha }));
-        Assert.Equal(24, m.Colors.Count(c => c == entities.Unreachable with { W = BlockGhostMesher.BadAlpha }));
+        var bad = BlockGhostMesher.BuildInvalid(ghost, entities);
+        Assert.Equal(24, bad.Colors.Count(c => c == InvalidCellStyle.Fill(entities)));
     }
 
     [Fact]

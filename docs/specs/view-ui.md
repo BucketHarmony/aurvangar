@@ -74,7 +74,9 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
     jump of more than 64 cells is ignored.
   - The ghost shows the painted cells (or, with no drag, the one cell a click would place) in the block's palette
     colour. A cell that fails `BlockPlans.CanPlan` (with the painted cells as `pending`) is red, and its reason is in
-    the mouse label (`LabelLayout.PlaceTooltip`).
+    the mouse label (`LabelLayout.PlaceTooltip`). Red cells use `InvalidCellStyle` (M9-T3, ADR-069): a strong red
+    fill with a dark outline, a little larger than the cell and drawn without a depth test, so one inside or behind a
+    block shows. The mouse label keeps clear of the ghost's screen box.
   - P toggles plan mode. The tool label then shows "Plan", and the commands are sent with `Plan = true`.
   - Releasing the drag sends one `DesignateBuild(Single, c, c, 1, block, plan)` per valid cell, in support order
     (each cell after a neighbour below or beside it that is solid, planned or earlier in the order). With no valid
@@ -89,7 +91,8 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 - **VIEW-22** Plan entries render as translucent block-sized ghosts in the block's palette colour:
   - `Released` entries at alpha 0.45;
   - `Planned` entries at alpha 0.25, lightened;
-  - entries whose status is `GivenUp`, `NoAccess`, `WouldStrand` or `NoSupport` tinted red.
+  - Released entries whose status is `GivenUp`, `NoAccess`, `WouldStrand` or `NoSupport` red with a dark outline
+    (`InvalidCellStyle`, M9-T3).
 
   Ghosts above `SliceY` are hidden. Built blocks mesh as terrain (VIEW-03) with their palette colours. Hovering an
   entry shows its label and status text ("Stone wall: waiting for the block below").
@@ -103,7 +106,10 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 
 - **VIEW-15** Top bar: day, season + days left ("Wet season, 4 days left", orange in a drought, toast on change;
   ADR-050), speed, totals for log/stone/berries/potato/water. Alerts: no food, no water, pump has no water, and
-  "Unreachable: Water Pump, log pile x2" naming every JOB-12 given-up job source (M7-T5).
+  "Unreachable: Water Pump, log pile x2" naming every JOB-12 given-up job source (M7-T5). The bar sits at the top
+  right and never overlaps the toolbar (M9-T3, ADR-069): its items wrap (the first row by item, the VIEW-23 plan line
+  between items) to the width between the toolbar and the right edge; if one item is wider than that, the bar moves
+  below the toolbar. The layout is `HudLayout.ArrangeTopBar` (ViewCore).
 - **VIEW-16** Colonist panel (left): name, hunger/thirst/health bars, current job label. Click centers camera.
 - **VIEW-17** F3 debug overlay: FPS, sim ms per tick (avg over 60), water active cells, water step ms,
   path searches/s, region rebuild ms, open jobs by kind.

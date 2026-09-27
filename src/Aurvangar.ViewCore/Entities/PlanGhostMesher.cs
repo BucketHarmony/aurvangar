@@ -12,8 +12,8 @@ namespace Aurvangar.ViewCore.Entities;
 public readonly record struct PlanGhost(Int3 Cell, PlanEntry Entry, BuildStatus Status);
 
 /// <summary>Plan entries as translucent block-sized ghosts (VIEW-22, M8-T5) in the block's palette colour: Released at
-/// <see cref="ReleasedAlpha"/>, Planned lighter at <see cref="PlannedAlpha"/>, and red when the entry is stuck
-/// (<see cref="IsStuck"/>). Ghosts above the slice are hidden. Statuses come from one batched sim query
+/// <see cref="ReleasedAlpha"/>, Planned lighter at <see cref="PlannedAlpha"/>, and red with a dark outline when the entry is
+/// stuck (<see cref="IsStuck"/>, <see cref="InvalidCellStyle"/>, M9-T3). Ghosts above the slice are hidden. Statuses come from one batched sim query
 /// (<see cref="BlockPlans.Statuses"/>); the renderer refreshes them every <see cref="RefreshTicks"/> ticks or when an
 /// entry changes (<see cref="Signature"/>).</summary>
 public static class PlanGhostMesher
@@ -22,8 +22,6 @@ public static class PlanGhostMesher
     public const float PlannedAlpha = 0.25f;
     /// <summary>How far a Planned ghost's colour moves toward white.</summary>
     public const float PlannedLighten = 0.45f;
-    /// <summary>How far a stuck ghost's colour moves toward the unreachable red.</summary>
-    public const float StuckTint = 0.75f;
     /// <summary>Ghosts sit this far inside their cell, so they never z-fight with the terrain faces around them.</summary>
     public const float Inset = 0.04f;
     /// <summary>Statuses change with the world, not with entries; the view recomputes them this often (ticks).</summary>
@@ -46,8 +44,7 @@ public static class PlanGhostMesher
         var c = blocks.Get(g.Entry.Block);
         if (g.Entry.State == PlanState.Planned)
             return Vector4.Lerp(c, Vector4.One, PlannedLighten) with { W = PlannedAlpha };
-        if (IsStuck(g.Status)) c = Vector4.Lerp(c, entities.Unreachable, StuckTint);
-        return c with { W = ReleasedAlpha };
+        return IsStuck(g.Status) ? InvalidCellStyle.Fill(entities) : c with { W = ReleasedAlpha };
     }
 
     public static MeshData Build(IEnumerable<PlanGhost> ghosts, int sliceY, BlockColors blocks, EntityColors entities)
@@ -57,6 +54,11 @@ public static class PlanGhostMesher
         {
             if (g.Cell.Y > sliceY) continue;
             var c = g.Cell;
+            if (g.Entry.State == PlanState.Released && IsStuck(g.Status))
+            {
+                InvalidCellStyle.Add(mesh, c, -Inset, entities);
+                continue;
+            }
             MeshShapes.AddBox(mesh, new Vector3(c.X + Inset, c.Y + Inset, c.Z + Inset),
                 new Vector3(c.X + 1 - Inset, c.Y + 1 - Inset, c.Z + 1 - Inset), ColorOf(g, blocks, entities));
         }

@@ -19,6 +19,18 @@ public readonly record struct ScreenRect(float X, float Y, float W, float H)
     }
 
     public ScreenRect Inflate(float d) => new(X - d, Y - d, W + 2 * d, H + 2 * d);
+
+    /// <summary>The smallest rectangle holding every point (projected corners of a 3D box, M9-T3).</summary>
+    public static ScreenRect Bounding(IEnumerable<Vector2> points)
+    {
+        float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+        foreach (var p in points)
+        {
+            x0 = MathF.Min(x0, p.X); y0 = MathF.Min(y0, p.Y);
+            x1 = MathF.Max(x1, p.X); y1 = MathF.Max(y1, p.Y);
+        }
+        return x0 > x1 ? default : new ScreenRect(x0, y0, x1 - x0, y1 - y0);
+    }
 }
 
 /// <summary>Screen layout of the mouse label (VIEW-14/15, M7-T7): the build ghost tooltip, pile counts and farm hints

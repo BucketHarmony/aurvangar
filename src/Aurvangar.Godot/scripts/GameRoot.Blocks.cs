@@ -25,6 +25,7 @@ public partial class GameRoot
     private readonly DeconstructPaint _deconPaint = new();
     private BlockColors _blockColors = null!;
     private TranslucentMesh _blockGhostView = null!;
+    private TranslucentMesh _blockBadView = null!;
     private object? _shownGhost;
     private IReadOnlyList<Int3> _deconMarked = System.Array.Empty<Int3>();
     private int _planTextFrame;
@@ -42,6 +43,8 @@ public partial class GameRoot
         _blockColors = new BlockColors(Content);
         _blockGhostView = new TranslucentMesh { Name = "BlockGhost" };
         AddChild(_blockGhostView);
+        _blockBadView = new TranslucentMesh { Name = "BlockGhostInvalid", XRay = true };
+        AddChild(_blockBadView);
     }
 
     private void WireBlockHud()
@@ -141,6 +144,7 @@ public partial class GameRoot
         if (ReferenceEquals(ghost, _shownGhost)) return;
         _shownGhost = ghost;
         _blockGhostView.SetData(ghost == null ? null : BlockGhostMesher.Build(ghost, _blockColors, _entityColors));
+        _blockBadView.SetData(ghost == null ? null : BlockGhostMesher.BuildInvalid(ghost, _entityColors));
     }
 
     private void ShowMarks(IReadOnlyList<Int3> marked)
@@ -148,6 +152,7 @@ public partial class GameRoot
         if (ReferenceEquals(_shownGhost, _deconPaint)) return;
         _shownGhost = _deconPaint;
         _blockGhostView.SetData(marked.Count == 0 ? null : BlockGhostMesher.Marks(marked, BlockGhostMesher.DeconstructColor));
+        _blockBadView.SetData(null);
     }
 
     /// <summary>The block tool's and Release tool's mouse labels, and a hovered plan entry's status (VIEW-22).</summary>
@@ -192,5 +197,22 @@ public partial class GameRoot
         if (!now && ++_planTextFrame < PlanTextFrames) return;
         _planTextFrame = 0;
         _hud.TopBar.ShowPlan(TopBarModel.PlanText(Sim));
+    }
+
+    /// <summary>M9-T3: the block tool ghost's box on screen (its 8 projected corners), which the mouse label keeps clear
+    /// of; null with no ghost, another tool, or a corner behind the camera.</summary>
+    private ScreenRect? GhostScreenRect(Camera3D camera)
+    {
+        if (_tool.Tool != ToolKind.Blocks || BlockGhost is not { Cells.Count: > 0 } g) return null;
+        var (min, max) = g.Bounds();
+        var corners = new List<System.Numerics.Vector2>(8);
+        for (int i = 0; i < 8; i++)
+        {
+            var p = new Vector3((i & 1) == 0 ? min.X : max.X + 1, (i & 2) == 0 ? min.Y : max.Y + 1, (i & 4) == 0 ? min.Z : max.Z + 1);
+            if (camera.IsPositionBehind(p)) return null;
+            var s = camera.UnprojectPosition(p);
+            corners.Add(new System.Numerics.Vector2(s.X, s.Y));
+        }
+        return ScreenRect.Bounding(corners);
     }
 }

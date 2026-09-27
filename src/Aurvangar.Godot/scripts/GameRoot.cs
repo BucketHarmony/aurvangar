@@ -238,7 +238,11 @@ public partial class GameRoot : Node3D
             label = PileMesher.Label(Content, pile.Stack);
         if (label == null && Hover is { } fh) label = CropMesher.Label(Sim, fh);
         _labelAvoid.Clear();
-        if (label != null && GetViewport().GetCamera3D() is { } camera) BuildingView.CollectBillboardRects(camera, _labelAvoid);
+        if (label != null && GetViewport().GetCamera3D() is { } camera)
+        {
+            BuildingView.CollectBillboardRects(camera, _labelAvoid);
+            if (GhostScreenRect(camera) is { } ghostRect) _labelAvoid.Add(ghostRect);
+        }
         _hud.SetHoverLabel(label, LabelPoint(), _labelAvoid);
     }
 

@@ -2692,3 +2692,39 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   - Hand-painted single blocks (M9-T1) batch the same way, because batching works on entries, not commands.
   - A structure within 8 cells of another waits while the other's lower course is held.
   - Overlapping courses (less idle time) would need batches that span two courses.
+
+## M9-T3 — HUD: no top-bar overlap, clear invalid cells (2026-09-27)
+- Done: G4 follow-ups (ADR-069).
+  - **Top bar:** `HudLayout.ArrangeTopBar` (ViewCore) wraps the bar's items to the width between the toolbar and
+    the right edge. The first row wraps by item; the plan line wraps by `PlanText.Atoms` (an item with its header
+    and the separator before it, dropped at a line start). If one item is too wide, the bar moves below the toolbar.
+    `TopBarView` measures its labels, moves them between line boxes only when the wrap changes, and is placed by
+    the HUD each frame. Alerts are now one label each.
+  - **Invalid cells:** `InvalidCellStyle` is the unreachable red at alpha 0.8 with 12 opaque dark edge bars. The
+    block tool's red cells are a second mesh (`BlockGhostMesher.BuildInvalid`), 0.06 larger than the cell and drawn
+    without a depth test (`TranslucentMesh.XRay`). Stuck Released plan ghosts (VIEW-22) use the same fill and
+    outline.
+  - **Mouse label:** with the block tool it keeps clear of the ghost's projected box (`BlockGhost.Bounds`,
+    `ScreenRect.Bounding`), so it no longer covers the painted L.
+  - Docs: VIEW-15, VIEW-21, VIEW-22.
+- Tests: new `View/HudLayoutTests` (10 tests): flow wrap (fit, break, lead dropped, oversize item), the monument
+  bar wraps beside the toolbar, a too-wide item drops the bar below, 500 random widths and texts never overlap the
+  toolbar, plan atoms, `ScreenRect.Bounding`, the invalid-cell mesh (fill, outline, inflate, split from the valid
+  ghost) and stuck plan ghosts. They did not compile before the API existed. `ToolGhostMesh_PaletteColourOrRed`
+  now counts the red cell in the second mesh (behaviour changed on purpose; ADR-069). check.sh: 613 passed,
+  0 skipped, 0 failed. 0 warnings.
+- Decisions: ADR-069.
+- sim-reviewer: not run (no Aurvangar.Sim change).
+- Golden: unchanged (the sim is not touched).
+- Perf: n/a (view only; no sim, water or path change). perf.sh was not run.
+- Screenshots (Forward+, seed 1, looked at; before in `artifacts/screens/m9t3_before_*`):
+  - `artifacts/screens/m9t3_mon/monument.png` (`SCRIPT=monument TICKS=14000`): before, "Day 6" sat on "Cancel (Z)".
+    Now the bar starts right of the toolbar in three lines: day to totals, "Pump has no water", then
+    "Building: stone 88/81". The stuck plan ghost on the tower top is red with a dark outline.
+  - `artifacts/screens/m9t3_blocks/blocks.png` (`SCRIPT=blocks TICKS=2500`): before, the red cell was hidden in the
+    planks wall. Now it shows as an outlined red cube on the wall.
+  - `artifacts/screens/m9t3_paint/paint.png` (`SCRIPT=paint TICKS=1500`): the red cell where the stone drag crosses
+    the L is clear, and the mouse label sits below the drag, off the L.
+- Next: M9-T4 (more materials). New blocks appear in the Blocks menu on their own. The G5 gate can use the three
+  shots above. Build note: `dotnet build src/Aurvangar.Godot` hung once in the background with node reuse;
+  `-nodeReuse:false` fixed it.

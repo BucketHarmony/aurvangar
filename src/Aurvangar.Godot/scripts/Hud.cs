@@ -37,6 +37,7 @@ public partial class Hud : CanvasLayer
     public IReadOnlyList<(BlockId Id, string Label)> BlockTypes { get; set; } = System.Array.Empty<(BlockId, string)>();
 
     private readonly Dictionary<ToolKind, Button> _toolButtons = new();
+    private HBoxContainer _toolbar = null!;
     private MenuButton _buildButton = null!;
     private MenuButton _blocksButton = null!;
     private HBoxContainer _blockRow = null!;
@@ -61,6 +62,7 @@ public partial class Hud : CanvasLayer
         AddTool(bar, ToolKind.Release, "Release (L)");
         AddTool(bar, ToolKind.Deconstruct, "Deconstruct (X)");
         AddTool(bar, ToolKind.Cancel, "Cancel (Z)");
+        _toolbar = bar;
         AddChild(bar);
         AddBlockRow();
 
@@ -86,6 +88,9 @@ public partial class Hud : CanvasLayer
 
     public override void _Process(double delta)
     {
+        var view = GetViewport().GetVisibleRect().Size;
+        var tb = _toolbar.GetRect();
+        TopBar.Arrange(new ScreenRect(tb.Position.X, tb.Position.Y, tb.Size.X, tb.Size.Y), view.X);
         if (_blockRow.Visible) _blockRow.Position = new Vector2(8, GetViewport().GetVisibleRect().Size.Y - 76);
         if (!_toast.Visible) return;
         _toastLeft -= delta;

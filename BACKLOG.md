@@ -287,7 +287,7 @@ Human answers are in PROGRESS.md under "G4 answers". Right-drag orbit stays as i
   - Gather Ready cells ahead of the build front (up to the trip limit of 10), so one trip builds several blocks.
   - Scenario test: releasing the monument plan at once averages at least 4 blocks per trip. The monument still
     finishes by day 10 with all 5 dwarves alive. Run perf.sh. Regenerate goldens if needed and record why.
-- [ ] **M9-T3** HUD: no top-bar overlap, clear invalid cells · specs: VIEW-15, VIEW-21..23 · deps: M9-T1
+- [x] **M9-T3** HUD: no top-bar overlap, clear invalid cells · specs: VIEW-15, VIEW-21..23 · deps: M9-T1
   - A long plan line must not overlap the toolbar ("Day 7" was drawn over "Cancel (Z)"): wrap it or move it.
   - Red invalid-cell ghosts must be readable at monument camera distance: stronger colour or an outline.
   - Keep the layout logic in ViewCore with tests. Render screenshots and look at them.

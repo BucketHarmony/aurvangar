@@ -19,6 +19,12 @@ public readonly record struct GhostCell(Int3 Cell, PlanResult Result)
 public sealed record BlockGhost(BlockId Block, bool Plan, IReadOnlyList<GhostCell> Cells)
 {
     public int ValidCount => Cells.Count(c => c.Ok);
+
+    /// <summary>The inclusive cell box around every ghost cell (the mouse label keeps clear of it on screen, M9-T3).
+    /// Needs at least one cell.</summary>
+    public (Int3 Min, Int3 Max) Bounds() => (
+        new Int3(Cells.Min(c => c.Cell.X), Cells.Min(c => c.Cell.Y), Cells.Min(c => c.Cell.Z)),
+        new Int3(Cells.Max(c => c.Cell.X), Cells.Max(c => c.Cell.Y), Cells.Max(c => c.Cell.Z)));
 }
 
 /// <summary>What a block-tool release did: the commands to enqueue in order (empty when nothing is sent) and a message
