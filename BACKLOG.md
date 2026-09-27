@@ -389,7 +389,7 @@ starting wagon answers "I dont know where to get stone from".
   - The sim treats every shape as one solid cell for paths, support and water unless the spec says otherwise;
     record it in an ADR. The cost may vary by shape (integers).
   - Update docs/specs/construction.md. Tests.
-- [ ] **M11-T11** Godot: fine shapes at 0.25 m detail · specs: CON-*, VIEW-* · deps: M11-T10
+- [x] **M11-T11** Godot: fine shapes at 0.25 m detail · specs: CON-*, VIEW-* · deps: M11-T10
   - The mesher draws each shape from 0.25 m sub-cells (a 4x4x4 pattern per shape and rotation), keeping the
     MESH-P1 budget.
   - The block tool has a shape picker and R to rotate. The ghost shows the shape.

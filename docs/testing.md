@@ -70,7 +70,7 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
 | ECO-16 | moisture recompute ≤ 3 ms |
 | SIM-P1 | full `Tick()` median ≤ 8 ms on seed 1 with 5 agents at day 5 |
 | CON-P1 | full `Tick()` median ≤ 8 ms on seed 1 during the monument build (tick 13,000) |
-| MESH-P1 | greedy mesh one 32³ surface chunk ≤ 6 ms |
+| MESH-P1 | greedy mesh one 32³ surface chunk ≤ 6 ms (also with every column's top cell shaped, M11-T11) |
 
 ## Screenshot presets
 
@@ -99,6 +99,9 @@ up a wall face beside the L instead (`TICKS=1500`: the built L, and the 4x6 ghos
 `SCRIPT=stairs SHOTS=stairs` (M11-T8): a stair-down dig to stone north-east of the hall with a quarry room at its
 foot, and a straight-sided 3-cube pit beside it; the harness selects the dig tool in stair mode and hovers a waiting
 pit cell (`TICKS=700`: digging, the pit's lower cells "would trap a dwarf"; 2000: stair and room dug).
+`SCRIPT=shapes SHOTS=shapes TICKS=2400` (M11-T11): fine shapes built from the wagon's stock on the `blocks` site: a
+3-step Stone wall stair to a landing, two pillars under a Wood planks slab roof, Slate and planks slab rows, planned
+Polished stone stairs (shaped plan ghosts), and a held Slate stair drag of the block tool (shaped tool ghost).
 `SCRIPT=paint` (the timed `PaintScript`, M9-T1): single blocks painted with the player's block tool along drags, a
 planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
 `TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag

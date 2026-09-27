@@ -35,12 +35,14 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// <item><c>stairs</c> (M11-T8): the <see cref="StairScript"/> stair head and the pit beside it, sliced one level under
 /// the stair's top cell so the upper steps show as a slot in the cut; the dig tool in stair mode hovers a waiting pit
 /// cell.</item>
+/// <item><c>shapes</c> (M11-T11): the <see cref="ShapesScript"/> build of fine shapes (stair, pillars, slabs) with a
+/// stair drag of the block tool held.</item>
 /// <item><c>monument</c> (M8-T6): the <see cref="MonumentScript"/> tower and courtyard, with the hill quarry behind.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall", "stairs" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -55,6 +57,7 @@ public static class ScreenshotPresets
     public const float MaterialsYaw = 0f;
     public const float StairsYaw = 180f;
     public const float WallYaw = 130f;
+    public const float ShapesYaw = 330f;
 
     public static CameraShot For(string name, Simulation sim)
     {
@@ -139,6 +142,12 @@ public static class ScreenshotPresets
                 int slice = Math.Min(a.Y - 1, top);
                 var focus = new Vector3(a.X - 0.5f, slice - 1, a.Z - 3.5f);
                 return new CameraShot(name, focus, StairsYaw, 55f, 16f, slice);
+            }
+            case "shapes":
+            {
+                if (ShapesScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
+                var focus = new Vector3(s.X + BlocksScript.SiteW / 2f, s.Y + 1, s.Z + BlocksScript.SiteD / 2f);
+                return new CameraShot(name, focus, ShapesYaw, 35f, 11f, top);
             }
             case "slice":
             {

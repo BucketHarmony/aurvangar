@@ -3582,3 +3582,51 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     `CostOf(block, shape)`.
   - Rotations: 0 = +Z, 1 = +X, 2 = -Z, 3 = -X. A shape with 1 rotation must send rotation 0, or it is rejected
     with `BadRotation`.
+
+## M11-T11 — Godot: fine shapes at 0.25 m detail (2026-09-27)
+- Done: the CON-19 shapes are drawn and can be painted (VIEW-27, ADR-081).
+  - **Patterns:** ViewCore `ShapePattern` gives each form a 4x4x4 sub-cell mask (a `ulong`). `ShapeMesher` emits the
+    visible sub-cell faces, merged greedily per 4x4 layer (a slab or pillar is 6 quads).
+  - **Mesher:** `ChunkMesher` clears shaped cells from its padded grid, so full neighbours draw the faces the shape no
+    longer covers. It then draws each shaped cell at or below the slice, culling against the neighbours' patterns.
+    The top of a shaped cell on the slice is cut. Chunks without forms mesh exactly as before.
+  - **Picking:** `PickResolver` steps 0.1 cell (was 0.5) behind the hit, so slab tops and stair risers pick the
+    shaped cell.
+  - **Tool:** `BlockTool.Shapes`, `Form`, `SelectShape`, `NextShape` (V), `Rotate` (R). The options row has shape
+    buttons (data labels) and "Rotate (R)" for a stair. Release sends `DesignateBuild(..., Form)`. The ghost and
+    shortage use `CostOf(block, shape)` (was the Full cost at `BlockTool.cs:166,250`). The tool ghost's valid cells
+    and the plan ghosts draw the shape; red and amber cells stay cubes. Labels: "Wood planks slab", "Slate tiles
+    stair, climbing east". The plan hover text uses the same label, and `PlanGhostMesher.Signature` includes the form.
+  - **Screenshot:** a new `shapes` script and preset (`ShapesScript`). It builds a 3-step stair to a landing, two
+    pillars under a planks slab roof, Slate and planks slab rows and planned Polished stone stairs, and the harness
+    holds a Slate stair drag. `ShowBlockPaint` takes a form.
+  - Docs: view-ui.md (VIEW-27, a VIEW-21 note), construction.md, testing.md (MESH-P1 row, shapes shot),
+    screenshot.sh.
+- Tests: new `Meshing/ShapeMesherTests` (14 cases): patterns, slab, pillar, stair in 4 rotations (area 5.5 and tread
+  side), a full neighbour's uncovered face, shape on a block, slab/slab and slab/stair culling, a chunk border, slice
+  hide and cut, winding, inflated ghost. New `View/BlockShapeToolTests` (7): picker and rotation, release sends the
+  form and the sim plans it, shaped cost and shortage, shaped tool and plan ghost meshes, inner-face picks, and the
+  shapes script (seed 1: 3 stairs, 12 slabs and 4 pillars built by tick 2400 with no rejections). The mesher tests
+  failed first (shapes drew as full cubes); the tool tests failed to compile first (new API).
+  - check.sh: 711 passed, 0 skipped, 0 failed, 0 warnings.
+- Decisions: ADR-081.
+- Golden: unchanged (no sim change).
+- Headless (seed 1, 24,000 ticks): no commands `2d55f196360b3034`, `--script survival` `dd94bfaa6d6283b2`; both
+  unchanged.
+- Perf: perf.sh (serial, Release) 10 of 10 pass. There is a new MESH-P1 case: the busiest seed-1 chunk with every
+  column's top cell shaped (1,024 cells, 5,778 quads) has a median of 3.8 ms against a 6 ms budget. The plain chunk
+  is 0.65 ms, as before.
+- sim-reviewer: not run (no Aurvangar.Sim change).
+- Screenshot (Forward+, seed 1, looked at): `artifacts/screens/m11t11_shapes/shapes.png` (`SCRIPT=shapes TICKS=2400
+  SHOTS=shapes`).
+  - The stone stair shows six half-steps up to the landing.
+  - Two thin pillars hold the planks slab roof.
+  - The Slate (blue) and planks slab rows are half height.
+  - The planned Polished stone stairs are translucent stair shapes, and the held Slate stair ghost shows step
+    profiles.
+  - The options row reads "Slate tiles stair, climbing south" with Block/Slab/**Stair**/Pillar and Rotate (R). The
+    tooltip reads "Build Slate tiles stair, climbing south (3 blocks, 9 stone)".
+- Limitation (CON-21): the sim still treats every shape as a full cell. A dwarf walks on the cell's top, 0.5 above a
+  drawn slab, and stands on a pillar's full cell.
+- Next: M11-T3 (economy and crafting spec). `BlockTool.FormLabel` names a block in a shape. `ShapeMesher.EmitAlone`
+  draws a shape anywhere (for example a future workshop preview).

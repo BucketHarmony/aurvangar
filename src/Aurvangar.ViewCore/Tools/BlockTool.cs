@@ -21,8 +21,10 @@ public readonly record struct GhostCell(Int3 Cell, PlanResult Result, bool Short
 public readonly record struct GhostCost(ItemId Item, int PerBlock, int Free);
 
 /// <summary>The block tool's ghost (VIEW-21): the block, the plan flag, and each painted cell with its verdict.
-/// <see cref="Cost"/> is null when the ghost was made without stock or the block costs nothing.</summary>
-public sealed record BlockGhost(BlockId Block, bool Plan, IReadOnlyList<GhostCell> Cells, GhostCost? Cost = null)
+/// <see cref="Cost"/> is null when the ghost was made without stock or the block costs nothing. <see cref="Form"/> is the
+/// fine shape every cell takes (CON-19, M11-T11).</summary>
+public sealed record BlockGhost(BlockId Block, bool Plan, IReadOnlyList<GhostCell> Cells, GhostCost? Cost = null,
+    BlockForm Form = default)
 {
     public int ValidCount => Cells.Count(c => c.Ok);
 
@@ -54,20 +56,26 @@ public readonly record struct BlockClick(IReadOnlyList<DesignateBuild> Commands,
 /// <item>The ghost's verdicts come from one batched sim query (<see cref="BlockPlans.CanPlanAll"/>) with the painted
 /// cells as pending, recomputed when the cells change or every <see cref="GhostRecheckTicks"/> ticks.</item>
 /// <item>The tool stays active after a release; Esc leaves it and a right click drops the drag.</item>
+/// <item>M11-T11 (VIEW-27): every painted cell takes the tool's <see cref="Form"/>: a shape from the data (the shape
+/// picker, V cycles) and, for a stair, a rotation (R). The ghost shows the shape and prices it (CON-20).</item>
 /// </list></summary>
 public sealed class BlockTool
 {
     public const int GhostRecheckTicks = 5;
 
     private readonly List<BlockId> _blocks = new();
+    private readonly List<BlockShape> _shapes = new();
+    private readonly ContentDb _content;
     private PaintDrag? _drag;
     private BlockGhost? _cached;
     private FreeStock? _cachedStock;
-    private (int Version, Int3? Hover, BlockId Block, bool Plan) _cachedKey;
+    private (int Version, Int3? Hover, BlockId Block, bool Plan, BlockForm Form) _cachedKey;
     private long _cachedTick = long.MinValue;
 
     public BlockTool(ContentDb content)
     {
+        _content = content;
+        for (int i = 0; i < content.Shapes.Count; i++) _shapes.Add((BlockShape)i);
         foreach (BlockId id in Enum.GetValues<BlockId>())
             if (content.IsConstruction(id)) _blocks.Add(id);
         if (_blocks.Count == 0) throw new InvalidOperationException("BlockTool: no construction blocks");
@@ -79,6 +87,34 @@ public sealed class BlockTool
 
     public BlockId Block { get; private set; }
     public bool Plan { get; private set; }
+
+    /// <summary>CON-19: the shapes in id order (the shape picker lists them by label).</summary>
+    public IReadOnlyList<BlockShape> Shapes => _shapes;
+
+    /// <summary>The shape and rotation every painted cell takes (Full by default).</summary>
+    public BlockForm Form { get; private set; }
+
+    /// <summary>Picks a shape. A shape with one rotation always takes rotation 0 (the sim rejects any other,
+    /// <c>BadRotation</c>); a stair keeps the current rotation.</summary>
+    public void SelectShape(BlockShape shape)
+    {
+        if (!_shapes.Contains(shape)) return;
+        int rotations = _content.Shapes[(int)shape].Rotations;
+        Form = new BlockForm(shape, (byte)(Form.Rotation < rotations ? Form.Rotation : 0));
+    }
+
+    /// <summary>V: the next shape in the picker, wrapping.</summary>
+    public void NextShape() => SelectShape(_shapes[((int)Form.Shape + 1) % _shapes.Count]);
+
+    /// <summary>R: a quarter turn (a stair climbs toward +Z, +X, -Z, -X in turn). False for a shape with one
+    /// rotation.</summary>
+    public bool Rotate()
+    {
+        int rotations = _content.Shapes[(int)Form.Shape].Rotations;
+        if (rotations <= 1) return false;
+        Form = Form with { Rotation = (byte)((Form.Rotation + 1) % rotations) };
+        return true;
+    }
     public bool Dragging => _drag is not null;
 
     /// <summary>The drag in progress paints a vertical plane (it started on a side face, M10-T3).</summary>
@@ -143,12 +179,12 @@ public sealed class BlockTool
     /// block and mode are unchanged and fewer than <see cref="GhostRecheckTicks"/> ticks have passed.</summary>
     public BlockGhost? Ghost(Simulation sim, PickHit? hover, FreeStock? stock = null)
     {
-        var key = (_drag?.Version ?? -1, _drag is null && hover is { } h ? Anchor(h) : (Int3?)null, Block, Plan);
+        var key = (_drag?.Version ?? -1, _drag is null && hover is { } h ? Anchor(h) : (Int3?)null, Block, Plan, Form);
         if (_drag is null && hover is null) return null;
         long tick = sim.Clock.Tick;
         if (_cached is not null && _cachedKey == key && ReferenceEquals(_cachedStock, stock)
             && tick - _cachedTick < GhostRecheckTicks && tick >= _cachedTick) return _cached;
-        _cached = GhostFor(sim, Block, Plan, Cells(hover), stock);
+        _cached = GhostFor(sim, Block, Plan, Cells(hover), stock, Form);
         _cachedKey = key;
         _cachedStock = stock;
         _cachedTick = tick;
@@ -159,11 +195,12 @@ public sealed class BlockTool
     /// With <paramref name="stock"/> (M10-T2), the valid cells take the free units of the block's cost item bottom-up
     /// and then in paint order (<see cref="BottomUp"/>, the order they are sent in, M10-T3); the valid cells after the
     /// stock runs out are <see cref="GhostCell.Short"/>, so on a wall face the top cells are short. Invalid cells take
-    /// nothing.</summary>
-    public static BlockGhost GhostFor(Simulation sim, BlockId block, bool plan, IReadOnlyList<Int3> cells, FreeStock? stock = null)
+    /// nothing. The cost per block is the shaped cost of <paramref name="form"/> (CON-20).</summary>
+    public static BlockGhost GhostFor(Simulation sim, BlockId block, bool plan, IReadOnlyList<Int3> cells, FreeStock? stock = null,
+        BlockForm form = default)
     {
         var results = BlockPlans.CanPlanAll(sim, cells);
-        var (item, perBlock) = sim.Content.CostOf(block);
+        var (item, perBlock) = sim.Content.CostOf(block, form.Shape);
         GhostCost? cost = stock is not null && perBlock > 0 ? new GhostCost(item, perBlock, stock.Of(item, plan)) : null;
         int affordable = cost is { } gc ? gc.Free / gc.PerBlock : int.MaxValue;
         var list = new GhostCell[cells.Count];
@@ -174,7 +211,7 @@ public sealed class BlockTool
             list[k] = new GhostCell(cells[k], results[k], ok && valid >= affordable);
             if (ok) valid++;
         }
-        return new BlockGhost(block, plan, list, cost);
+        return new BlockGhost(block, plan, list, cost, form);
     }
 
     /// <summary>Left button up: ends the drag and returns one <c>DesignateBuild(Single)</c> per valid painted cell, in
@@ -182,14 +219,14 @@ public sealed class BlockTool
     public BlockClick Release(Simulation sim)
     {
         if (_drag is not { } drag) return new BlockClick(Array.Empty<DesignateBuild>(), null);
-        var ghost = GhostFor(sim, Block, Plan, drag.Cells);
+        var ghost = GhostFor(sim, Block, Plan, drag.Cells, form: Form);
         AbortDrag();
         var valid = ghost.Cells.Where(c => c.Ok).Select(c => c.Cell).ToList();
         if (valid.Count == 0)
             return new BlockClick(Array.Empty<DesignateBuild>(),
                 $"Can't build here: {ReasonText(ghost.Cells.FirstOrDefault().Result) ?? "nothing to build"}");
         var commands = SendOrder(sim, valid)
-            .Select(c => new DesignateBuild(BuildShape.Single, c, c, 1, Block, Plan))
+            .Select(c => new DesignateBuild(BuildShape.Single, c, c, 1, Block, Plan, Form))
             .ToList();
         return new BlockClick(commands, null);
     }
@@ -244,10 +281,10 @@ public sealed class BlockTool
     /// then the controls.</summary>
     public static string Tooltip(Simulation sim, BlockGhost g)
     {
-        string label = sim.Content.LabelOf(g.Block);
+        string label = FormLabel(sim.Content, g.Block, g.Form);
         string mode = g.Plan ? "Plan" : "Build";
         int valid = g.ValidCount;
-        var (item, cost) = sim.Content.CostOf(g.Block);
+        var (item, cost) = sim.Content.CostOf(g.Block, g.Form.Shape);
         string costText = cost > 0 ? $", {valid * cost} {sim.Content.ItemDef(item).Name.ToLowerInvariant()}" : "";
         var lines = new List<string> { $"{mode} {label} ({valid} block{(valid == 1 ? "" : "s")}{costText})" };
         if (StockText(sim, g) is { } stockText) lines.Add(stockText);
@@ -275,7 +312,20 @@ public sealed class BlockTool
     }
 
     /// <summary>The controls line of the tooltip.</summary>
-    public const string ControlsHint = "Click a face: one block. Drag from a top face: a course; from a side face: a wall. P plan";
+    public const string ControlsHint = "Click a face: one block. Drag from a top face: a course; from a side face: a wall. P plan, V shape, R rotate";
+
+    /// <summary>The block's label, then the shape for a form that is not Full ("Stone wall", "Wood planks slab",
+    /// "Slate tiles stair, climbing east"; CON-19 rotations: 0 south (+Z), 1 east (+X), 2 north, 3 west).</summary>
+    public static string FormLabel(ContentDb content, BlockId block, BlockForm form)
+    {
+        string label = content.LabelOf(block);
+        if (form.Shape == BlockShape.Full) return label;
+        string shape = $"{label} {content.Shapes[(int)form.Shape].Label.ToLowerInvariant()}";
+        return content.Shapes[(int)form.Shape].Rotations > 1 ? $"{shape}, climbing {Heading(form.Rotation)}" : shape;
+    }
+
+    /// <summary>The compass word of a stair rotation (+Z is south, +X east).</summary>
+    public static string Heading(byte rotation) => (rotation & 3) switch { 0 => "south", 1 => "east", 2 => "north", _ => "west" };
 
     /// <summary>Player-facing text for a CON-08 result (null for Ok).</summary>
     public static string? ReasonText(PlanResult r) => r switch

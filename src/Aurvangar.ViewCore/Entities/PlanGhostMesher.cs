@@ -59,18 +59,25 @@ public static class PlanGhostMesher
                 InvalidCellStyle.Add(mesh, c, -Inset, entities);
                 continue;
             }
+            if (!g.Entry.Form.IsFull)
+            {
+                // VIEW-27 (M11-T11): the entry's shape, from 0.25 m sub-cells, inset like the cube.
+                ShapeMesher.EmitAlone(mesh, new Vector3(c.X + Inset, c.Y + Inset, c.Z + Inset), 1 - 2 * Inset,
+                    ShapePattern.Of(g.Entry.Form), ColorOf(g, blocks, entities));
+                continue;
+            }
             MeshShapes.AddBox(mesh, new Vector3(c.X + Inset, c.Y + Inset, c.Z + Inset),
                 new Vector3(c.X + 1 - Inset, c.Y + 1 - Inset, c.Z + 1 - Inset), ColorOf(g, blocks, entities));
         }
         return mesh;
     }
 
-    /// <summary>Fingerprint of the entries (cells, blocks, states), so the view rebuilds when one changes.</summary>
+    /// <summary>Fingerprint of the entries (cells, blocks, states, forms), so the view rebuilds when one changes.</summary>
     public static ulong Signature(Simulation sim)
     {
         var h = StateHasher.Create();
         h.Add(sim.Plans.Count);
-        foreach (var (c, e) in sim.Plans.All) { h.Add(c); h.Add((byte)e.Block); h.Add((byte)e.State); }
+        foreach (var (c, e) in sim.Plans.All) { h.Add(c); h.Add((byte)e.Block); h.Add((byte)e.State); h.Add(e.Form.Packed); }
         return h.Value;
     }
 
@@ -81,7 +88,7 @@ public static class PlanGhostMesher
         if (hover is not { } h) return null;
         var cell = h.Adjacent;
         if (cell.Y > sliceY || sim.Plans.Get(cell) is not { } e || sim.Plans.StatusOf(sim, cell) is not { } s) return null;
-        return $"{sim.Content.LabelOf(e.Block)}: {StatusText(sim, e.Block, s)}";
+        return $"{Tools.BlockTool.FormLabel(sim.Content, e.Block, e.Form)}: {StatusText(sim, e.Block, s)}";
     }
 
     /// <summary>Player text of a CON-05 status.</summary>

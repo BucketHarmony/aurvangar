@@ -78,7 +78,7 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 
 - **VIEW-21** Block tool (hotkey K, toolbar "Blocks"). Single blocks since M9-T1 (G4 answer "building should be one
   square at a time", ADR-067, which amends ADR-065):
-  - A block picker lists the construction blocks from `ContentDb` by their `label`. There are no shape modes and no
+  - A block picker lists the construction blocks from `ContentDb` by their `label` (fine shapes: VIEW-27). There are no shape modes and no
     height control in the player's tool; the sim keeps the `DesignateBuild` shapes for scripts and tests (CON-07).
   - A click on a block face plans or places one block in the cell that face looks into (`PickHit.Adjacent`): a top
     face stacks upward, a side face places beside.
@@ -124,6 +124,27 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
     `Needed(Planned)` against `Storage.Totals`.
   - An item whose need exceeds its stock is orange.
   - The text is built in ViewCore (`TopBarModel.PlanText`).
+
+- **VIEW-27** Fine shapes (M11-T11, CON-19, ADR-081). Everything below lives in ViewCore with unit tests.
+  - `ShapePattern` turns a form into a 4x4x4 pattern of 0.25 m sub-cells (one bit each in a `ulong`): Full all,
+    Slab the lower half, Stair the lower half plus the upper half on the high side (rotation 0 climbs toward +Z,
+    1 +X, 2 -Z, 3 -X), Pillar the middle 0.5 x 0.5 post.
+  - `ChunkMesher` counts a shaped cell as not solid for the full cells around it, so they draw the faces the shape no
+    longer covers. It then draws each shaped cell (at or below the slice) with `ShapeMesher`: a sub-cell face shows
+    where the sub-cell beside it is empty, in the same cell or across the side in the neighbour (a full solid
+    neighbour covers the whole side; above the slice is air). Faces of one layer merge greedily in the 4x4 grid, so a
+    slab or pillar is 6 quads. A shaped cell on the slice with a solid cell above has its top-plane faces cut
+    (VIEW-04). MESH-P1 also holds with a surface chunk full of shapes.
+  - Picking steps 0.1 cell behind the hit face (`PickResolver.Depth`), less than a sub-cell, so a hit on a slab's top
+    or a stair's riser resolves to the shaped cell.
+  - The block tool has a shape picker in its options row (the data's shape labels: Block, Slab, Stair, Pillar), V for
+    the next shape, and R (and a Rotate button, shown for a stair) for a quarter turn. A shape with one rotation
+    always sends rotation 0. Every painted cell takes the tool's form (`DesignateBuild.Form`). The ghost's valid cells
+    and the plan ghosts draw the shape; red and amber cells stay whole cubes. Labels read "Wood planks slab" or
+    "Slate tiles stair, climbing east" (+Z is south, +X east).
+  - The ghost's cost, the shortage (amber) and the tooltip use the shaped cost `CostOf(block, shape)` (CON-20).
+  - Limitation: the sim treats every shape as a full solid cell (CON-21). A dwarf walks on the top of the cell, so it
+    stands 0.5 above a drawn slab and floats beside a pillar.
 
 ## HUD
 

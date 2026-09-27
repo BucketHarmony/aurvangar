@@ -9,7 +9,8 @@ namespace Aurvangar.Client;
 /// the colonist panel (VIEW-16), a short-lived message line (quick save / load results, refused commands) and the
 /// label that follows the mouse (pile counts VIEW-10, build and deconstruct tooltips VIEW-14, farm tiles and the farm
 /// tool's moisture hint, M6-T5). M8-T5 adds the Blocks menu (block picker), the Release tool and the block options row
-/// (block, Plan, Release all; VIEW-21; single blocks since M9-T1, so no shape or height controls).</summary>
+/// (block, Plan, Release all; VIEW-21; single blocks since M9-T1, so no height controls). M11-T11 adds the shape picker
+/// and Rotate to that row (VIEW-27).</summary>
 public partial class Hud : CanvasLayer
 {
     public const double ToastSeconds = 3.0;
@@ -26,6 +27,10 @@ public partial class Hud : CanvasLayer
     public event System.Action<BlockId>? BlockChosen;
     public event System.Action? PlanToggled;
 
+    /// <summary>VIEW-27: a shape picked in the block options row, and the Rotate button (M11-T11).</summary>
+    public event System.Action<BlockShape>? ShapeChosen;
+    public event System.Action? RotatePressed;
+
     /// <summary>VIEW-24: a dig mode picked in the dig options row.</summary>
     public event System.Action<DigMode>? DigModeChosen;
     public event System.Action? ReleaseAllPressed;
@@ -39,6 +44,9 @@ public partial class Hud : CanvasLayer
     /// <summary>Construction blocks (id, label) for the Blocks menu; set by GameRoot before the node enters the tree.</summary>
     public IReadOnlyList<(BlockId Id, string Label)> BlockTypes { get; set; } = System.Array.Empty<(BlockId, string)>();
 
+    /// <summary>CON-19 shapes (shape, label) for the shape picker; set by GameRoot before the node enters the tree.</summary>
+    public IReadOnlyList<(BlockShape Shape, string Label)> ShapeTypes { get; set; } = System.Array.Empty<(BlockShape, string)>();
+
     private readonly Dictionary<ToolKind, Button> _toolButtons = new();
     private HBoxContainer _toolbar = null!;
     private MenuButton _buildButton = null!;
@@ -47,6 +55,8 @@ public partial class Hud : CanvasLayer
     private Button _planButton = null!;
     private Label _blockLabel = null!;
     private Label _hintLabel = null!;
+    private readonly Dictionary<BlockShape, Button> _shapeButtons = new();
+    private Button _rotateButton = null!;
     private Label _toast = null!;
     private Label _hoverLabel = null!;
     private HBoxContainer _digRow = null!;
@@ -122,7 +132,8 @@ public partial class Hud : CanvasLayer
 
     /// <summary>VIEW-21: the block options row shows while the Blocks or Release tool is active; the Blocks button
     /// starts with the block's label, "Plan: Stone wall" in plan mode. It sits at the bottom left, above the toast.</summary>
-    public void SetBlockOptions(ToolKind tool, string blockLabel, bool plan)
+    /// VIEW-27 (M11-T11): the shape buttons (V cycles) and Rotate (R), shown while a shape with rotations is picked.
+    public void SetBlockOptions(ToolKind tool, string blockLabel, bool plan, BlockShape shape = BlockShape.Full, bool canRotate = false)
     {
         bool blocks = tool == ToolKind.Blocks;
         _blockRow.Visible = blocks || tool == ToolKind.Release;
@@ -131,6 +142,12 @@ public partial class Hud : CanvasLayer
         _hintLabel.Visible = blocks;
         _planButton.Visible = blocks;
         _planButton.SetPressedNoSignal(plan);
+        foreach (var (s, b) in _shapeButtons)
+        {
+            b.Visible = blocks;
+            b.SetPressedNoSignal(s == shape);
+        }
+        _rotateButton.Visible = blocks && canRotate;
     }
 
     /// <summary>VIEW-24: the dig options row (Box, Stair down) shows while the dig tool is active.</summary>
@@ -207,6 +224,16 @@ public partial class Hud : CanvasLayer
         _blockLabel = OutlinedLabel("");
         _blockLabel.AddThemeFontSizeOverride("font_size", 16);
         _blockRow.AddChild(_blockLabel);
+        foreach (var (shape, label) in ShapeTypes)
+        {
+            var b = new Button { Text = label, ToggleMode = true, FocusMode = Control.FocusModeEnum.None, TooltipText = "V: next shape" };
+            b.Pressed += () => ShapeChosen?.Invoke(shape);
+            _blockRow.AddChild(b);
+            _shapeButtons[shape] = b;
+        }
+        _rotateButton = new Button { Text = "Rotate (R)", FocusMode = Control.FocusModeEnum.None };
+        _rotateButton.Pressed += () => RotatePressed?.Invoke();
+        _blockRow.AddChild(_rotateButton);
         _hintLabel = OutlinedLabel(BlockToolHint);
         _blockRow.AddChild(_hintLabel);
         _planButton = new Button { Text = "Plan (P)", ToggleMode = true, FocusMode = Control.FocusModeEnum.None };

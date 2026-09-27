@@ -44,10 +44,13 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// straight-sided pit beside it. <c>--ticks 500</c> shows the stair being dug; later the pit's waiting cells say "would
 /// trap a dwarf". The harness holds the dig tool in stair mode and hovers a waiting cell. The <c>stairs</c> preset
 /// looks at it.</item>
+/// <item><c>shapes</c> (M11-T11): <see cref="ShapesScript"/>, a stair, pillars under a slab roof, slab rows and planned
+/// stairs; the harness holds a stair drag of the block tool. <c>--ticks 2400</c> shows it built (the <c>shapes</c>
+/// preset).</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall", "stairs" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -79,6 +82,8 @@ public static class ScreenshotScripts
                 return MaterialsScript.Commands(sim);
             case "stairs":
                 return StairScript.Commands(sim);
+            case "shapes":
+                return ShapesScript.Commands(sim);
             case "build":
                 return BuildScript(sim);
             case "farm":

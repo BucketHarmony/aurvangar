@@ -6,7 +6,7 @@ using Godot;
 namespace Aurvangar.Client;
 
 /// <summary>Keyboard and mouse input of <see cref="GameRoot"/>: slice keys (VIEW-04), speed keys (VIEW-01), F3
-/// (VIEW-17), F5/F9 (VIEW-19), tool hotkeys and tool drags (VIEW-12, VIEW-13; T toggles stair digging, VIEW-24), B and R for the build tool (VIEW-14).
+/// (VIEW-17), F5/F9 (VIEW-19), tool hotkeys and tool drags (VIEW-12, VIEW-13; T toggles stair digging, VIEW-24), B and R for the build tool (VIEW-14); P, V and R with the block tool (VIEW-21, VIEW-27).
 /// The drag logic is <see cref="ToolController"/> (ViewCore); this file only forwards events and enqueues the
 /// resulting command. A right click aborts a tool drag; a right-drag orbits the camera (CameraRig, M7-T1).</summary>
 public partial class GameRoot

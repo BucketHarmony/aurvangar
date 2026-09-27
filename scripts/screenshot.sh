@@ -9,7 +9,8 @@
 # survival = the timed SurvivalScript (commands at their ticks): TICKS=8000 SHOTS=tunnel flooded tunnel, 14400 SHOTS=reservoir,tunnel drought;
 # paint = single blocks painted with the block tool, TICKS=1500 SHOTS=paint; wall = the same with a vertical drag held, SHOTS=wall; materials = one sample of every
 # construction block, TICKS=12000 SHOTS=materials; stairs = a stair-down dig and a pit with its wait reason hovered,
-# TICKS=700 SHOTS=stairs; blocks, monument: see docs/testing.md).
+# TICKS=700 SHOTS=stairs; shapes = a stair, pillars and slabs with a stair ghost held, TICKS=2400 SHOTS=shapes;
+# blocks, monument: see docs/testing.md).
 # GHOST (none): a building id whose build ghost is shown, e.g. GHOST=levee SCRIPT=build (M11-T1).
 # Run `dotnet build src/Aurvangar.Godot` first after code changes (--build-solutions may not rebuild).
 set -euo pipefail

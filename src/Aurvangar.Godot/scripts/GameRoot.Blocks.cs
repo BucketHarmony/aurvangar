@@ -12,7 +12,7 @@ namespace Aurvangar.Client;
 /// <summary>Block construction in <see cref="GameRoot"/> (VIEW-21..23; M8-T5, single blocks since M9-T1): the block tool
 /// (K) that paints one block per cell with its ghost and plan mode (P); the Deconstruct tool's per-block marks; the
 /// Release tool (L) and "Release all"; plan ghosts; the plan's material line in the top bar; amber ghost cells beyond
-/// the free stock (M10-T2). The rules are
+/// the free stock (M10-T2); the shape picker, V and R (VIEW-27, M11-T11). The rules are
 /// <see cref="BlockTool"/>, <see cref="DeconstructPaint"/>, <see cref="PaintDrag"/>, <see cref="PlanGhostMesher"/> and
 /// <see cref="TopBarModel.PlanText"/> (ViewCore); this file forwards input and enqueues the commands.</summary>
 public partial class GameRoot
@@ -54,17 +54,28 @@ public partial class GameRoot
     {
         _hud.BlockChosen += block => { _blocks.Select(block); SetTool(ToolKind.Blocks); };
         _hud.PlanToggled += () => { _blocks.TogglePlan(); SyncBlockHud(); };
+        _hud.ShapeChosen += shape => { _blocks.SelectShape(shape); SetTool(ToolKind.Blocks); };
+        _hud.RotatePressed += () => { _blocks.Rotate(); SyncBlockHud(); };
         _hud.ReleaseAllPressed += () => Sim.Enqueue(ToolController.ReleaseAll(Sim.World));
     }
 
     private IReadOnlyList<(BlockId, string)> BlockTypes() =>
         _blocks.Blocks.Select(b => (b, Content.LabelOf(b))).ToList();
 
-    /// <summary>Keys of the block tool (P: plan mode); true when the key was used.</summary>
+    private IReadOnlyList<(BlockShape, string)> ShapeTypes() =>
+        _blocks.Shapes.Select(s => (s, Content.Shapes[(int)s].Label)).ToList();
+
+    /// <summary>Keys of the block tool (P: plan mode; V: next shape, R: rotate, VIEW-27); true when the key was used.</summary>
     private bool BlockKey(InputEventKey key)
     {
-        if (_tool.Tool != ToolKind.Blocks || key.Echo || key.Keycode != Key.P) return false;
-        _blocks.TogglePlan();
+        if (_tool.Tool != ToolKind.Blocks || key.Echo) return false;
+        switch (key.Keycode)
+        {
+            case Key.P: _blocks.TogglePlan(); break;
+            case Key.V: _blocks.NextShape(); break;
+            case Key.R: _blocks.Rotate(); break;
+            default: return false;
+        }
         SyncBlockHud();
         return true;
     }
@@ -179,15 +190,18 @@ public partial class GameRoot
     }
 
     /// <summary>The block options row and the Blocks button follow the tool state.</summary>
-    private void SyncBlockHud() => _hud.SetBlockOptions(_tool.Tool, Content.LabelOf(_blocks.Block), _blocks.Plan);
+    private void SyncBlockHud() => _hud.SetBlockOptions(_tool.Tool, BlockTool.FormLabel(Content, _blocks.Block, _blocks.Form), _blocks.Plan,
+        _blocks.Form.Shape, Content.Shapes[(int)_blocks.Form.Shape].Rotations > 1);
 
     /// <summary>Screenshot harness (M9-T1): the block tool with a paint drag held from <paramref name="start"/> along
     /// the cursor cells <paramref name="path"/> (picking is off; a pick on the last cell becomes the pick override, for
     /// the mouse label).</summary>
-    public void ShowBlockPaint(PickHit start, IReadOnlyList<Int3> path, BlockId block)
+    public void ShowBlockPaint(PickHit start, IReadOnlyList<Int3> path, BlockId block, BlockForm form = default)
     {
         SetTool(ToolKind.Blocks);
         _blocks.Select(block);
+        _blocks.SelectShape(form.Shape);
+        while (_blocks.Form.Rotation != form.Rotation && _blocks.Rotate()) { }
         _blocks.Press(start);
         foreach (var c in path) _blocks.DragTo(c);
         var last = _blocks.Painted[^1];

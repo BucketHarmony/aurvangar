@@ -7,7 +7,8 @@ namespace Aurvangar.ViewCore.Entities;
 /// <summary>The block tool's ghost (VIEW-21, M8-T5, M9-T1): one translucent cube per painted cell in the block's palette
 /// colour where CON-08 allows it (<see cref="Build"/>). Cells it does not allow are a separate mesh
 /// (<see cref="BuildInvalid"/>, M9-T3) in the <see cref="InvalidCellStyle"/>, which the view draws without a depth test,
-/// so a red cell inside or behind a built block still shows. Slightly larger than a cell, so it shows over plan ghosts.</summary>
+/// so a red cell inside or behind a built block still shows. Slightly larger than a cell, so it shows over plan ghosts.
+/// A valid cell of a shaped ghost (M11-T11, VIEW-27) is drawn in its shape; red and amber cells stay whole cubes.</summary>
 public static class BlockGhostMesher
 {
     public const float Alpha = 0.55f;
@@ -34,6 +35,13 @@ public static class BlockGhostMesher
             if (!g.Ok) continue;
             var c = g.Cell;
             if (g.Short) { ShortCellStyle.Add(mesh, c, Inflate, entities); continue; }
+            if (!ghost.Form.IsFull)
+            {
+                // VIEW-27: the shape the cell will take, from its 0.25 m sub-cells, inflated like the cube.
+                ShapeMesher.EmitAlone(mesh, new Vector3(c.X - Inflate, c.Y - Inflate, c.Z - Inflate), 1 + 2 * Inflate,
+                    ShapePattern.Of(ghost.Form), color);
+                continue;
+            }
             MeshShapes.AddBox(mesh, new Vector3(c.X - Inflate, c.Y - Inflate, c.Z - Inflate),
                 new Vector3(c.X + 1 + Inflate, c.Y + 1 + Inflate, c.Z + 1 + Inflate), color);
         }

@@ -336,7 +336,7 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 ## Fine block shapes (CON-19..22)
 
 G6 follow-up: "Can we have a .25 meter pixel?" The human chose fine shapes on the 1 m grid, drawn at 0.25 m detail,
-rather than a 0.25 m sim grid (ADR-080). This task (M11-T10) is the sim; the mesher and tool are M11-T11.
+rather than a 0.25 m sim grid (ADR-080). M11-T10 is the sim; the mesher and tool are M11-T11 (VIEW-27, ADR-081).
 
 - **CON-19** Shapes and forms.
   - `BlockShape : byte { Full = 0, Slab = 1, Stair = 2, Pillar = 3 }`. They are defined in data, in a `shapes` list in

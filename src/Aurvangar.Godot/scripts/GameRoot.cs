@@ -86,7 +86,7 @@ public partial class GameRoot : Node3D
         AddChild(_overlay);
         ReadyBuildTools();
         ReadyBlockTools();
-        _hud = new Hud { Name = "Hud", Buildable = _build.Buildable.Select(d => (d.Id, d.Name)).ToList(), BlockTypes = BlockTypes() };
+        _hud = new Hud { Name = "Hud", Buildable = _build.Buildable.Select(d => (d.Id, d.Name)).ToList(), BlockTypes = BlockTypes(), ShapeTypes = ShapeTypes() };
         AddChild(_hud);
         WireBlockHud();
         ReadyDigTools();

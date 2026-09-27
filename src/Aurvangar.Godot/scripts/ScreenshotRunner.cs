@@ -54,6 +54,9 @@ public partial class ScreenshotRunner : Node
             root.ShowBlockPaint(paint.Start, paint.Path, Aurvangar.Sim.World.BlockId.Masonry);   // M9-T1
         if (args.Script == "wall" && Aurvangar.ViewCore.Scripts.PaintScript.WallDrag(root.Sim) is { } wall)
             root.ShowBlockPaint(wall.Start, wall.Path, Aurvangar.Sim.World.BlockId.Planks);   // M10-T3
+        if (args.Script == "shapes" && Aurvangar.ViewCore.Scripts.ShapesScript.GhostDrag(root.Sim) is { } shapes)
+            root.ShowBlockPaint(shapes.Start, shapes.Path, Aurvangar.Sim.World.BlockId.Slate,
+                Aurvangar.ViewCore.Scripts.ShapesScript.StairSouth);   // M11-T11
         if (args.Script == "stairs")
             root.ShowStairTool(Aurvangar.ViewCore.Scripts.StairScript.TooltipPick(root.Sim));   // M11-T8
 

@@ -1970,3 +1970,26 @@ Decision:
 Consequences: no golden or headless hash changes (no script paints shapes, and a Full form adds nothing to the hash).
 ViewCore still draws every built block full and prices the paint ghost and shortage with the Full cost; M11-T11 adds
 the mesher patterns, the shape picker and rotation, and switches those to `CostOf(block, shape)`.
+
+## ADR-081: Fine shapes are drawn from 4x4x4 sub-cell patterns; shaped cells leave the greedy pass (2026-09-27, M11-T11)
+Context: M11-T11 draws the CON-19 shapes at 0.25 m detail and adds them to the block tool (VIEW-27).
+Decision:
+- **Patterns, not meshes.** Each form is a 64-bit mask of 4x4x4 sub-cells (`ShapePattern`), built from the CON-19
+  geometry. The same emitter (`ShapeMesher`) draws the terrain, the tool ghost and the plan ghosts, and a new shape is
+  one more pattern.
+- **Mesher split.** A shaped cell is cleared from the padded grid, so the full cells' greedy pass draws every face
+  toward it, as toward air. The shaped cell then culls its own sub-faces against the neighbours' patterns (a full
+  solid neighbour covers its whole side). A full face that the shape partly covers is still drawn whole, behind the
+  shape. This costs a few hidden pixels, gives no coplanar pairs (the shape never draws the face against the full
+  cell), and keeps the greedy pass unchanged. Shaped faces merge only within one cell's 4x4 layer, not across cells.
+- **Picking** steps 0.1 cell behind the hit instead of 0.5, so inner faces (slab tops at 0.5, stair risers) resolve
+  to the shaped cell. 0.1 is below the 0.25 m sub-cell and far above float error at world coordinates.
+- **Tool.** V cycles shapes (P and T were taken; Tab was avoided on purpose in M9-T1) and R turns a stair. R already
+  rotates the Build tool; each tool reads it only while active. The shape stays chosen between releases and block
+  changes. A one-rotation shape resets the rotation to 0, so the sim never sees `BadRotation`.
+- **Ghost styles.** Only valid cells show the shape. Red (invalid) and amber (short) cells keep their whole-cube
+  styles, so the warning stays as visible as before.
+Consequences: MESH-P1 has a second case with every top cell of the busiest seed-1 chunk shaped (1,024 cells, about
+5,800 quads, median about 3.8 ms Release against 6 ms). The sim is unchanged: every shape is still a full solid cell
+(CON-21), so a dwarf stands on the cell's top, 0.5 above a drawn slab. No golden changes.
+

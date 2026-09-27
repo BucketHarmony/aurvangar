@@ -1,4 +1,5 @@
 using System.Numerics;
+using Aurvangar.Sim.Core;
 using Aurvangar.Sim.World;
 
 namespace Aurvangar.ViewCore.Meshing;
@@ -7,7 +8,8 @@ namespace Aurvangar.ViewCore.Meshing;
 /// Rules: faces between two solid cells are culled (including across chunk borders); coplanar adjacent faces of the
 /// same block type and same cut flag merge into one quad; cells with y &gt; sliceY count as Air; top faces of solid
 /// cells at y == sliceY whose above cell is solid in the real world are "cut" faces (darkened color, counted in
-/// CutQuadCount). Positions are in world coordinates (1 unit = 1 cell, cell (x,y,z) spans [x, x+1]).</summary>
+/// CutQuadCount). Positions are in world coordinates (1 unit = 1 cell, cell (x,y,z) spans [x, x+1]). Built cells with a
+/// fine shape (CON-19) are drawn from 0.25 m sub-cells (VIEW-27, M11-T11).</summary>
 public static class ChunkMesher
 {
     private const int S = VoxelWorld.ChunkSize;
@@ -19,6 +21,7 @@ public static class ChunkMesher
     {
         int ox = cx * S, oy = cy * S, oz = cz * S;
         var pad = FillPadded(world, ox, oy, oz, sliceY);
+        var shaped = ClearShaped(world, pad, ox, oy, oz, sliceY);
         var mesh = new MeshData();
         var mask = new int[S * S];
         Span<int> c = stackalloc int[3];
@@ -55,7 +58,48 @@ public static class ChunkMesher
                 }
             }
         }
+        if (shaped != null) EmitShaped(mesh, world, shaped, sliceY, colors);
         return mesh;
+    }
+
+    /// <summary>VIEW-27 (M11-T11): cells that are not Full (CON-19) count as not solid in the padded grid, so the full
+    /// cells around them draw the faces the shape no longer covers. Returns this chunk's shaped cells at or below the
+    /// slice (null when there are none); they are meshed by <see cref="EmitShaped"/>.</summary>
+    private static List<(Int3 Cell, BlockForm Form)>? ClearShaped(VoxelWorld world, byte[] pad, int ox, int oy, int oz, int sliceY)
+    {
+        if (world.FormCount == 0) return null;
+        List<(Int3, BlockForm)>? inside = null;
+        foreach (var (index, form) in world.Forms)
+        {
+            var c = world.CellOf(index);
+            int lx = c.X - ox, ly = c.Y - oy, lz = c.Z - oz;
+            if (c.Y > sliceY || lx < -1 || lx > S || ly < -1 || ly > S || lz < -1 || lz > S) continue;
+            pad[(lx + 1) + (lz + 1) * P + (ly + 1) * P * P] = 0;
+            if (lx >= 0 && lx < S && ly >= 0 && ly < S && lz >= 0 && lz < S) (inside ??= new()).Add((c, form));
+        }
+        return inside;
+    }
+
+    private static readonly Int3[] SlotSteps = { Int3.East, Int3.West, Int3.Up, Int3.Down, Int3.South, Int3.North };
+
+    /// <summary>VIEW-27: each shaped cell from its 0.25 m sub-cells (<see cref="ShapeMesher"/>); a neighbour above the
+    /// slice is air, a full solid one covers the whole side. The top of a shaped cell on the slice with a solid cell
+    /// above is cut (VIEW-04).</summary>
+    private static void EmitShaped(MeshData mesh, VoxelWorld world, List<(Int3 Cell, BlockForm Form)> cells, int sliceY, BlockColors colors)
+    {
+        Span<ulong> around = stackalloc ulong[6];
+        foreach (var (c, form) in cells)
+        {
+            for (int s = 0; s < 6; s++)
+            {
+                var n = c + SlotSteps[s];
+                around[s] = n.Y > sliceY || !world.IsSolid(n.X, n.Y, n.Z) ? ShapePattern.Empty : ShapePattern.Of(world.FormAt(n));
+            }
+            var id = world.GetBlock(c);
+            bool cut = c.Y == sliceY && world.IsSolid(c.X, c.Y + 1, c.Z);
+            ShapeMesher.Emit(mesh, new Vector3(c.X, c.Y, c.Z), 1f, ShapePattern.Of(form), around,
+                colors.Get(id), colors.GetCut(id), cut);
+        }
     }
 
     /// <summary>Copy the chunk plus a one-cell border into a padded grid of visible block ids (0 = not solid or above

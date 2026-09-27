@@ -12,15 +12,20 @@ public readonly record struct PickHit(Int3 Cell, Int3 Normal)
 }
 
 /// <summary>Turns a ray hit on chunk collision into a cell and face normal (VIEW-05). The engine does the ray cast;
-/// this snaps the hit normal to the dominant axis and steps half a cell back along it, into the solid cell.</summary>
+/// this snaps the hit normal to the dominant axis and steps <see cref="Depth"/> back along it, into the solid cell. The
+/// step is less than a 0.25 m sub-cell, so a hit on a fine shape's inner face (a slab's top at 0.5, a stair's riser; VIEW-27)
+/// resolves to the shaped cell.</summary>
 public static class PickResolver
 {
+    /// <summary>How far behind the hit point the solid cell is sampled (cells).</summary>
+    public const float Depth = 0.1f;
+
     /// <summary>Returns null when the cell is outside the world or above <paramref name="sliceY"/> (slicing on:
     /// picks above the view level are ignored).</summary>
     public static PickHit? Resolve(VoxelWorld world, Vector3 point, Vector3 normal, int sliceY)
     {
         var n = SnapNormal(normal);
-        var inside = point - new Vector3(n.X, n.Y, n.Z) * 0.5f;
+        var inside = point - new Vector3(n.X, n.Y, n.Z) * Depth;
         var cell = new Int3((int)MathF.Floor(inside.X), (int)MathF.Floor(inside.Y), (int)MathF.Floor(inside.Z));
         if (!world.InBounds(cell) || cell.Y > sliceY) return null;
         return new PickHit(cell, n);
