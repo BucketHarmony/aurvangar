@@ -184,8 +184,9 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   - A stand cell is a walkable cell `c` in reach of the target `T` (26-neighborhood, ARCH-07) with `c != T` and
     `c != T + down`. The block would take either the stand cell or its headroom.
   - Cells rejected by the strand filter (CON-14) are dropped.
-  - Prefer stand cells that have no entry and whose floor has no Dig mark. If there are none, use all stand cells.
-    This mirrors `DigStandCells`.
+  - Prefer stand cells that have no entry, whose floor has no Dig mark, and that lie in a living agent's region
+    (M8-T6, ADR-066: a free cell no dwarf can reach, such as the top of an unfinished wall, must not hide the
+    reachable cells). If there are none, use all stand cells. This mirrors `DigStandCells`.
   - Order is ascending cell index.
 
   A dwarf may stand on built blocks. A wall taller than 2 is built from stand cells on lower courses, or from a

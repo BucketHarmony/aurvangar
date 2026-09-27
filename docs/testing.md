@@ -57,6 +57,9 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
   park the test on efficiency cores). ADR-052.
 - SIM-P1 runs seed 1 with `SurvivalScript` to tick 12,000 and times 500 `Tick()` calls. It prints the water and
   region phase totals; during the day-5 drought, region rebuilds are most of the tick.
+- CON-P1 (`MonumentPerfTests`) runs seed 1 with `MonumentScript` to tick 13,000 (the tower's middle courses) and
+  times 500 `Tick()` calls against the SIM-P1 budget. It prints the Build poster's phase total
+  (`TickPhase.BlockBuild`) and the place trial's exact checks and cut computes.
 
 | ID | Budget |
 |---|---|
@@ -66,6 +69,7 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
 | PTH-P2 | region rebuild ≤ 25 ms |
 | ECO-16 | moisture recompute ≤ 3 ms |
 | SIM-P1 | full `Tick()` median ≤ 8 ms on seed 1 with 5 agents at day 5 |
+| CON-P1 | full `Tick()` median ≤ 8 ms on seed 1 during the monument build (tick 13,000) |
 | MESH-P1 | greedy mesh one 32³ surface chunk ≤ 6 ms |
 
 ## Screenshot presets
@@ -74,7 +78,8 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
 y=20 over the hill); these four are the default `SHOTS`. `farm` (close-up on the farm tiles, the hub when there are
 none; M6-T5) is available with `SHOTS=...,farm`. For the survival session (M7-T7), `tunnel` (the hill tunnel and
 its breach, sliced at y=18, from the east) and `reservoir` (the levee reservoir at x=67 and the farm beside it, from
-the south over the river). Output to `artifacts/screens/<preset>.png`. Human gates review them.
+the south over the river). For the monument session (M8-T6), `monument` (the tower and courtyard, from the
+south-west, yaw 30°). Output to `artifacts/screens/<preset>.png`. Human gates review them.
 
 Shots render with Forward+ (`--rendering-method forward_plus` on the default Vulkan driver), the renderer the game
 plays in, so they show the same lighting and colors as play (ADR-035). There is no separate Compatibility render.
@@ -86,7 +91,8 @@ the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the 
 `SCRIPT=survival` (the timed `SurvivalScript`, each command enqueued at its tick, M7-T7). Useful survival shots:
 `TICKS=7700 SHOTS=tunnel` (flooded tunnel, breach levee sites), `TICKS=8400 SHOTS=tunnel` (levees complete),
 `TICKS=3000 SHOTS=reservoir` (full reservoir), `TICKS=14400 SHOTS=reservoir,tunnel,river` (drought: the river is
-empty, the reservoir and the tunnel still hold water). The harness does not rebuild the C# assembly reliably:
+empty, the reservoir and the tunnel still hold water). `SCRIPT=monument` (the timed `MonumentScript`, M8-T6):
+`TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 15000 (tower half built), 18600 (complete). The harness does not rebuild the C# assembly reliably:
 run `dotnet build src/Aurvangar.Godot` after code changes, before `screenshot.sh`.
 
 ## Scripted play
@@ -108,7 +114,13 @@ the survival scenario (`SurvivalScenarioTests`), and `run-headless.sh --script s
 | 7500 | levee repair (N+300): a levee on each breach cell; the flood is walled off |
 | 9600 | seal levee on the reservoir mouth `(67,17,71)`; the reservoir holds through the drought (M7-T3) |
 
-`run-headless.sh --script digchop` (also `none`, `build`, `farm` and `survival`) runs the screenshot harness's `ScreenshotScripts` command list
+`Scripts.MonumentScript` (M8-T6, ADR-066) is the monument session on seed 1: chop, a pump, a corridor and quarry
+room dug into the hill's stone with two warehouses inside it, and a planned hollow 7×7, 8-high Masonry tower (door,
+inner stair) plus a courtyard wall. `EnqueueDue` releases the plan one course at a time from tick 9600, driven by
+the plan state (a loaded save carries on the same way). Used by `MonumentScenarioTests`, CON-P1 and
+`run-headless.sh --script monument`.
+
+`run-headless.sh --script digchop` (also `none`, `build`, `farm`, `survival` and `monument`) runs the screenshot harness's `ScreenshotScripts` command list
 (ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a
 `work:` line (marks left, piles, stored items, path searches, trapped agents) and a `colony:` line (season, complete
 buildings by type, pumps flagged NoWater, farm tiles and crop states, storage by item) per report, and a final

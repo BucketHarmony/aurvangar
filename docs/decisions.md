@@ -1509,3 +1509,41 @@ Consequences:
 - Seed-1 goldens and the survival hash are unchanged.
 - On seed 1 the Stone wall does not get built in the `blocks` shot: the digchop pit is 2 deep, and stone starts 5
   below the surface (GEN-04). The top bar shows this as a short "stone 18/0", which is useful to see.
+
+## ADR-066: Monument session: buffer haul priority, reachable stand cells, course-by-course release (2026-09-27, M8-T6)
+Context: M8-T6 needs a scripted session on seed 1 that quarries stone and raises a hollow 7×7, 8-high tower with a
+door and an inner stair, plus a courtyard wall, by day 10 with all 5 dwarves alive. Early versions of the script
+showed two sim problems and a weak spot in batching:
+- With many Dig and Build jobs open (priority 25), the pump buffer's Haul (20) waited behind them. The pump stopped
+  at a full buffer, the hub ran dry, and in some script versions the colony died of thirst.
+- `JobGoals.BuildStandCells` preferred free stand cells even when no dwarf could reach them. The top of a
+  half-built courtyard wall was such a cell: the Build job's only goal was unreachable, JOB-12 struck it three
+  times and gave up the cell (seen at (63,26,45)), and every cell above it waited forever.
+- CON-12 posts a job as soon as one cell is Ready. When a whole plan is released at once, cells turn Ready one at a
+  time as the courses below finish, and batches averaged about 1.3 blocks, so dwarves walked to the warehouse for
+  almost every block.
+Decision:
+- **Buffer haul priority (BLD-14).** The pump buffer's Haul is posted at `Pumps.BufferHaulPriority`, the OperatePump
+  priority (40). Water is the colony's life; it should not queue behind building work.
+- **Reachable stand-cell preference (CON-11).** The preferred set keeps only safe cells whose region holds a living
+  agent. If none remains, all stand cells are used as before. Unit test:
+  `BlockBuildScenarioTests.PreferredStand_OnlyWhereADwarfCanReach` (fails without the fix).
+- **Profiler phase.** `TickPhase.BlockBuild` wraps `BlockBuildSystem.Tick`, so CON-P1 can print the Build poster's
+  time. Not state; no hash or save change.
+- **The script (`MonumentScript`, ViewCore).** At tick 0 it chops around the site, places a pump, digs a corridor
+  into the hill, plans the tower (a `HollowBox` with the door cells cancelled and two stair flights inside) and four
+  courtyard walls. The quarry room is dug at 1500 (the stone lies about 5 cells down). Two warehouses stand inside the
+  quarry room (4200 and 6600), so the stone never overflows to the far hub. There is no reservoir: the river pump is
+  enough. From tick 9600 `EnqueueDue` releases the plan one course (y level) at a time: the lowest course with a
+  Planned entry is released once the course below has no entries left. The rule reads only plan state, so a loaded
+  save carries on the same way (the save/load test checks this every 100 ticks for 2000 ticks).
+- **Tried and reverted.** A CON-05 "WaitsBelow" rule (hold a cell while the one below is unbuilt) and a change to
+  when `BlockBuildSystem` rechecks statuses. Neither changed the outcome once the release was course by course.
+Consequences:
+- The monument is complete at tick 18,316 (day 7.6), all 5 alive, no dwarf out of the Great Hall's region at any
+  100-tick check, no floating block, no rejected command. Without the priority change it still completes (20,403),
+  but the survival margin is thinner.
+- The priority change alters the survival session: the seed-1 goldens at ticks 3000 and 6000 were regenerated.
+- Dwarves stand idle between courses while the last cells of a course finish. A future task could post Build jobs
+  in larger batches (for example, wait a few ticks for more Ready cells nearby) instead of relying on a script's
+  release order; players releasing a whole plan will see small batches.

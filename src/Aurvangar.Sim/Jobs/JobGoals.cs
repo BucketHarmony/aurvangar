@@ -87,24 +87,42 @@ public static class JobGoals
     /// except the cell itself and the one below it (the block would take the stand cell or its headroom), ascending
     /// index. <paramref name="strandFree"/> drops cells the placement would cut off from the Great Hall
     /// (<see cref="PlaceStrand"/>, CON-14). <paramref name="prefer"/> keeps only cells with no plan entry and no Dig mark
-    /// on their floor when there are any (like <see cref="DigStandCells"/>).</summary>
+    /// on their floor when there are any (like <see cref="DigStandCells"/>) and one of them is in a living agent's region
+    /// (M8-T6, ADR-066): a free cell no dwarf can reach, such as the top of a lower wall beside the target, is no
+    /// preference, and preferring it alone would leave a Ready job no dwarf can do.</summary>
     public static List<Int3> BuildStandCells(Simulation sim, Int3 target, bool strandFree, bool prefer)
     {
         var grid = sim.PathGrid;
         bool check = strandFree && sim.PlaceTrial.MaySplit(target);
         var all = new List<Int3>();
         var safe = new List<Int3>();
+        SortedSet<int>? reach = prefer ? AgentRegions(sim) : null;
         for (int dy = -1; dy <= 1; dy++)
             for (int dz = -1; dz <= 1; dz++)
                 for (int dx = -1; dx <= 1; dx++)
                 {
-                    if (dz == 0 && dx == 0 && dy <= 0) continue;   // the cell itself and the one below it
+                    if (dz == 0 && dx == 0 && dy <= 0) continue;  // the cell itself and the one below it
                     var c = target + new Int3(dx, dy, dz);
                     if (!grid.IsWalkable(c)) continue;
                     if (check && PlaceStrand.Strands(sim, target, c)) continue;
                     all.Add(c);
-                    if (prefer && !sim.Plans.Has(c) && sim.Designations.Get(c + Int3.Down) != DesignationMark.Dig) safe.Add(c);
+                    if (reach is not null && !sim.Plans.Has(c) && sim.Designations.Get(c + Int3.Down) != DesignationMark.Dig
+                        && reach.Contains(sim.Regions.RegionOf(c)))
+                        safe.Add(c);
                 }
         return safe.Count > 0 ? safe : all;
+    }
+
+    /// <summary>The regions living agents stand in.</summary>
+    private static SortedSet<int> AgentRegions(Simulation sim)
+    {
+        var set = new SortedSet<int>();
+        foreach (var a in sim.Agents.All)
+        {
+            if (!a.IsAlive) continue;
+            int r = sim.Regions.RegionOf(a.Cell);
+            if (r != Paths.Regions.None) set.Add(r);
+        }
+        return set;
     }
 }

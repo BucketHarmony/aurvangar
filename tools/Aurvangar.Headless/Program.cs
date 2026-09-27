@@ -8,7 +8,7 @@ using Aurvangar.ViewCore.Screenshots;
 using Aurvangar.ViewCore.Scripts;
 
 // Headless runner. Usage:
-//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script none|digchop|build|farm|survival]
+//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script none|digchop|build|farm|survival|blocks|monument]
 // Prints world stats, per-interval sim stats and the final StateHash. Exit code 0 on success.
 // Later milestones extend the per-interval report (agents alive, jobs, storage, water).
 
@@ -21,18 +21,23 @@ Console.WriteLine($"world: seed={opts.Seed} size={sim.World.SizeX}x{sim.World.Si
 PrintWorldStats(sim);
 
 // ADR-036: "none"/"digchop"/"build"/"farm" are the screenshot harness scripts (ViewCore), enqueued before tick 1 exactly as
-// the harness does. ADR-045: "survival" is SurvivalScript, whose commands are enqueued at their ticks.
+// the harness does. ADR-045: "survival" is SurvivalScript and (M8-T6) "monument" is MonumentScript, whose commands are
+// enqueued at their ticks (ScreenshotScripts.IsTimed).
 Baseline? baseline = null;
-bool survival = opts.Script == "survival";
+bool timed = opts.Script is not null && ScreenshotScripts.IsTimed(opts.Script);
 var knownScripts = ScreenshotScripts.Names;
 if (opts.Script is not null && !knownScripts.Contains(opts.Script))
 {
     Console.Error.WriteLine($"unknown script '{opts.Script}' (known: {string.Join(",", knownScripts)})");
     return 2;
 }
-if (survival)
+if (timed && opts.Script == "survival")
 {
     Console.WriteLine($"script: survival ({SurvivalScript.Commands.Count} commands at ticks 0..{SurvivalScript.LastTick})");
+}
+else if (timed)
+{
+    Console.WriteLine($"script: monument ({MonumentScript.Commands.Count} commands at ticks 0..{MonumentScript.LastTick}, then one release per course from tick {MonumentScript.ReleaseTick})");
 }
 else if (opts.Script is not null)
 {
@@ -48,7 +53,7 @@ WorkTracker? tracker = opts.Script is not null ? new WorkTracker() : null;
 var runClock = Stopwatch.StartNew();
 for (int t = 0; t < opts.Ticks; t++)
 {
-    if (survival) SurvivalScript.EnqueueDue(sim);
+    if (timed) ScreenshotScripts.EnqueueDue(opts.Script!, sim);
     long start = Stopwatch.GetTimestamp();
     sim.Tick();
     tickTimes.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);

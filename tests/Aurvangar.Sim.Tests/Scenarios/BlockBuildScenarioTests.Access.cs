@@ -144,4 +144,38 @@ public partial class BlockBuildScenarioTests
         Assert.Empty(sim.GiveUps.All);
         Assert.DoesNotContain(TopBarModel.Build(sim, 1).Alerts, a => a.StartsWith(TopBarModel.UnreachablePrefix));
     }
+
+    /// <summary>CON-11 preference (M8-T6, ADR-066): the block beside a two-high stone pillar can be placed from the
+    /// pillar's top, a free cell no dwarf can reach (a step of two), or from the ground around it, whose cells all carry
+    /// plan entries. The preference for free stand cells counts only reachable ones, so the Build job goes to the
+    /// ground cells: the block is placed, nothing fails and nothing is given up. (It used to go to the pillar top alone,
+    /// and the job was struck as unreachable until given up, as on the monument's courtyard wall top.)</summary>
+    [Fact]
+    public void PreferredStand_OnlyWhereADwarfCanReach()
+    {
+        var sim = new ScenarioBuilder().Ground(G - 1)
+            .FillBox(new Int3(10, G, 10), new Int3(10, G + 1, 10), BlockId.Stone)
+            .Hub(HubOrigin).Stock("stone", 10)
+            .Agent(new Int3(14, G, 14)).Agent(new Int3(15, G, 14)).Build();
+        var target = new Int3(11, G + 1, 10);
+        var pillarTop = new Int3(10, G + 2, 10);
+        Designate(sim, BuildShape.Wall, new Int3(10, G, 9), new Int3(12, G, 9), plan: true);
+        Designate(sim, BuildShape.Wall, new Int3(12, G, 10), new Int3(12, G, 10), plan: true);
+        Designate(sim, BuildShape.Wall, new Int3(10, G, 11), new Int3(12, G, 11), plan: true);
+        Designate(sim, BuildShape.Wall, target, target, plan: true);
+        Assert.Equal(8, sim.Plans.Count);
+        Assert.True(sim.PathGrid.IsWalkable(pillarTop));
+        int hall = sim.Regions.RegionOf(HallEntrance);
+        Assert.NotEqual(hall, sim.Regions.RegionOf(pillarTop));
+
+        var goals = JobGoals.BuildStandCells(sim, target, strandFree: true, prefer: true);
+        Assert.NotEqual(new[] { pillarTop }, goals);   // no preference: every stand cell, the ground ones too
+        Assert.Contains(goals, c => sim.Regions.RegionOf(c) == hall);
+
+        sim.Enqueue(new Commands.ReleasePlan(target, target));
+        RunUntil(sim, () => sim.World.GetBlock(target) == BlockId.Masonry, 3000);
+        Assert.Equal(0, sim.Counters.JobsFailed);
+        Assert.Empty(sim.GiveUps.All);
+        Assert.Equal(7, sim.Plans.Count);
+    }
 }

@@ -99,7 +99,9 @@ public sealed class Simulation
         NeedsSystem.Tick(this);                  // 6
         Buildings.Tick(this);                    // 7
         DesignationSystem.Tick(this);            // 8
+        Profiler?.Begin(TickPhase.BlockBuild);
         BlockBuildSystem.Tick(this);             // 8  CON-04 upkeep, CON-12 Build jobs
+        Profiler?.End(TickPhase.BlockBuild);
         HaulSystem.Tick(this);                   // 9
         Agents.Tick(this);                       // 10
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)

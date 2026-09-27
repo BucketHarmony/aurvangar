@@ -2366,3 +2366,36 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     with `CanPlanAll`). `ScreenshotScripts.Names` now includes "blocks"; add "monument" the same way.
   - A stone monument needs a quarry deeper than 5 cells (dirt fills h-4..h-1), or it will sit at NoMaterial.
   - `BlockPlans.Statuses` is the cheap way to count entries by status in scenario asserts.
+
+## M8-T6 — Monument scenario (2026-09-27)
+- Done:
+  - `MonumentScript` (ViewCore): quarry into the hill, two warehouses in the quarry room, a hollow 7×7, 8-high Masonry
+    tower with a 2-high door and an inner stair, a 2-high courtyard wall with a gate; the plan is released course by
+    course from tick 9600, driven by plan state.
+  - `ScreenshotScripts` and `ScreenshotPresets` register "monument" (timed); `run-headless.sh --script monument`.
+  - Sim (about 40 lines): the pump buffer Haul runs at the OperatePump priority (BLD-14); Build stand cells prefer
+    only cells a living dwarf can reach (CON-11 bug fix: unreachable preferred stands caused give-ups);
+    `TickPhase.BlockBuild` profiler phase.
+  - Specs: CON-11, BLD-14, JOB-05 note; docs/testing.md (script, preset, CON-P1).
+- Tests: the 4 M8-T6 placeholders moved to `Scenarios/MonumentScenarioTests` with bodies (complete by day 10 with all
+  alive; no dwarf walled in and no floating block every 100 ticks; save/load at 12,000 identical every 100 ticks for
+  2,000; script registered and harness hash at 3000 equals `MonumentScript.Run`). `PendingAcceptanceTests.cs` was
+  empty and is deleted. New: `Perf/MonumentPerfTests.SimP1_DuringMonumentBuild`, `PumpTests.BufferHaul_OutranksDigAndBuild`,
+  `BlockBuildScenarioTests.PreferredStand_OnlyWhereADwarfCanReach`. check.sh: 595 passed, 0 skipped, 0 failed.
+- Decisions: ADR-066.
+- sim-reviewer: not run (Aurvangar.Sim change about 40 lines).
+- Golden: regenerated: the pump buffer Haul priority (20 → 40) changes the survival session. Tick 3000
+  `8283dd6fdae77ad6` → `900c5586280f3a34`, tick 6000 `8fdcd9964d3947f1` → `37a2ae88bb18d81f`; ticks 0 and 1200
+  unchanged. Headless survival 24,000 ticks: all 5 alive, 0 failed jobs, hash `e1ddb97096eb0267`.
+- Perf: perf.sh all 9 passed. CON-P1 (ticks 13,000-13,499): median 0.085 ms, p95 1.03 ms, max 3.16 ms; blocks 97 →
+  113 of 221; Build poster 49.1 ms and regions 36 ms over the 500 ticks; place trial 677 exact checks, 6 cut
+  computes. SIM-P1 median 2.34 ms.
+- Monument: complete at tick 18,316 (day 7.6), 221 blocks, all 5 alive, no rejected commands, 227 stone stored by
+  tick 9600. Headless `--script monument --ticks 24000`: 1 failed job, hash `f4e783f7bf7e8725`, 3,916 ticks/s.
+- Screenshots (`SCRIPT=monument SHOTS=monument`): 11000 shows the first courses and plan ghosts, with some dwarves
+  idle waiting for the next course; 15000 the tower half built; 18600 the finished tower, stair top and courtyard
+  gate. The quarry is inside the hill and not visible. HUD issue: when the plan line is long, the top bar overlaps
+  the toolbar ("Day 7" over "Cancel (Z)"); this predates M8-T6.
+- Next: M8-GATE (HUMAN-GATE G4). Show the monument shots (TICKS 11000/15000/18600). Known weak spots for the gate:
+  idle dwarves between courses, small Build batches when a whole plan is released at once (ADR-066), the HUD
+  overlap above.

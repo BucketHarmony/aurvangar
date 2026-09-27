@@ -257,7 +257,7 @@ record the new ADR in M8-T1.
   - A tool with shape modes, height set by drag or the slice level, and ghost blocks coloured by material. Invalid
     cells are red with a reason. Plan blocks render as translucent ghosts; built blocks render as terrain. The HUD
     shows material needed versus stored. Keep logic in ViewCore with tests. Render screenshots and look.
-- [ ] **M8-T6** Monument scenario · specs: CON-P1, CON-09 and CON-14 invariants · deps: M8-T5
+- [x] **M8-T6** Monument scenario · specs: CON-P1, CON-09 and CON-14 invariants · deps: M8-T5
   - A MonumentScript (seed 1) plans and releases a stone tower (at least 7x7, 8 high, hollow, with a door) plus a
     walled courtyard. Dwarves quarry stone by digging the hill. Tests: it completes by day 10 with all 5 alive,
     no dwarf is walled in, no floating block exists, and a save/load mid-build continues identically. Run

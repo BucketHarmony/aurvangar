@@ -49,6 +49,29 @@ public class PumpTests
         Assert.Equal(ActionResult.InvalidTarget, sim.Actions.DeliverTo(worker.Id, pump.Id));
     }
 
+    /// <summary>BLD-14 (M8-T6, ADR-066): the buffer haul runs at the OperatePump priority, above Dig (and Build, Chop):
+    /// the only dwarf takes the full buffer to the hub before it starts on an open dig, so a busy colony keeps its
+    /// pump running.</summary>
+    [Fact]
+    public void BufferHaul_OutranksDigAndBuild()
+    {
+        Assert.Equal(Job.DefaultPriority(JobKind.OperatePump), Pumps.BufferHaulPriority);
+        Assert.True(Pumps.BufferHaulPriority > Job.DefaultPriority(JobKind.Dig));
+        Assert.True(Pumps.BufferHaulPriority > Job.DefaultPriority(JobKind.Build));
+
+        var sim = BasinWorld(WaterGrid.Full, agents: 1).Storage("pump", PumpOrigin).Build();
+        var pump = Pump(sim);
+        pump.Stored[Water.Value] = pump.Def.Producer!.Buffer;
+        sim.Enqueue(new DesignateDig(new Int3(12, Bank - 1, 5), new Int3(14, Bank - 1, 7)));
+        sim.Tick();
+        Assert.Contains(sim.Jobs.All, j => j.Kind == JobKind.Dig);
+        var haul = Assert.Single(sim.Jobs.All, Pumps.IsBufferHaul);
+        Assert.Equal(Pumps.BufferHaulPriority, haul.Priority);
+        var dwarf = sim.Agents.All.Single();
+        RunUntil(sim, () => dwarf.CurrentJob.IsValid, 50);
+        Assert.Equal(JobKind.Haul, sim.Jobs.Get(dwarf.CurrentJob)!.Kind);
+    }
+
     [Fact]
     public void Deconstruct_WorkedPump_StopsWorker_DropsBuffer_WaterReachesHub()
     {

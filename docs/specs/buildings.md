@@ -98,7 +98,8 @@ checked right after `Overlaps` (CON-08).
   NoWater is also refreshed from the intake level every tick, and no OperatePump job is kept while it is set.
   The worker cycles until the buffer is full or the pump is NoWater (ADR-042).
 - **BLD-14** When the buffer is ≥ 5, a Haul job moves water to the hub (all unpromised buffer stock, at most 10;
-  ADR-042).
+  ADR-042). The haul has the OperatePump priority (40), above Dig, Chop and Build, so a busy colony keeps its water
+  coming (M8-T6, ADR-066).
 
 ## Acceptance scenarios
 

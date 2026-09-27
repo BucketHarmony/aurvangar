@@ -13,6 +13,11 @@ namespace Aurvangar.Sim.Buildings;
 /// (<see cref="Building.Progress"/> = cycle ticks, <see cref="Building.Stored"/> = buffer) and the job board.</summary>
 public static class Pumps
 {
+    /// <summary>BLD-14 (M8-T6, ADR-066): the buffer haul's priority, the OperatePump priority (JOB-05). At the plain
+    /// Haul priority (20) any open Dig, Chop or Build job (25) outranks it, the buffer fills, the pump stops, and a
+    /// colony busy building dies of thirst beside a full pump.</summary>
+    public static readonly int BufferHaulPriority = Job.DefaultPriority(JobKind.OperatePump);
+
     public static void Tick(Simulation sim)
     {
         var operate = new SortedDictionary<int, Job>();   // pump id -> its OperatePump job (lowest job id)
@@ -111,7 +116,8 @@ public static class Pumps
             JobStep.GoToBuilding(b.Id), JobStep.PickUpFromStorage(b.Id, item, n), JobStep.GoToBuilding(to.Id), JobStep.DeliverTo(to.Id),
         };
         var res = new[] { Reservation.OutOfStorage(b.Id, item, n), Reservation.IntoStorage(to.Id, item, n) };
-        if (job is null) { sim.Jobs.Post(JobKind.Haul, b.EntranceCell, steps, res); return; }
+        // ADR-066: the buffer haul runs at the pump's own priority, so work (Dig, Build: 25) never starves the water.
+        if (job is null) { sim.Jobs.Post(JobKind.Haul, b.EntranceCell, steps, res, BufferHaulPriority); return; }
         if (job.Steps[1].Count == n && job.Steps[3].Target == to.Id.Value && job.Reservations.SequenceEqual(res)) return;   // ADR-048
         job.Steps.Clear();
         job.Steps.AddRange(steps);
