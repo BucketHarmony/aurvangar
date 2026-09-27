@@ -10,7 +10,9 @@
 - **ECO-03** Decay per tick: hunger −1 (empty in ~4.2 days), thirst −2 (empty in ~2.1 days).
 - **ECO-04** Thresholds: at `< 4000` the agent posts its own Eat/Drink job (JOB-07). If no storage has the item,
   it retries every 100 ticks and the HUD shows "No food" / "No water". A failed Drink/Eat job also waits 100 ticks
-  before that need is tried again (ADR-043).
+  before that need is tried again (ADR-043). The item eaten or drunk is the one that restores the need with the most
+  unpromised units summed over the complete storages in the agent's region (ties by lower item id: berries before
+  potato); the nearest of those storages that holds it serves the job (M7-T4, G3 answer 6, ADR-057).
 - **ECO-05** Consume: eating 1 berry restores 2500; 1 potato restores 4000; drinking 1 water restores 5000. The
   agent consumes one unit at a time until the need is ≥ 9000 or storage runs out.
 - **ECO-06** At 0 hunger or thirst, `health` (0..1000, starts 1000) drops 1 per tick. Health regenerates 1 per

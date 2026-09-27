@@ -1200,3 +1200,23 @@ Decision:
   (~460 ticks per tile) is shorter than the 2,400 ticks a crop needs to wither (ECO-13).
 Consequences: golden hashes after tick 0 change (regenerated). In the 24,000-tick headless session: 60 crops harvested
 (was 35), 0 withered (was 41), pump dry ticks 855 (all before the fill on day 1; 0 in the drought, was 4,712).
+
+## ADR-057: Need jobs take the most plentiful restoring item across reachable storages (2026-09-26, M7-T4)
+Context: G3 answer 6 / M7-T4. Eat/Drink jobs took the lowest-id food in the nearest storage, so berries were always
+eaten first and potatoes piled up (180 at the end of the survival session). The answer: eat the most plentiful food
+first, "most units in reachable storage (ties by item id)".
+Decision:
+- "Units" are unpromised units (`JobBoard.StorageStock`), not food value, summed per item over every complete storage in
+  the agent's region (PTH-13 reachability, as before). Highest total wins; a tie goes to the lower item id (berries).
+- The job then goes to the nearest reachable storage holding that item (Manhattan to entrance, ties by lower building
+  id, as before), even if a nearer storage holds only the less plentiful food. The rule is about which food, not
+  which building.
+- The same rule serves Drink (only water today), so drink behaviour is unchanged.
+- No new state; the choice is computed at post time.
+Consequences: in the survival session berries and potatoes are eaten in turn, keeping the two stocks level. Bush harvest
+still posts while berries + potatoes < 60 (ADR-048), so with potatoes plentiful the bushes rest more. Golden hashes
+move (regenerated).
+Test fix: `FarmScenarioTests.Harvest_StorageFull_DropsPile` fills the hub with 100 potatoes; its dwarf gets hungry
+during the 7,200-tick growth and now ate 2 of them (100 potatoes beat 30 berries), so the hub was no longer full. The
+helper now also tops berries up to the cap (a 100/100 tie eats berries), which restores the test's premise; the
+assertions are unchanged.

@@ -26,7 +26,9 @@ public class FarmScenarioTests
             .FillBox(Pit, Pit + Int3.Up, BlockId.Air)
             .Hub(new Int3(2, 5, 20)).Stock("water", 30).Stock("berries", 30)
             .Agent(new Int3(16, 5, 16));
-        if (hubPotatoRoom >= 0) b.Stock("potato", 100 - hubPotatoRoom);   // hub per-item cap is 100
+        // Hub per-item cap is 100. Berries are topped up to the cap too, so the dwarf's meal is berries (a tie goes to
+        // the lower item id, ECO-04 / ADR-057) and the potato room stays what the test asked for.
+        if (hubPotatoRoom >= 0) b.Stock("potato", 100 - hubPotatoRoom).Stock("berries", 70);
         if (water) b.Water(Pit, WaterGrid.Full);
         return b.Build();
     }

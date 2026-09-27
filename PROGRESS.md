@@ -1990,3 +1990,33 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Screenshots: none (no rendering or Godot change).
 - Next: M7-T4 (eat the most plentiful food first; potatoes now pile up to 180). M7-T7's timed screenshot scripts
   should include a shot of the reservoir (x = 67, z 61..71) and the farm beside it.
+
+## M7-T4 — Dwarves eat the most plentiful food first (2026-09-26)
+- Done: `NeedsSystem.TryPost` now picks the item first, then the storage. The item is the one that restores the need
+  with the most unpromised units summed over the complete storages in the agent's region, with ties going to the lower
+  item id (berries). The storage is the nearest reachable one holding that item (Manhattan, ties by lower building id,
+  as before). Drink uses the same rule (only water today). `PickItem` is replaced by `HasItem`/`Restores` (the HUD
+  NoFood/NoWater query is unchanged in meaning). ECO-04 in docs/specs/needs-economy.md is updated. No new state, so
+  no save or hash change.
+- Tests: two new tests in `NeedsTests`, both failing before the change (berries picked by lowest id):
+  - `Eat_PicksMostPlentifulFood`: 6 berries and 12 potatoes give the meal order `PPPBPPBP`. Potatoes are eaten while
+    they outnumber berries, and berries on a tie.
+  - `Eat_CountsFoodAcrossReachableStorages`: the hub holds 10 berries and 2 potatoes, and a farther warehouse holds 10
+    potatoes. The meals are potato from the hub, then berries from the hub (tie), then potato from the warehouse.
+  - Fixed `FarmScenarioTests.Harvest_StorageFull_DropsPile` setup (reason in ADR-057). The hungry dwarf ate 2 of the
+    100 hub potatoes, so the hub was no longer full. Berries are now topped up to the cap, and the assertions are
+    unchanged.
+  - check.sh: 529 passed, 0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-057 (unit counts rather than food value; item first, then nearest storage; test fix).
+- Golden: unchanged. The golden checkpoints (ticks 0..6000) come before any potato meal would differ, so no
+  regeneration was needed.
+- Headless `--seed 1 --script survival --ticks 24000`:
+  - Hash `4caa8837b195f900` (was `b8ecd61909bad882`), 5,355 ticks/s. 5/5 alive.
+  - Jobs: 441 completed (was 444), 0 failed.
+  - Crops: 60 harvested, 0 withered. Pump dry ticks: 855 (0 in the drought).
+  - Stored at the end: potato 160 (was 180), berries 69 (was 39), water 110.
+  - Potatoes still pile up because harvests out-produce 5 dwarves. With food >= 60 the bushes stop being harvested
+    (ADR-048), so berries now sit in storage instead of being eaten first.
+- Perf: perf.sh 8/8 passed.
+- Screenshots: none (no rendering or Godot change).
+- Next: M7-T5 (give-up mark for jobs that never succeed).

@@ -122,6 +122,64 @@ public class NeedsTests
         Assert.Equal(0, sim.Counters.JobsFailed);
     }
 
+    /// <summary>ECO-04 (M7-T4, G3 answer 6): the Eat job takes the food item with the most unpromised units in reachable
+    /// storage, ties by lower item id (berries before potato). With 6 berries and 12 potatoes stored, potatoes are
+    /// eaten while they outnumber the berries, berries at a tie, and the choice flips back as the counts change.</summary>
+    [Fact]
+    public void Eat_PicksMostPlentifulFood()
+    {
+        var sim = new ScenarioBuilder().Ground(4).Hub(HubOrigin).Stock("berries", 6).Stock("potato", 12)
+            .Agent(Near).Build();
+        var a = sim.Agents.All.Single();
+        sim.Tick();
+
+        var eaten = new List<string>();
+        while (Stored(sim, "berries") + Stored(sim, "potato") > 0)
+        {
+            int berries = Stored(sim, "berries"), potatoes = Stored(sim, "potato");
+            a.Hunger = 3_999;
+            sim.Tick();
+            var eat = JobOf(sim, a)!;
+            Assert.Equal(JobKind.Eat, eat.Kind);
+            var item = eat.Reservations.Single(r => r.Kind == ReservationKind.StorageOut).Item;
+            Assert.Equal(potatoes > berries ? Item("potato") : Item("berries"), item);
+            eaten.Add(item == Item("potato") ? "P" : "B");
+            RunUntil(sim, () => JobOf(sim, a) is null, 200);
+        }
+        // 12P/6B -> P P P (6/6 tie) B (6P/3B) P P (2P/3B) B P
+        Assert.Equal("PPPBPPBP", string.Concat(eaten));
+        Assert.Equal(0, sim.Counters.JobsFailed);
+    }
+
+    /// <summary>ECO-04 (M7-T4): the counts are summed over every reachable storage, then the nearest storage holding the
+    /// chosen item serves it. Hub: 10 berries + 2 potatoes; a farther warehouse: 10 potatoes. 12 potatoes beat 10
+    /// berries, so the hub's 2 potatoes go first; then 10/10 is a tie and the hub's berries win; then 10 potatoes beat
+    /// 7 berries and the agent walks to the warehouse for them.</summary>
+    [Fact]
+    public void Eat_CountsFoodAcrossReachableStorages()
+    {
+        var sim = new ScenarioBuilder().Ground(4).Hub(HubOrigin).Stock("berries", 10).Stock("potato", 2)
+            .Storage("warehouse", new Int3(20, 5, 20)).Stock("potato", 10)
+            .Agent(Near).Build();
+        var a = sim.Agents.All.Single();
+        var hub = sim.Buildings.All.First();
+        var warehouse = sim.Buildings.All.Last();
+        sim.Tick();
+
+        var expected = new[] { ("potato", hub.Id), ("berries", hub.Id), ("potato", warehouse.Id) };
+        foreach (var (item, building) in expected)
+        {
+            a.Hunger = 3_999;
+            sim.Tick();
+            var res = JobOf(sim, a)!.Reservations.Single(r => r.Kind == ReservationKind.StorageOut);
+            Assert.Equal(Item(item), res.Item);
+            Assert.Equal(building, res.Building);
+            RunUntil(sim, () => JobOf(sim, a) is null, 400);
+        }
+        Assert.Equal(8, warehouse.Stored.GetValueOrDefault(Item("potato").Value));
+        Assert.Equal(0, sim.Counters.JobsFailed);
+    }
+
     /// <summary>ECO-06: health regenerates 1 per 10 ticks while both needs are above 0, drops 1 per tick at 0 hunger or
     /// thirst (no regeneration then), and never exceeds 1000.</summary>
     [Fact]

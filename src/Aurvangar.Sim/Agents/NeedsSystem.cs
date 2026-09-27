@@ -55,7 +55,7 @@ public static class NeedsSystem
             if (a.IsAlive && (kind == JobKind.Drink ? a.Thirst : a.Hunger) < Threshold) { needy = true; break; }
         if (!needy) return false;
         foreach (var b in sim.Buildings.All)
-            if (IsStorage(b) && PickItem(sim, b, kind, out _, out _)) return false;
+            if (IsStorage(b) && HasItem(sim, b, kind)) return false;
         return true;
     }
 
@@ -81,23 +81,45 @@ public static class NeedsSystem
         else if (kind == JobKind.Eat) a.NextEatTick = next;
     }
 
-    /// <summary>JOB-05 Drink/Eat: <c>GoTo(storage) → Consume</c> at the nearest complete storage (Manhattan from the
-    /// agent to its entrance, ties by lower building id) that is in the agent's region and has unpromised stock of a
-    /// matching item (lowest item id first). Reserves the units that would bring the need to 9000, capped by the stock.</summary>
+    /// <summary>JOB-05 Drink/Eat. The item is the one that restores the need with the most unpromised units summed over
+    /// the complete storages in the agent's region, ties by lower item id (ECO-04, M7-T4). The job is
+    /// <c>GoTo(storage) → Consume</c> at the nearest of those storages holding that item (Manhattan from the agent to
+    /// its entrance, ties by lower building id). Reserves the units that would bring the need to 9000, capped by the
+    /// stock.</summary>
     private static bool TryPost(Simulation sim, Agent a, JobKind kind)
     {
         int region = sim.Regions.RegionOf(a.Cell);
         if (region == Paths.Regions.None) return false;
+
+        // Pass 1: per-item totals over reachable storages, keyed and iterated by item id.
+        var totals = new SortedDictionary<int, int>();
+        foreach (var b in sim.Buildings.All)   // ascending id
+        {
+            if (!IsStorage(b) || !HasItem(sim, b, kind) || !InRegion(sim, b, region)) continue;
+            foreach (var (id, _) in b.Stored)
+            {
+                if (!Restores(sim, id, kind)) continue;
+                int n = sim.Jobs.StorageStock(b, new ItemId(id));
+                if (n > 0) totals[id] = totals.GetValueOrDefault(id) + n;
+            }
+        }
+        int bestId = -1, bestTotal = 0;
+        foreach (var (id, total) in totals)   // ascending id: strict > keeps the lower id on a tie
+            if (total > bestTotal) { bestId = id; bestTotal = total; }
+        if (bestId < 0) return false;
+        var bestItem = new ItemId(bestId);
+
+        // Pass 2: the nearest reachable storage with that item.
         Building? best = null;
-        ItemId bestItem = default;
         int bestDist = int.MaxValue, bestStock = 0;
         foreach (var b in sim.Buildings.All)   // ascending id: strict < keeps the lower id on a tie
         {
             if (!IsStorage(b)) continue;
             int dist = Manhattan(a.Cell, b.EntranceCell);
-            if (dist >= bestDist || !PickItem(sim, b, kind, out var item, out int stock)) continue;
-            if (!InRegion(sim, b, region)) continue;
-            best = b; bestItem = item; bestDist = dist; bestStock = stock;
+            if (dist >= bestDist) continue;
+            int stock = sim.Jobs.StorageStock(b, bestItem);
+            if (stock <= 0 || !InRegion(sim, b, region)) continue;
+            best = b; bestDist = dist; bestStock = stock;
         }
         if (best is null) return false;
 
@@ -112,21 +134,17 @@ public static class NeedsSystem
 
     private static bool IsStorage(Building b) => b.State == BuildingState.Complete && b.Def.Storage is not null;
 
-    /// <summary>The lowest-id item that restores the need and has unpromised stock in the building.</summary>
-    private static bool PickItem(Simulation sim, Building b, JobKind kind, out ItemId item, out int stock)
+    private static bool Restores(Simulation sim, int itemId, JobKind kind)
     {
-        foreach (var (id, _) in b.Stored)   // sorted by item id
-        {
-            var def = sim.Content.ItemDef(new ItemId(id));
-            if ((kind == JobKind.Drink ? def.Drink : def.Food) <= 0) continue;
-            int n = sim.Jobs.StorageStock(b, new ItemId(id));
-            if (n <= 0) continue;
-            item = new ItemId(id);
-            stock = n;
-            return true;
-        }
-        item = default;
-        stock = 0;
+        var def = sim.Content.ItemDef(new ItemId(itemId));
+        return (kind == JobKind.Drink ? def.Drink : def.Food) > 0;
+    }
+
+    /// <summary>The building has unpromised stock of some item that restores the need.</summary>
+    private static bool HasItem(Simulation sim, Building b, JobKind kind)
+    {
+        foreach (var (id, _) in b.Stored)
+            if (Restores(sim, id, kind) && sim.Jobs.StorageStock(b, new ItemId(id)) > 0) return true;
         return false;
     }
 

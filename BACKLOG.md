@@ -207,7 +207,7 @@ building-lookup optimisation) need no task.
     through the whole drought. Extend SurvivalScript so the pump draws from a levee-held reservoir (pump dry ticks
     in the drought near 0) and one field sits by the held water (a second harvest before day 10). All 5 alive at
     day 10. Regenerate goldens and record why.
-- [ ] **M7-T4** Dwarves eat the most plentiful food first · specs: ECO-04 · deps: M6-GATE
+- [x] **M7-T4** Dwarves eat the most plentiful food first · specs: ECO-04 · deps: M6-GATE
   - G3 answer 6: pick the food item with the most units in reachable storage (ties by item id). Test: with
     berries and potatoes stored, potatoes are eaten while they outnumber berries.
 - [ ] **M7-T5** Give-up mark for jobs that can never succeed · specs: JOB-09, VIEW-15 · deps: M6-GATE
