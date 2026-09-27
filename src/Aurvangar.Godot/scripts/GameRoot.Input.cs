@@ -26,11 +26,9 @@ public partial class GameRoot
                 {
                     _build.Release();
                     if (_tool.Tool == ToolKind.Blocks) BlockRelease();
+                    else if (_tool.Tool == ToolKind.Deconstruct) DeconstructPaintRelease();
                     else if (_tool.Release(Hover, SliceY) is { } command) Sim.Enqueue(command);
                 }
-                break;
-            case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel:
-                BlockWheel(wheel);
                 break;
             // A right click (no drag movement) aborts the tool drag: CameraRig.RightClicked, wired in _Ready (M7-T1).
         }
@@ -44,7 +42,7 @@ public partial class GameRoot
             case Key.Pageup or Key.Bracketright: Slice.Step(+1, Remesh); return;
             case Key.Pagedown or Key.Bracketleft: Slice.Step(-1, Remesh); return;
         }
-        if (BlockKey(key)) return;   // Tab, P, +/- with the block tool (+/- repeat)
+        if (BlockKey(key)) return;   // P with the block tool
         if (key.Echo) return;
         switch (key.Keycode)
         {
@@ -69,6 +67,7 @@ public partial class GameRoot
         _tool.SetTool(tool);
         _build.Release();
         _blocks.Reset();
+        _deconPaint.Abort();
         _hud.SetTool(tool, _build.Def.Name);
         SyncBlockHud();
     }

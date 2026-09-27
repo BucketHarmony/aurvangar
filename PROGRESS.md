@@ -2541,13 +2541,16 @@ Launch the game (PowerShell):
 & "C:\tools\godot\Godot_v4.6.2-stable_mono_win64.exe" --path "E:\ai\aurvangar\src\Aurvangar.Godot"
 ```
 
-Block building controls:
-- **K**: block tool. Pick the material (Stone wall, Wood planks, Polished stone) in the picker at the bottom left.
-- **Tab**: cycle shapes (Single, Line, Wall, Floor, Box, Stair).
-- **+ / -** or **Ctrl + wheel**: set the height. The slice level also sets it.
+Block building controls (updated by M9-T1, ADR-067: single blocks, no shapes or height):
+- **K**: block tool. Pick the material (Stone wall, Wood planks, Polished stone) from the Blocks menu.
+- **Click** a block face: one block in the cell that face looks into. A top face stacks up; a side face places
+  beside.
+- **Drag**: paint one block into each cell the cursor passes, on the first cell's layer. Build a wall course by
+  course. The tool stays active; **Esc** leaves it, and a right click drops the drag.
 - **P**: toggle plan mode. Planned blocks are not built until they are released.
 - **L**: release a box of the plan. **Release all** (button) releases the whole plan.
-- **X**: deconstruct built blocks, with a full refund. **Z**: cancel.
+- **X**: deconstruct, click or drag per built block, with a full refund. A click on a building tears it down.
+  **Z**: cancel.
 - **G**: dig, which you need for a stone quarry (stone is 5 or more levels down on seed 1).
 - Camera: right-drag or middle-drag orbits, and a right click cancels the current drag.
 
@@ -2582,3 +2585,57 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   - top-bar overlap and clearer red cells -> M9-T3;
   - more materials -> M9-T4;
   - then gate G5.
+
+## M9-T1 — Block tool places single blocks (2026-09-27)
+- Done: G4 answer "building should be one square at a time". The player's block tool paints single blocks.
+  - ViewCore `PaintDrag`: a drag on one layer. The mouse ray is cut with the first face's horizontal plane (the
+    hovered pick is the fallback), and cursor cells are joined by a 4-connected `Line4`. Each cell is painted once.
+    Limits: 1,024 cells, and jumps over 64 cells are ignored.
+  - `BlockTool` was rewritten. A click places into `PickHit.Adjacent`: a top face stacks up, a side face places
+    beside. A drag paints. The ghost shows the painted cells, with one `CanPlanAll` over them. The release sends one
+    `DesignateBuild(Single)` per valid cell in `SupportOrder`. The tool stays active. Shapes, Tab, height, +/- and
+    Ctrl + wheel are removed from the player's tool; the sim shapes stay for scripts and tests.
+  - `DeconstructPaint`: click or drag per built block on the first block's layer, one
+    `DesignateDeconstructBlocks(c, c)` per block, with orange marks. The Deconstruct column box in
+    `ToolController` is gone (`BeginDrag` removed). A click on a building is still BLD-09.
+  - Godot: `GameRoot.Blocks.cs` (paint input through the mouse ray, deconstruct marks through `BlockGhostMesher.Marks`,
+    `ShowBlockPaint` for the harness). The HUD row now reads "block · click a face for one block, drag to paint a
+    course · Plan (P) · Release all". The camera zooms on Ctrl + wheel again.
+  - New timed screenshot script and preset `paint` (`PaintScript`). It uses the tool itself to paint a released
+    planks L (10 blocks) at tick 0 and a planned second course (7) at tick 1. The harness holds a stone paint drag.
+    `run-headless.sh --script paint` works too.
+  - Docs: VIEW-21 rewritten, docs/testing.md (the paint script and preset), and the M8-GATE control list in this
+    file.
+- Tests: new `View/BlockPaintTests` (7 tests):
+  - a click places one block, a top face stacks, a side face places beside;
+  - `Line4` is face-connected;
+  - a drag paints each cell once on the first layer (by pick, by ray, with the parallel-ray fallback and the jump
+    limit), and the painted plan lands in the sim;
+  - the paint plane follows the picked face;
+  - invalid cells are skipped, and support order lets an overhang painted from its free end be accepted (paint
+    order is rejected by the sim);
+  - deconstruct by block (click and drag);
+  - the paint script on seed 1.
+
+  They were written against the new API, so they did not compile before it existed. In `BlockToolTests`, the two
+  shape/height tests and the Deconstruct column-box asserts are replaced (the human removed that behaviour;
+  ADR-067). check.sh: 600 passed, 0 skipped, 0 failed. The Godot build has 0 warnings.
+- Decisions: ADR-067 (amends ADR-065).
+- sim-reviewer: not run (no Aurvangar.Sim change).
+- Golden: unchanged (the sim is not touched). Headless `--seed 1 --script paint --ticks 1500`: 10 logs used, hash
+  `6b3f03de58769a01`.
+- Perf: n/a (no sim, water or path change). perf.sh was not run.
+- Screenshots (Forward+, seed 1, looked at):
+  - `artifacts/screens/m9t1_3/paint.png` (`SCRIPT=paint SHOTS=paint TICKS=3`): the painted L as released planks
+    ghosts, the planned second course above it, and the held Stone wall drag as a staircase of single cells. The
+    tooltip reads "Build Stone wall (11 blocks, 11 stone) / Click a face: one block. Drag: paint a course. P plan".
+    The top bar reads "Building: log 10/30 · Planned: log 7".
+  - `artifacts/screens/m9t1_1500/paint.png` (TICKS=1500): the planks L is built from single blocks, and the planned
+    course ghosts sit on its long arm. The held stone drag has one red cell where it crosses the built L ("Something
+    solid is there"). The mouse label covers part of the L's short arm.
+  - `artifacts/screens/m9t1_2500/blocks.png` (`SCRIPT=blocks`): the harness drag is now a 4-cell paint across the
+    planks wall. The red cell is still faint at this distance (M9-T3).
+- Next: M9-T2 (build batching) has no dependency on this task. M9-T3 needs this task: the HUD block row is now
+  shorter (no shape buttons). Red ghost cells are still faint. M9-T4: the Blocks menu lists
+  `BlockTool.Blocks`, which are all `IsConstruction` blocks in id order, so new blocks appear there automatically.
+  The G5 gate should use `SCRIPT=paint` for the "single-block painting" shot.

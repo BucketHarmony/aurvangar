@@ -1,4 +1,3 @@
-using Aurvangar.Sim.Blocks;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Entities;
@@ -10,11 +9,11 @@ using Godot;
 
 namespace Aurvangar.Client;
 
-/// <summary>Block construction in <see cref="GameRoot"/> (VIEW-21..23, M8-T5): the block tool (K) with its ghost, shape
-/// modes (Tab), height (+/-, Ctrl + wheel) and plan mode (P); the Release tool (L) and "Release all"; the Deconstruct
-/// tool's block-box drag; plan ghosts; the plan's material line in the top bar. The rules are <see cref="BlockTool"/>,
-/// <see cref="ToolController"/>, <see cref="PlanGhostMesher"/> and <see cref="TopBarModel.PlanText"/> (ViewCore); this
-/// file forwards input and enqueues the commands.</summary>
+/// <summary>Block construction in <see cref="GameRoot"/> (VIEW-21..23; M8-T5, single blocks since M9-T1): the block tool
+/// (K) that paints one block per cell with its ghost and plan mode (P); the Deconstruct tool's per-block marks; the
+/// Release tool (L) and "Release all"; plan ghosts; the plan's material line in the top bar. The rules are
+/// <see cref="BlockTool"/>, <see cref="DeconstructPaint"/>, <see cref="PaintDrag"/>, <see cref="PlanGhostMesher"/> and
+/// <see cref="TopBarModel.PlanText"/> (ViewCore); this file forwards input and enqueues the commands.</summary>
 public partial class GameRoot
 {
     /// <summary>CON-06: the top bar's plan line is rebuilt at most this often (frames).</summary>
@@ -23,9 +22,11 @@ public partial class GameRoot
     private static readonly Color ReleaseMark = new(0.4f, 0.8f, 1f, 0.3f);
 
     private BlockTool _blocks = null!;
+    private readonly DeconstructPaint _deconPaint = new();
     private BlockColors _blockColors = null!;
     private TranslucentMesh _blockGhostView = null!;
-    private BlockGhost? _shownGhost;
+    private object? _shownGhost;
+    private IReadOnlyList<Int3> _deconMarked = System.Array.Empty<Int3>();
     private int _planTextFrame;
     private (Int3 Cell, long Tick, string? Text) _planHover = (new Int3(-1, -1, -1), -1, null);
 
@@ -46,7 +47,6 @@ public partial class GameRoot
     private void WireBlockHud()
     {
         _hud.BlockChosen += block => { _blocks.Select(block); SetTool(ToolKind.Blocks); };
-        _hud.ShapeChosen += shape => { _blocks.SetShape(shape); SyncBlockHud(); };
         _hud.PlanToggled += () => { _blocks.TogglePlan(); SyncBlockHud(); };
         _hud.ReleaseAllPressed += () => Sim.Enqueue(ToolController.ReleaseAll(Sim.World));
     }
@@ -54,51 +54,86 @@ public partial class GameRoot
     private IReadOnlyList<(BlockId, string)> BlockTypes() =>
         _blocks.Blocks.Select(b => (b, Content.LabelOf(b))).ToList();
 
-    /// <summary>Keys of the block tool; true when the key was used.</summary>
+    /// <summary>Keys of the block tool (P: plan mode); true when the key was used.</summary>
     private bool BlockKey(InputEventKey key)
     {
-        if (_tool.Tool != ToolKind.Blocks) return false;
-        switch (key.Keycode)
-        {
-            case Key.P: _blocks.TogglePlan(); break;
-            case Key.Tab: _blocks.CycleShape(); break;
-            case Key.Equal or Key.Plus or Key.KpAdd: AdjustBlockHeight(+1); break;
-            case Key.Minus or Key.KpSubtract: AdjustBlockHeight(-1); break;
-            default: return false;
-        }
+        if (_tool.Tool != ToolKind.Blocks || key.Echo || key.Keycode != Key.P) return false;
+        _blocks.TogglePlan();
         SyncBlockHud();
         return true;
     }
 
-    /// <summary>Ctrl + wheel with the block tool: height (the camera ignores a Ctrl + wheel). True when used.</summary>
-    private bool BlockWheel(InputEventMouseButton mb)
+    /// <summary>A right click or a tool change: drop the paint drags.</summary>
+    private void AbortPaint()
     {
-        if (_tool.Tool != ToolKind.Blocks || !mb.CtrlPressed || !mb.Pressed) return false;
-        if (mb.ButtonIndex == MouseButton.WheelUp) AdjustBlockHeight(+1);
-        else if (mb.ButtonIndex == MouseButton.WheelDown) AdjustBlockHeight(-1);
-        else return false;
-        SyncBlockHud();
-        return true;
+        _blocks.AbortDrag();
+        _deconPaint.Abort();
     }
-
-    private void AdjustBlockHeight(int delta) =>
-        _blocks.AdjustHeight(delta, _blocks.CurrentAnchor(Hover)?.Y ?? SliceY, SliceY, Sim.World.SizeY);
 
     private void BlockRelease()
     {
-        var click = _blocks.Release(Sim, Hover, SliceY, Input.IsKeyPressed(Key.Shift));
-        if (click.Command != null) Sim.Enqueue(click.Command);
+        MovePaint();
+        var click = _blocks.Release(Sim);
+        foreach (var c in click.Commands) Sim.Enqueue(c);
         if (click.Message != null) _hud.Toast(click.Message);
-        if (!click.KeepTool) SetTool(ToolKind.Select);
     }
 
-    /// <summary>Physics frame with the block tool: the drag end, then the ghost (re-uploaded only when it changed).</summary>
+    /// <summary>Deconstruct over no building: the left button went down on a pick (M9-T1).</summary>
+    private void DeconstructPaintStart(PickHit hit) => _deconPaint.Start(hit);
+
+    private void DeconstructPaintRelease()
+    {
+        if (!_deconPaint.Dragging) return;
+        MovePaint();
+        var (commands, message) = _deconPaint.Release(Sim);
+        foreach (var c in commands) Sim.Enqueue(c);
+        if (message != null) _hud.Toast(message);
+    }
+
+    /// <summary>Moves the paint drags to the cell under the mouse: the mouse ray cut with the drag's layer plane, or
+    /// the hover pick when there is no ray (the screenshot harness).</summary>
+    private void MovePaint()
+    {
+        if (!_blocks.Dragging && !_deconPaint.Dragging) return;
+        if (MouseRay() is var (origin, dir))
+        {
+            _blocks.MoveRay(origin, dir, Hover);
+            _deconPaint.MoveRay(origin, dir, Hover);
+        }
+        else
+        {
+            _blocks.Move(Hover);
+            _deconPaint.Move(Hover);
+        }
+    }
+
+    /// <summary>The camera ray through the mouse, or null with picking off.</summary>
+    private (System.Numerics.Vector3 Origin, System.Numerics.Vector3 Direction)? MouseRay()
+    {
+        if (!PickingEnabled || GetViewport().GetCamera3D() is not { } camera) return null;
+        var mouse = GetViewport().GetMousePosition();
+        return (CameraRig.ToNumerics(camera.ProjectRayOrigin(mouse)), CameraRig.ToNumerics(camera.ProjectRayNormal(mouse)));
+    }
+
+    /// <summary>Physics frame with the block tool: paint along the drag, then the ghost (re-uploaded only when it
+    /// changed).</summary>
     private void UpdateBlockPreview()
     {
         _toolPreview.Visible = false;
-        _blocks.Move(Hover);
-        BlockGhost = _blocks.Ghost(Sim, Hover, SliceY);
+        MovePaint();
+        BlockGhost = _blocks.Ghost(Sim, Hover);
         ShowBlockGhost(BlockGhost);
+    }
+
+    /// <summary>Physics frame with the Deconstruct tool over no building: orange marks on the built blocks a release
+    /// would take down.</summary>
+    private void UpdateDeconstructMarks()
+    {
+        MovePaint();
+        var marked = _deconPaint.Marked(Sim, Hover);
+        if (!marked.SequenceEqual(_deconMarked)) _shownGhost = null;
+        _deconMarked = marked;
+        ShowMarks(marked);
     }
 
     private void ShowBlockGhost(BlockGhost? ghost)
@@ -106,6 +141,13 @@ public partial class GameRoot
         if (ReferenceEquals(ghost, _shownGhost)) return;
         _shownGhost = ghost;
         _blockGhostView.SetData(ghost == null ? null : BlockGhostMesher.Build(ghost, _blockColors, _entityColors));
+    }
+
+    private void ShowMarks(IReadOnlyList<Int3> marked)
+    {
+        if (ReferenceEquals(_shownGhost, _deconPaint)) return;
+        _shownGhost = _deconPaint;
+        _blockGhostView.SetData(marked.Count == 0 ? null : BlockGhostMesher.Marks(marked, BlockGhostMesher.DeconstructColor));
     }
 
     /// <summary>The block tool's and Release tool's mouse labels, and a hovered plan entry's status (VIEW-22).</summary>
@@ -128,23 +170,19 @@ public partial class GameRoot
     }
 
     /// <summary>The block options row and the Blocks button follow the tool state.</summary>
-    private void SyncBlockHud()
-    {
-        int? height = null;
-        if (BuildShapes.UsesHeight(_blocks.Shape))
-            height = _blocks.Height(_blocks.CurrentAnchor(Hover)?.Y ?? SliceY, SliceY, Sim.World.SizeY);
-        _hud.SetBlockOptions(_tool.Tool, Content.LabelOf(_blocks.Block), _blocks.Shape, _blocks.Plan, height);
-    }
+    private void SyncBlockHud() => _hud.SetBlockOptions(_tool.Tool, Content.LabelOf(_blocks.Block), _blocks.Plan);
 
-    /// <summary>Screenshot harness (M8-T5): the block tool with a held drag from <paramref name="from"/> to
-    /// <paramref name="to"/> (picking is off; <paramref name="to"/> becomes the pick override).</summary>
-    public void ShowBlockDrag(PickHit from, PickHit to, BlockId block, BuildShape shape)
+    /// <summary>Screenshot harness (M9-T1): the block tool with a paint drag held from <paramref name="start"/> along
+    /// the cursor cells <paramref name="path"/> (picking is off; a pick on the last cell becomes the pick override, for
+    /// the mouse label).</summary>
+    public void ShowBlockPaint(PickHit start, IReadOnlyList<Int3> path, BlockId block)
     {
         SetTool(ToolKind.Blocks);
         _blocks.Select(block);
-        _blocks.SetShape(shape);
-        _blocks.Press(from);
-        PickOverride = to;
+        _blocks.Press(start);
+        foreach (var c in path) _blocks.DragTo(c);
+        var last = _blocks.Painted[^1];
+        PickOverride = new PickHit(last + Int3.Down, Int3.Up);
         SyncBlockHud();
     }
 

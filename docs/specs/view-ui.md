@@ -61,23 +61,31 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 
 ## Block construction (M8, `construction.md`)
 
-- **VIEW-21** Block tool (hotkey K, toolbar "Blocks"):
-  - A block picker lists the construction blocks from `ContentDb` by their `label`. Shape modes are Single, Line,
-    Wall, Floor, Box and Stair; Tab cycles them, and there are buttons too.
-  - The anchor `A` is the air cell on the picked face (the cell the face looks into). The drag sets `B` on the same
-    level.
-  - Height (Wall, Box):
-    - it starts at `SliceY - A.Y + 1` when the slice is active (`SliceY < SizeY - 1`), else at 3;
-    - `+`/`-` (or Ctrl + wheel) change it by 1, clamped to 1..32.
-  - The ghost shows `BuildShapes.Cells(...)` in the block's palette colour. A cell that fails
-    `BlockPlans.CanPlan` (with the drag's cells as `pending`) is red, and its reason is in the mouse label
-    (`LabelLayout.PlaceTooltip`).
-  - P toggles plan mode. The tool label then shows "Plan", and the command is sent with `Plan = true`.
-  - Releasing the drag sends `DesignateBuild`. Shift keeps the tool active.
+- **VIEW-21** Block tool (hotkey K, toolbar "Blocks"). Single blocks since M9-T1 (G4 answer "building should be one
+  square at a time", ADR-067, which amends ADR-065):
+  - A block picker lists the construction blocks from `ContentDb` by their `label`. There are no shape modes and no
+    height control in the player's tool; the sim keeps the `DesignateBuild` shapes for scripts and tests (CON-07).
+  - A click on a block face plans or places one block in the cell that face looks into (`PickHit.Adjacent`): a top
+    face stacks upward, a side face places beside.
+  - A drag paints one block into each new cell the cursor passes over (`PaintDrag`). The cells stay on the layer of
+    the first cell: the cursor ray is cut with the horizontal plane of the first picked face (the face's own plane
+    for a top or bottom face, mid-layer for a side face). Between two cursor cells the path is 4-connected, so
+    painted neighbours share a face. A wall is painted course by course. At most 1,024 cells per drag; a cursor
+    jump of more than 64 cells is ignored.
+  - The ghost shows the painted cells (or, with no drag, the one cell a click would place) in the block's palette
+    colour. A cell that fails `BlockPlans.CanPlan` (with the painted cells as `pending`) is red, and its reason is in
+    the mouse label (`LabelLayout.PlaceTooltip`).
+  - P toggles plan mode. The tool label then shows "Plan", and the commands are sent with `Plan = true`.
+  - Releasing the drag sends one `DesignateBuild(Single, c, c, 1, block, plan)` per valid cell, in support order
+    (each cell after a neighbour below or beside it that is solid, planned or earlier in the order). With no valid
+    cell nothing is sent and the reason is shown. The tool stays active after a release (Esc leaves it; a right
+    click drops the drag).
   - A "Release plan" tool (hotkey L) sends `ReleasePlan` for a dragged box. Its "Release all" button sends one over
     the whole world.
-  - The Deconstruct tool (X), dragged over no building, sends `DesignateDeconstructBlocks` for the box.
-  - All of this logic (anchor, height, shape cells, reasons, command) lives in ViewCore with unit tests.
+  - The Deconstruct tool (X): a click on a building is BLD-09. Otherwise a click marks the built block under the
+    mouse, and a drag paints the built blocks on the first block's layer, the same way. The release sends one
+    `DesignateDeconstructBlocks(c, c)` per built block. Marked blocks show orange.
+  - All of this logic (face to cell, paint path, verdicts, order, commands) lives in ViewCore with unit tests.
 - **VIEW-22** Plan entries render as translucent block-sized ghosts in the block's palette colour:
   - `Released` entries at alpha 0.45;
   - `Planned` entries at alpha 0.25, lightened;

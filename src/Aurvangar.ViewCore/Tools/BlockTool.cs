@@ -1,3 +1,4 @@
+using System.Numerics;
 using Aurvangar.Sim;
 using Aurvangar.Sim.Blocks;
 using Aurvangar.Sim.Commands;
@@ -14,40 +15,38 @@ public readonly record struct GhostCell(Int3 Cell, PlanResult Result)
     public bool Ok => Result == PlanResult.Ok;
 }
 
-/// <summary>The block tool's ghost (VIEW-21): the command a release would send and each cell's verdict. A shape over
-/// <see cref="BuildShapes.MaxCells"/> has no cells and <see cref="TooLarge"/> set.</summary>
-public sealed record BlockGhost(DesignateBuild Command, IReadOnlyList<GhostCell> Cells, bool TooLarge)
+/// <summary>The block tool's ghost (VIEW-21): the block, the plan flag, and each painted cell with its verdict.</summary>
+public sealed record BlockGhost(BlockId Block, bool Plan, IReadOnlyList<GhostCell> Cells)
 {
     public int ValidCount => Cells.Count(c => c.Ok);
 }
 
-/// <summary>What a block-tool release did: the command to enqueue (null when nothing is sent), whether the tool stays
-/// active (Shift), and a message for the player.</summary>
-public readonly record struct BlockClick(DesignateBuild? Command, bool KeepTool, string? Message);
+/// <summary>What a block-tool release did: the commands to enqueue in order (empty when nothing is sent) and a message
+/// for the player.</summary>
+public readonly record struct BlockClick(IReadOnlyList<DesignateBuild> Commands, string? Message);
 
-/// <summary>Block tool state (VIEW-21, M8-T5, ADR-065). Engine-neutral: the Godot layer feeds it picks and keys, draws
-/// <see cref="Ghost"/> and enqueues the command <see cref="Release"/> returns.
+/// <summary>Block tool state (VIEW-21; single blocks since M9-T1, ADR-067, which amends ADR-065). Engine-neutral: the
+/// Godot layer feeds it picks, the mouse ray and keys, draws <see cref="Ghost"/> and enqueues what
+/// <see cref="Release"/> returns.
 /// <list type="bullet">
-/// <item>The anchor <c>A</c> is the air cell on the picked face (<see cref="PickHit.Adjacent"/>); the drag's end sets
-/// <c>B</c> on the same level. Without a drag the ghost is the shape at the hovered cell.</item>
-/// <item>Height (Wall, Box) starts at <see cref="StartHeight"/> and +/- change it; the other shapes send 1.</item>
-/// <item>The ghost's verdicts come from one batched sim query per changed command (<see cref="BlockPlans.CanPlanAll"/>),
-/// recomputed at most every <see cref="GhostRecheckTicks"/> ticks while it stays the same.</item>
+/// <item>A click plans or places one block in the cell the picked face looks into (<see cref="Anchor"/>): a top face
+/// stacks upward, a side face places beside.</item>
+/// <item>A drag paints one block into each new cell the cursor passes over, on the layer of the first cell
+/// (<see cref="PaintDrag"/>), so a wall is painted course by course.</item>
+/// <item>The release sends one <c>DesignateBuild(Single)</c> per valid cell, in support order
+/// (<see cref="SupportOrder"/>), so every cell is supported when its command is applied.</item>
+/// <item>The ghost's verdicts come from one batched sim query (<see cref="BlockPlans.CanPlanAll"/>) with the painted
+/// cells as pending, recomputed when the cells change or every <see cref="GhostRecheckTicks"/> ticks.</item>
+/// <item>The tool stays active after a release; Esc leaves it and a right click drops the drag.</item>
 /// </list></summary>
 public sealed class BlockTool
 {
-    public const int DefaultHeight = 3;
     public const int GhostRecheckTicks = 5;
 
-    /// <summary>Shape modes in toolbar and Tab order.</summary>
-    public static readonly IReadOnlyList<BuildShape> Shapes = new[]
-        { BuildShape.Single, BuildShape.Line, BuildShape.Wall, BuildShape.Floor, BuildShape.HollowBox, BuildShape.Stair };
-
     private readonly List<BlockId> _blocks = new();
-    private PickHit? _start;
-    private PickHit? _end;
-    private int? _height;
+    private PaintDrag? _drag;
     private BlockGhost? _cached;
+    private (int Version, Int3? Hover, BlockId Block, bool Plan) _cachedKey;
     private long _cachedTick = long.MinValue;
 
     public BlockTool(ContentDb content)
@@ -62,148 +61,160 @@ public sealed class BlockTool
     public IReadOnlyList<BlockId> Blocks => _blocks;
 
     public BlockId Block { get; private set; }
-    public BuildShape Shape { get; private set; } = BuildShape.Wall;
     public bool Plan { get; private set; }
-    public bool Dragging => _start.HasValue;
+    public bool Dragging => _drag is not null;
+
+    /// <summary>The cells painted by the drag in progress (empty when not dragging).</summary>
+    public IReadOnlyList<Int3> Painted => _drag?.Cells ?? (IReadOnlyList<Int3>)Array.Empty<Int3>();
 
     public void Select(BlockId block)
     {
         if (_blocks.Contains(block)) Block = block;
     }
 
-    public void SetShape(BuildShape shape) => Shape = shape;
-
-    /// <summary>Tab: the next shape mode, wrapping around.</summary>
-    public void CycleShape()
-    {
-        int i = 0;
-        for (int k = 0; k < Shapes.Count; k++) if (Shapes[k] == Shape) i = k;
-        Shape = Shapes[(i + 1) % Shapes.Count];
-    }
-
-    /// <summary>P: plan mode (the command is sent with <c>Plan = true</c>).</summary>
+    /// <summary>P: plan mode (the commands are sent with <c>Plan = true</c>).</summary>
     public void TogglePlan() => Plan = !Plan;
 
-    /// <summary>Tool switched: drops the drag and any height set with +/-.</summary>
-    public void Reset()
-    {
-        AbortDrag();
-        _height = null;
-    }
+    /// <summary>Tool switched: drops the drag.</summary>
+    public void Reset() => AbortDrag();
 
-    public void AbortDrag() { _start = null; _end = null; }
+    public void AbortDrag() => _drag = null;
 
-    /// <summary>VIEW-21: <c>SliceY - A.Y + 1</c> when the slice is active (<c>SliceY &lt; SizeY - 1</c>), else
-    /// <see cref="DefaultHeight"/>; clamped to 1..32.</summary>
-    public static int StartHeight(int anchorY, int sliceY, int sizeY) =>
-        sliceY < sizeY - 1 ? Math.Clamp(sliceY - anchorY + 1, BuildShapes.MinHeight, BuildShapes.MaxHeight) : DefaultHeight;
-
-    /// <summary>The Wall/Box height: set by +/- since the last <see cref="Reset"/>, else <see cref="StartHeight"/>.</summary>
-    public int Height(int anchorY, int sliceY, int sizeY) => _height ?? StartHeight(anchorY, sliceY, sizeY);
-
-    /// <summary>+/- (or Ctrl + wheel): the height by <paramref name="delta"/>, clamped to 1..32.</summary>
-    public void AdjustHeight(int delta, int anchorY, int sliceY, int sizeY) =>
-        _height = Math.Clamp(Height(anchorY, sliceY, sizeY) + delta, BuildShapes.MinHeight, BuildShapes.MaxHeight);
-
-    /// <summary>The anchor of a pick: the air cell the picked face looks into.</summary>
+    /// <summary>The cell a pick places into: the air cell the picked face looks into.</summary>
     public static Int3 Anchor(PickHit hit) => hit.Adjacent;
 
-    /// <summary>The anchor the height is measured from: the drag start, else the hovered cell.</summary>
-    public Int3? CurrentAnchor(PickHit? hover) => (_start ?? hover) is { } h ? Anchor(h) : null;
-
-    /// <summary>Left button down over a pick: starts a drag.</summary>
+    /// <summary>Left button down over a pick: paints its cell and starts a drag on that cell's layer.</summary>
     public void Press(PickHit? hit)
     {
-        if (hit is null) return;
-        _start = hit;
-        _end = hit;
+        if (hit is not { } h) return;
+        _drag = new PaintDrag(h, Anchor(h));
     }
 
-    /// <summary>Mouse moved; a null pick keeps the last end.</summary>
+    /// <summary>The cursor ray moved during a drag (the preferred input: it stays on the drag's layer). Falls back to
+    /// <paramref name="hover"/> when the ray misses the layer's plane.</summary>
+    public void MoveRay(Vector3 origin, Vector3 direction, PickHit? hover)
+    {
+        if (_drag is null) return;
+        if (_drag.OnPlane(origin, direction) is { } cell) _drag.MoveTo(cell);
+        else Move(hover);
+    }
+
+    /// <summary>A pick moved during a drag: paints toward the cell it looks into, kept on the drag's layer. A null pick
+    /// keeps the drag as it is.</summary>
     public void Move(PickHit? hit)
     {
-        if (Dragging && hit is not null) _end = hit;
+        if (_drag is not null && hit is { } h) _drag.MoveTo(Anchor(h));
     }
 
-    /// <summary>The command for the drag, or for the hovered cell when not dragging; null over nothing.</summary>
-    public DesignateBuild? Command(PickHit? hover, int sliceY, int sizeY)
+    /// <summary>Paints toward <paramref name="cell"/> (its Y is ignored). For scripts and the screenshot harness.</summary>
+    public void DragTo(Int3 cell) => _drag?.MoveTo(cell);
+
+    /// <summary>The ghost cells: the painted cells during a drag, else the one cell a click on <paramref name="hover"/>
+    /// would place; empty over nothing.</summary>
+    public IReadOnlyList<Int3> Cells(PickHit? hover)
     {
-        var first = _start ?? hover;
-        var second = _start is null ? hover : _end;
-        if (first is not { } f || second is not { } s) return null;
-        var a = Anchor(f);
-        var b = Anchor(s) with { Y = a.Y };
-        int height = BuildShapes.UsesHeight(Shape) ? Height(a.Y, sliceY, sizeY) : 1;
-        return new DesignateBuild(Shape, a, b, height, Block, Plan);
+        if (_drag is not null) return _drag.Cells;
+        return hover is { } h ? new[] { Anchor(h) } : Array.Empty<Int3>();
     }
 
-    /// <summary>The ghost of <see cref="Command"/> with each cell's verdict, cached while the command is unchanged and
-    /// fewer than <see cref="GhostRecheckTicks"/> ticks have passed.</summary>
-    public BlockGhost? Ghost(Simulation sim, PickHit? hover, int sliceY)
+    /// <summary>The ghost of <see cref="Cells"/> with each cell's verdict (null over nothing), cached while the cells,
+    /// block and mode are unchanged and fewer than <see cref="GhostRecheckTicks"/> ticks have passed.</summary>
+    public BlockGhost? Ghost(Simulation sim, PickHit? hover)
     {
-        if (Command(hover, sliceY, sim.World.SizeY) is not { } cmd) return null;
+        var key = (_drag?.Version ?? -1, _drag is null && hover is { } h ? Anchor(h) : (Int3?)null, Block, Plan);
+        if (_drag is null && hover is null) return null;
         long tick = sim.Clock.Tick;
-        if (_cached is { } c && c.Command == cmd && tick - _cachedTick < GhostRecheckTicks && tick >= _cachedTick) return c;
-        _cached = GhostFor(sim, cmd);
+        if (_cached is not null && _cachedKey == key && tick - _cachedTick < GhostRecheckTicks && tick >= _cachedTick) return _cached;
+        _cached = GhostFor(sim, Block, Plan, Cells(hover));
+        _cachedKey = key;
         _cachedTick = tick;
         return _cached;
     }
 
-    /// <summary>The ghost of a command: <see cref="BuildShapes.Cells"/> with one batched CON-08 query.</summary>
-    public static BlockGhost GhostFor(Simulation sim, DesignateBuild cmd)
+    /// <summary>The ghost of a set of cells: one batched CON-08 query, with the cells as each other's pending set.</summary>
+    public static BlockGhost GhostFor(Simulation sim, BlockId block, bool plan, IReadOnlyList<Int3> cells)
     {
-        if (BuildShapes.Count(cmd.Shape, cmd.A, cmd.B, cmd.Height) > BuildShapes.MaxCells)
-            return new BlockGhost(cmd, Array.Empty<GhostCell>(), true);
-        var cells = BuildShapes.Cells(cmd.Shape, cmd.A, cmd.B, cmd.Height);
         var results = BlockPlans.CanPlanAll(sim, cells);
         var list = new GhostCell[cells.Count];
         for (int k = 0; k < cells.Count; k++) list[k] = new GhostCell(cells[k], results[k]);
-        return new BlockGhost(cmd, list, false);
+        return new BlockGhost(block, plan, list);
     }
 
-    /// <summary>Left button up: ends the drag and returns its command. Nothing is sent when no cell is valid (the
-    /// message says why). The tool stays active with <paramref name="shift"/>.</summary>
-    public BlockClick Release(Simulation sim, PickHit? hit, int sliceY, bool shift)
+    /// <summary>Left button up: ends the drag and returns one <c>DesignateBuild(Single)</c> per valid painted cell, in
+    /// <see cref="SupportOrder"/>. Nothing is sent when no cell is valid (the message says why).</summary>
+    public BlockClick Release(Simulation sim)
     {
-        if (!Dragging) return new BlockClick(null, true, null);
-        Move(hit);
-        var ghost = Ghost(sim, null, sliceY);
+        if (_drag is not { } drag) return new BlockClick(Array.Empty<DesignateBuild>(), null);
+        var ghost = GhostFor(sim, Block, Plan, drag.Cells);
         AbortDrag();
-        if (ghost is null) return new BlockClick(null, true, null);
-        if (ghost.TooLarge) return new BlockClick(null, true, $"Too large: at most {BuildShapes.MaxCells} blocks");
-        if (ghost.ValidCount == 0)
-            return new BlockClick(null, true, $"Can't build here: {ReasonText(ghost.Cells.FirstOrDefault().Result) ?? "nothing to build"}");
-        return new BlockClick(ghost.Command, shift, null);
+        var valid = ghost.Cells.Where(c => c.Ok).Select(c => c.Cell).ToList();
+        if (valid.Count == 0)
+            return new BlockClick(Array.Empty<DesignateBuild>(),
+                $"Can't build here: {ReasonText(ghost.Cells.FirstOrDefault().Result) ?? "nothing to build"}");
+        var commands = SupportOrder(sim, valid)
+            .Select(c => new DesignateBuild(BuildShape.Single, c, c, 1, Block, Plan))
+            .ToList();
+        return new BlockClick(commands, null);
     }
 
-    /// <summary>Mouse label: block, shape, size, cost and mode; then the reason of the first red cell and how many are
-    /// red; then the controls.</summary>
+    /// <summary>The cells in an order in which each one has a supporting neighbour (CON-09: below or beside) that is
+    /// solid, has a plan entry, or comes earlier in the order. Cells are taken in paint order, pass after pass; a cell
+    /// that never gets such a neighbour goes last (the sim then rejects it). Read-only.</summary>
+    public static IReadOnlyList<Int3> SupportOrder(Simulation sim, IReadOnlyList<Int3> cells)
+    {
+        var order = new List<Int3>(cells.Count);
+        var placed = new HashSet<Int3>();
+        var left = new List<Int3>(cells);
+        while (left.Count > 0)
+        {
+            var next = new List<Int3>();
+            foreach (var c in left)
+            {
+                if (HasSupport(sim, c, placed)) { order.Add(c); placed.Add(c); }
+                else next.Add(c);
+            }
+            if (next.Count == left.Count) { order.AddRange(next); break; }
+            left = next;
+        }
+        return order;
+    }
+
+    private static readonly Int3[] SupportSteps = { Int3.Down, Int3.East, Int3.West, Int3.North, Int3.South };
+
+    private static bool HasSupport(Simulation sim, Int3 c, HashSet<Int3> placed)
+    {
+        foreach (var d in SupportSteps)
+        {
+            var n = c + d;
+            if (placed.Contains(n)) return true;
+            if (!sim.World.InBounds(n)) continue;
+            if (sim.World.IsSolid(n) || sim.Plans.Get(n) is not null) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Mouse label: mode, block, count and cost; then the reason of the first red cell and how many are red;
+    /// then the controls.</summary>
     public static string Tooltip(Simulation sim, BlockGhost g)
     {
-        var cmd = g.Command;
-        string label = sim.Content.LabelOf(cmd.Block);
-        string mode = cmd.Plan ? "Plan" : "Build";
-        string shape = ShapeName(cmd.Shape) + (BuildShapes.UsesHeight(cmd.Shape) ? $", height {cmd.Height}" : "");
-        if (g.TooLarge) return $"{mode} {label}: {shape}\nToo large: at most {BuildShapes.MaxCells} blocks";
+        string label = sim.Content.LabelOf(g.Block);
+        string mode = g.Plan ? "Plan" : "Build";
         int valid = g.ValidCount;
-        var (item, cost) = sim.Content.CostOf(cmd.Block);
+        var (item, cost) = sim.Content.CostOf(g.Block);
         string costText = cost > 0 ? $", {valid * cost} {sim.Content.ItemDef(item).Name.ToLowerInvariant()}" : "";
-        var lines = new List<string> { $"{mode} {label}: {shape} ({valid} block{(valid == 1 ? "" : "s")}{costText})" };
+        var lines = new List<string> { $"{mode} {label} ({valid} block{(valid == 1 ? "" : "s")}{costText})" };
         int bad = g.Cells.Count - valid;
         if (bad > 0)
         {
             var first = g.Cells.First(c => !c.Ok);
             lines.Add(bad == 1 ? ReasonText(first.Result)! : $"{ReasonText(first.Result)} ({bad} cells skipped)");
         }
-        lines.Add("Tab shape, +/- height, P plan, Shift keeps the tool");
+        lines.Add(ControlsHint);
         return string.Join("\n", lines);
     }
 
-    public static string ShapeName(BuildShape shape) => shape switch
-    {
-        BuildShape.HollowBox => "Box",
-        _ => shape.ToString(),
-    };
+    /// <summary>The controls line of the tooltip.</summary>
+    public const string ControlsHint = "Click a face: one block. Drag: paint a course. P plan";
 
     /// <summary>Player-facing text for a CON-08 result (null for Ok).</summary>
     public static string? ReasonText(PlanResult r) => r switch

@@ -1,4 +1,3 @@
-using Aurvangar.Sim.Blocks;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Hud;
 using Aurvangar.ViewCore.Tools;
@@ -10,10 +9,13 @@ namespace Aurvangar.Client;
 /// the colonist panel (VIEW-16), a short-lived message line (quick save / load results, refused commands) and the
 /// label that follows the mouse (pile counts VIEW-10, build and deconstruct tooltips VIEW-14, farm tiles and the farm
 /// tool's moisture hint, M6-T5). M8-T5 adds the Blocks menu (block picker), the Release tool and the block options row
-/// (shape modes, Plan, height, Release all; VIEW-21).</summary>
+/// (block, Plan, Release all; VIEW-21; single blocks since M9-T1, so no shape or height controls).</summary>
 public partial class Hud : CanvasLayer
 {
     public const double ToastSeconds = 3.0;
+
+    /// <summary>The block options row's controls text (M9-T1).</summary>
+    public const string BlockToolHint = "· click a face for one block, drag to paint a course ·";
 
     public event System.Action<ToolKind>? ToolChosen;
 
@@ -22,7 +24,6 @@ public partial class Hud : CanvasLayer
 
     /// <summary>A construction block picked in the Blocks menu.</summary>
     public event System.Action<BlockId>? BlockChosen;
-    public event System.Action<BuildShape>? ShapeChosen;
     public event System.Action? PlanToggled;
     public event System.Action? ReleaseAllPressed;
 
@@ -39,10 +40,9 @@ public partial class Hud : CanvasLayer
     private MenuButton _buildButton = null!;
     private MenuButton _blocksButton = null!;
     private HBoxContainer _blockRow = null!;
-    private readonly Dictionary<BuildShape, Button> _shapeButtons = new();
     private Button _planButton = null!;
-    private Label _heightLabel = null!;
     private Label _blockLabel = null!;
+    private Label _hintLabel = null!;
     private Label _toast = null!;
     private Label _hoverLabel = null!;
     private double _toastLeft;
@@ -101,21 +101,15 @@ public partial class Hud : CanvasLayer
 
     /// <summary>VIEW-21: the block options row shows while the Blocks or Release tool is active; the Blocks button
     /// starts with the block's label, "Plan: Stone wall" in plan mode. It sits at the bottom left, above the toast.</summary>
-    public void SetBlockOptions(ToolKind tool, string blockLabel, BuildShape shape, bool plan, int? height)
+    public void SetBlockOptions(ToolKind tool, string blockLabel, bool plan)
     {
         bool blocks = tool == ToolKind.Blocks;
         _blockRow.Visible = blocks || tool == ToolKind.Release;
         _blockLabel.Visible = blocks;
         _blockLabel.Text = plan ? $"Plan: {blockLabel}" : blockLabel;
-        foreach (var (s, b) in _shapeButtons)
-        {
-            b.Visible = blocks;
-            b.SetPressedNoSignal(s == shape);
-        }
+        _hintLabel.Visible = blocks;
         _planButton.Visible = blocks;
         _planButton.SetPressedNoSignal(plan);
-        _heightLabel.Visible = blocks && height.HasValue;
-        if (height is { } h) _heightLabel.Text = $"Height {h} (+/-)";
     }
 
     /// <summary>Shows a message at the bottom left for a few seconds.</summary>
@@ -164,7 +158,7 @@ public partial class Hud : CanvasLayer
         _toolButtons[ToolKind.Blocks] = _blocksButton;
     }
 
-    /// <summary>VIEW-21 options row under the toolbar: shape modes (Tab cycles), Plan (P), height, Release all.</summary>
+    /// <summary>VIEW-21 options row at the bottom left: the block, how to paint, Plan (P), Release all.</summary>
     private void AddBlockRow()
     {
         _blockRow = new HBoxContainer { Name = "BlockOptions", Visible = false };
@@ -172,18 +166,11 @@ public partial class Hud : CanvasLayer
         _blockLabel = OutlinedLabel("");
         _blockLabel.AddThemeFontSizeOverride("font_size", 16);
         _blockRow.AddChild(_blockLabel);
-        foreach (var shape in BlockTool.Shapes)
-        {
-            var b = new Button { Text = BlockTool.ShapeName(shape), ToggleMode = true, FocusMode = Control.FocusModeEnum.None };
-            b.Pressed += () => ShapeChosen?.Invoke(shape);
-            _blockRow.AddChild(b);
-            _shapeButtons[shape] = b;
-        }
+        _hintLabel = OutlinedLabel(BlockToolHint);
+        _blockRow.AddChild(_hintLabel);
         _planButton = new Button { Text = "Plan (P)", ToggleMode = true, FocusMode = Control.FocusModeEnum.None };
         _planButton.Pressed += () => PlanToggled?.Invoke();
         _blockRow.AddChild(_planButton);
-        _heightLabel = OutlinedLabel("Height 3 (+/-)");
-        _blockRow.AddChild(_heightLabel);
         var releaseAll = new Button { Text = "Release all", FocusMode = Control.FocusModeEnum.None };
         releaseAll.Pressed += () => ReleaseAllPressed?.Invoke();
         _blockRow.AddChild(releaseAll);

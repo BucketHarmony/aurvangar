@@ -43,7 +43,9 @@ public partial class ScreenshotRunner : Node
             root.SetTool(Aurvangar.ViewCore.Tools.ToolKind.Build);
         }
         if (args.Script == "blocks" && Aurvangar.ViewCore.Scripts.BlocksScript.GhostDrag(root.Sim) is { } drag)
-            root.ShowBlockDrag(drag.From, drag.To, Aurvangar.Sim.World.BlockId.Masonry, Aurvangar.Sim.Blocks.BuildShape.Wall);   // M8-T5
+            root.ShowBlockPaint(drag.From, new[] { drag.To.Adjacent }, Aurvangar.Sim.World.BlockId.Masonry);   // M8-T5, M9-T1
+        if (args.Script == "paint" && Aurvangar.ViewCore.Scripts.PaintScript.LiveDrag(root.Sim) is { } paint)
+            root.ShowBlockPaint(paint.Start, paint.Path, Aurvangar.Sim.World.BlockId.Masonry);   // M9-T1
 
         int failures = 0;
         foreach (var name in args.Shots)

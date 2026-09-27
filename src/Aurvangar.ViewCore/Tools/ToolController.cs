@@ -5,8 +5,8 @@ using Aurvangar.ViewCore.Picking;
 namespace Aurvangar.ViewCore.Tools;
 
 /// <summary>Player tools (VIEW-12). Dig, Chop, Farm (M6-T5), Cancel and Release (M8-T5) are drag tools (this class);
-/// Build is a click tool (<see cref="BuildTool"/>); Deconstruct clicks a building or, over no building, drags a box of
-/// built blocks (<see cref="DeconstructTool"/>, M8-T5); Blocks is the block tool (<see cref="BlockTool"/>, VIEW-21).</summary>
+/// Build is a click tool (<see cref="BuildTool"/>); Deconstruct clicks a building or, over no building, paints built
+/// blocks one by one (<see cref="DeconstructPaint"/>, M9-T1); Blocks is the block tool (<see cref="BlockTool"/>, VIEW-21).</summary>
 public enum ToolKind : byte { Select, Dig, Chop, Cancel, Build, Deconstruct, Farm, Blocks, Release }
 
 /// <summary>Tool state and drag boxes (VIEW-12, VIEW-13, ADR-033). Engine-neutral: the Godot layer feeds it mouse
@@ -57,15 +57,6 @@ public sealed class ToolController
         _end = hit;
     }
 
-    /// <summary>Starts a drag for any tool but Select, when the caller decides (Deconstruct over no building,
-    /// <see cref="DeconstructTool.Press"/>).</summary>
-    public void BeginDrag(PickHit hit)
-    {
-        if (Tool == ToolKind.Select) return;
-        _start = hit;
-        _end = hit;
-    }
-
     /// <summary>Mouse moved during a drag. A null pick (over the sky or above the slice) keeps the last end.</summary>
     public void Move(PickHit? hit)
     {
@@ -94,8 +85,8 @@ public sealed class ToolController
     /// <item>Farm (ECO-11): the XZ rectangle of the two picks; the sim takes each column's top surface.</item>
     /// <item>Cancel (DSG-06): the dig box raised one cell at the top, so trees standing on the dragged ground (their
     /// base is the cell above the picked block) are included.</item>
-    /// <item>Release (VIEW-21) and Deconstruct over no building (CON-18): the columns under the drag from the lower
-    /// pick up to the slice level (<see cref="ColumnBox"/>, ADR-065).</item>
+    /// <item>Release (VIEW-21): the columns under the drag from the lower pick up to the slice level
+    /// (<see cref="ColumnBox"/>, ADR-065).</item>
     /// </list></summary>
     public static ICommand? CommandFor(ToolKind tool, PickHit first, PickHit second, int sliceY)
     {
@@ -108,7 +99,6 @@ public sealed class ToolController
             ToolKind.Farm => new DesignateFarm(a.X, a.Z, b.X, b.Z),
             ToolKind.Cancel => CancelCommand(a, b),
             ToolKind.Release => new ReleasePlan(ColumnBox(first, second, sliceY).Min, ColumnBox(first, second, sliceY).Max),
-            ToolKind.Deconstruct => new DesignateDeconstructBlocks(ColumnBox(first, second, sliceY).Min, ColumnBox(first, second, sliceY).Max),
             _ => null,
         };
     }
@@ -117,9 +107,8 @@ public sealed class ToolController
     public static ReleasePlan ReleaseAll(Aurvangar.Sim.World.VoxelWorld world) =>
         new(new Int3(0, 0, 0), new Int3(world.SizeX - 1, world.SizeY - 1, world.SizeZ - 1));
 
-    /// <summary>Release and Deconstruct-blocks box: the X/Z rectangle of the picks, from the lower picked cell up to
-    /// <paramref name="sliceY"/> (planned blocks and built blocks stand above the picked ground; the slice limits a
-    /// release to the courses in view).</summary>
+    /// <summary>Release box: the X/Z rectangle of the picks, from the lower picked cell up to <paramref name="sliceY"/>
+    /// (planned blocks stand above the picked ground; the slice limits a release to the courses in view).</summary>
     public static (Int3 Min, Int3 Max) ColumnBox(PickHit first, PickHit second, int sliceY)
     {
         var a = first.Cell;
@@ -140,7 +129,7 @@ public sealed class ToolController
             ToolKind.Chop => Sorted(a + Int3.Up, b + Int3.Up),
             ToolKind.Cancel => CancelBox(a, b),
             // The column box reaches the slice; the preview shows its footprint one cell above the lower pick.
-            ToolKind.Release or ToolKind.Deconstruct => ColumnPreview(ColumnBox(first, second, sliceY)),
+            ToolKind.Release => ColumnPreview(ColumnBox(first, second, sliceY)),
             _ => null,
         };
     }

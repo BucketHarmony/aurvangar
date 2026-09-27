@@ -1547,3 +1547,43 @@ Consequences:
 - Dwarves stand idle between courses while the last cells of a course finish. A future task could post Build jobs
   in larger batches (for example, wait a few ticks for more Ready cells nearby) instead of relying on a script's
   release order; players releasing a whole plan will see small batches.
+
+## ADR-067: The player's block tool places single blocks (amends ADR-065) (2026-09-27, M9-T1)
+Context: at G4 the human said "building should be one square at a time" and chose single-block placement by the
+player over the six shape modes. The sim's shape commands stay, because `MonumentScript`, `BlocksScript` and tests
+use them.
+Decision:
+- **Tool.** The shape modes (Tab), the height (+/-, Ctrl + wheel), the shape buttons and the height label are gone.
+  A click places one block in the cell the picked face looks into; a drag paints each new cell the cursor passes.
+  Ctrl + wheel zooms the camera again.
+- **Layer.** A drag stays on the first cell's layer. The cursor is the mouse ray cut with the horizontal plane of
+  the first picked face (the face plane for a top or bottom face, mid-layer for a side face). The pick is the
+  fallback when the ray is parallel to the plane or points away from it, and for the screenshot harness. The
+  cutting plane was chosen over using the hovered pick's X/Z, because on uneven ground the hovered cell can be
+  several cells away from the cell under the cursor on the painted layer. The drag always stays horizontal, even
+  from a side face: the human asked for walls painted course by course.
+- **Path.** Cursor cells are joined by a 4-connected grid walk, so painted neighbours share a face. This matters
+  for CON-09 support (only face neighbours support) and for water (a diagonal gap leaks). Limits: 1,024 cells per
+  drag, and a cursor jump of more than 64 cells is ignored (a ray grazing the plane).
+- **Commands.** The release sends one `DesignateBuild(Single)` per valid cell. No new sim command was added. The
+  ghost's verdicts treat the painted cells as one pending set (CON-09 counts pending cells), but separate Single
+  commands are validated one at a time. So the view sends them in support order: a cell goes after a neighbour
+  below or beside it that is solid, has an entry, or was sent earlier. An overhang painted from its free end is
+  then accepted, as the ghost promised.
+- **Tool stays active.** The tool no longer drops back to Select after a release without Shift. Painting a block at
+  a time needs many clicks. Esc leaves the tool, and a right click drops the drag (M7-T1).
+- **Deconstruct.** The column-box drag (ADR-065) is replaced by per-block marking. A click marks the built block
+  under the mouse. A drag paints the built blocks on its first block's layer the same way. The release sends one
+  `DesignateDeconstructBlocks(c, c)` per built block (CON-18), so nothing above or below the layer is marked. Marks
+  are orange cubes. A click on a building is still BLD-09.
+- **Tests.** The M8-T5 tests for shapes and height (`Ghost_UsesBuildShapes_InvalidCellsRedWithReason`,
+  `Height_FromSliceAndKeys`) and the Deconstruct column-box assertions tested behaviour that the human removed.
+  They are replaced by `View/BlockPaintTests`. The ghost mesh test now builds its ghost from shape cells directly.
+- **Screenshots.** A new timed `paint` script and preset paint single blocks with the tool itself: a released
+  planks L, then a planned second course on top, and a held stone drag.
+Consequences:
+- Goldens are unchanged, since the sim is not touched.
+- A long painted course sends many commands in one tick. Each one runs a CON-09 flood over the connected entries,
+  and this is fine at hand-painting sizes.
+- A tall structure takes one drag per course. There is no vertical paint; a player who wants one could get it
+  later from a modifier key.

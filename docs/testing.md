@@ -79,7 +79,7 @@ y=20 over the hill); these four are the default `SHOTS`. `farm` (close-up on the
 none; M6-T5) is available with `SHOTS=...,farm`. For the survival session (M7-T7), `tunnel` (the hill tunnel and
 its breach, sliced at y=18, from the east) and `reservoir` (the levee reservoir at x=67 and the farm beside it, from
 the south over the river). For the monument session (M8-T6), `monument` (the tower and courtyard, from the
-south-west, yaw 30°). Output to `artifacts/screens/<preset>.png`. Human gates review them.
+south-west, yaw 30°). For the single-block tool (M9-T1), `paint` (the `PaintScript` site near the hub). Output to `artifacts/screens/<preset>.png`. Human gates review them.
 
 Shots render with Forward+ (`--rendering-method forward_plus` on the default Vulkan driver), the renderer the game
 plays in, so they show the same lighting and colors as play (ADR-035). There is no separate Compatibility render.
@@ -92,7 +92,11 @@ the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the 
 `TICKS=7700 SHOTS=tunnel` (flooded tunnel, breach levee sites), `TICKS=8400 SHOTS=tunnel` (levees complete),
 `TICKS=3000 SHOTS=reservoir` (full reservoir), `TICKS=14400 SHOTS=reservoir,tunnel,river` (drought: the river is
 empty, the reservoir and the tunnel still hold water). `SCRIPT=monument` (the timed `MonumentScript`, M8-T6):
-`TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 15000 (tower half built), 18600 (complete). The harness does not rebuild the C# assembly reliably:
+`TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 15000 (tower half built), 18600 (complete).
+`SCRIPT=paint` (the timed `PaintScript`, M9-T1): single blocks painted with the player's block tool along drags, a
+planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
+`TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag
+crosses it. The harness does not rebuild the C# assembly reliably:
 run `dotnet build src/Aurvangar.Godot` after code changes, before `screenshot.sh`.
 
 ## Scripted play

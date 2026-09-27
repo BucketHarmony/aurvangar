@@ -78,7 +78,7 @@ public partial class GameRoot
         _pilesDirty = true;
         _tool.AbortDrag();
         _build.Release();
-        _blocks.AbortDrag();
+        AbortPaint();
         SyncLostModal();
     }
 

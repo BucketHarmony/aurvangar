@@ -29,12 +29,13 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// past its mouth.</item>
 /// <item><c>blocks</c> (M8-T5): the <see cref="BlocksScript"/> site (walls, planned box, tool ghost) and the top bar's
 /// plan line; the hub when there is no site.</item>
+/// <item><c>paint</c> (M9-T1): the <see cref="PaintScript"/> site (single blocks painted along drags, a drag held).</item>
 /// <item><c>monument</c> (M8-T6): the <see cref="MonumentScript"/> tower and courtyard, with the hill quarry behind.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -94,6 +95,12 @@ public static class ScreenshotPresets
                 if (BlocksScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
                 var focus = new Vector3(s.X + BlocksScript.SiteW / 2f, s.Y + 1, s.Z + BlocksScript.SiteD / 2f);
                 return new CameraShot(name, focus, BlocksYaw, 50f, 18f, top);
+            }
+            case "paint":
+            {
+                if (PaintScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
+                var focus = new Vector3(s.X + BlocksScript.SiteW / 2f, s.Y + 1, s.Z + BlocksScript.SiteD / 2f);
+                return new CameraShot(name, focus, BlocksYaw, 50f, 12f, top);
             }
             case "monument":
             {

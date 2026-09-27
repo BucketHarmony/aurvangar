@@ -37,122 +37,6 @@ public class BlockToolTests
     private static int Top(Simulation sim) => sim.World.SizeY - 1;
 
     [Fact]
-    public void Ghost_UsesBuildShapes_InvalidCellsRedWithReason()
-    {
-        var sim = World();
-        sim.World.SetBlock(new Int3(7, G, 5), BlockId.Stone);   // in the way of the x-lines at z = 5
-        var tool = new BlockTool(TestContent.Db);
-        Assert.Equal(new[] { BlockId.Masonry, BlockId.Planks, BlockId.PolishedStone }, tool.Blocks);
-        Assert.Equal(new[] { "Stone wall", "Wood planks", "Polished stone" }, tool.Blocks.Select(TestContent.Db.LabelOf));
-
-        // The anchor is the air cell on the picked face: the top face of (5,8,5) looks into (5,9,5); a side face
-        // looks sideways.
-        Assert.Equal(new Int3(5, G, 5), BlockTool.Anchor(Top(5, 5)));
-        Assert.Equal(new Int3(4, G, 5), BlockTool.Anchor(new PickHit(new Int3(5, G, 5), Int3.West)));
-
-        foreach (var shape in BlockTool.Shapes)
-        {
-            tool.SetShape(shape);
-            tool.Press(Top(5, 5));
-            tool.Move(Top(9, 7));
-            var ghost = tool.Ghost(sim, null, Top(sim));
-            Assert.NotNull(ghost);
-            int h = BuildShapes.UsesHeight(shape) ? BlockTool.DefaultHeight : 1;
-            var expected = BuildShapes.Cells(shape, new Int3(5, G, 5), new Int3(9, G, 7), h);
-            Assert.Equal(expected, ghost!.Cells.Select(c => c.Cell));
-            // The batched validity equals CON-08 cell by cell, with the drag's cells as pending.
-            Assert.All(ghost.Cells, c => Assert.Equal(BlockPlans.CanPlan(sim, c.Cell, expected), c.Result));
-            tool.AbortDrag();
-        }
-
-        // A Line through the stone block: that cell is red with the CON-08 reason; the rest are fine.
-        tool.SetShape(BuildShape.Line);
-        tool.Press(Top(5, 5));
-        tool.Move(Top(9, 5));
-        var line = tool.Ghost(sim, null, Top(sim))!;
-        Assert.Equal(PlanResult.Solid, line.Cells.Single(c => c.Cell == new Int3(7, G, 5)).Result);
-        Assert.False(line.Cells.Single(c => c.Cell == new Int3(7, G, 5)).Ok);
-        Assert.Equal(4, line.Cells.Count(c => c.Ok));
-        Assert.Contains(BlockTool.ReasonText(PlanResult.Solid)!, BlockTool.Tooltip(sim, line));
-        Assert.All(Enum.GetValues<PlanResult>().Where(r => r != PlanResult.Ok), r => Assert.False(string.IsNullOrEmpty(BlockTool.ReasonText(r))));
-        Assert.Null(BlockTool.ReasonText(PlanResult.Ok));
-
-        // A cell with no support is red with its reason (a Single on the side of a hanging stone, nothing below).
-        sim.World.SetBlock(new Int3(3, G + 4, 3), BlockId.Stone);
-        var floating = BlockTool.GhostFor(sim, new DesignateBuild(BuildShape.Single, new Int3(3, G + 5, 3), new Int3(3, G + 5, 3), 1, BlockId.Masonry, false));
-        Assert.Equal(PlanResult.Ok, floating.Cells.Single().Result);   // on top of the stone: supported
-        var hanging = BlockTool.GhostFor(sim, new DesignateBuild(BuildShape.Single, new Int3(3, G + 2, 3), new Int3(3, G + 2, 3), 1, BlockId.Masonry, false));
-        Assert.Equal(PlanResult.Unsupported, hanging.Cells.Single().Result);
-
-        // Release sends DesignateBuild with the chosen block and the Plan flag (P toggles); without Shift the tool ends.
-        tool.Select(BlockId.Planks);
-        tool.TogglePlan();
-        Assert.True(tool.Plan);
-        var click = tool.Release(sim, Top(9, 5), Top(sim), shift: false);
-        Assert.Equal(new DesignateBuild(BuildShape.Line, new Int3(5, G, 5), new Int3(9, G, 5), 1, BlockId.Planks, true), click.Command);
-        Assert.False(click.KeepTool);
-        Assert.False(tool.Dragging);
-        tool.TogglePlan();
-        tool.Press(Top(5, 9));
-        var kept = tool.Release(sim, Top(5, 12), Top(sim), shift: true);
-        Assert.Equal(new DesignateBuild(BuildShape.Line, new Int3(5, G, 9), new Int3(5, G, 12), 1, BlockId.Planks, false), kept.Command);
-        Assert.True(kept.KeepTool);
-
-        // A drag with no valid cell sends nothing and says why.
-        tool.SetShape(BuildShape.Single);
-        tool.Press(new PickHit(new Int3(7, G - 1, 5), Int3.Up));   // anchor (7,9,5) is the stone block
-        var none = tool.Release(sim, null, Top(sim), shift: true);
-        Assert.Null(none.Command);
-        Assert.Contains(BlockTool.ReasonText(PlanResult.Solid)!, none.Message);
-
-        // Without a drag the ghost follows the hover: the shape anchored and ended at the hovered cell.
-        tool.SetShape(BuildShape.Wall);
-        var hover = tool.Ghost(sim, Top(12, 5), Top(sim))!;
-        Assert.Equal(BuildShapes.Cells(BuildShape.Wall, new Int3(12, G, 5), new Int3(12, G, 5), BlockTool.DefaultHeight), hover.Cells.Select(c => c.Cell));
-        Assert.Null(tool.Ghost(sim, null, Top(sim)));
-    }
-
-    [Fact]
-    public void Height_FromSliceAndKeys()
-    {
-        // Wall/Box height starts at SliceY - A.Y + 1 with the slice active, else 3 (clamped to 1..32).
-        Assert.Equal(4, BlockTool.StartHeight(anchorY: 9, sliceY: 12, sizeY: 32));
-        Assert.Equal(1, BlockTool.StartHeight(anchorY: 9, sliceY: 9, sizeY: 32));
-        Assert.Equal(1, BlockTool.StartHeight(anchorY: 13, sliceY: 12, sizeY: 32));
-        Assert.Equal(BlockTool.DefaultHeight, BlockTool.StartHeight(anchorY: 9, sliceY: 31, sizeY: 32));
-        Assert.Equal(32, BlockTool.StartHeight(anchorY: 1, sliceY: 62, sizeY: 64));
-
-        var sim = World();
-        var tool = new BlockTool(TestContent.Db);
-        tool.SetShape(BuildShape.Wall);
-        Assert.Equal(4, tool.Height(9, 12, 32));
-        tool.AdjustHeight(+1, 9, 12, 32);
-        Assert.Equal(5, tool.Height(9, 12, 32));
-        Assert.Equal(5, tool.Height(9, 31, 32));     // a changed height sticks until the tool is reset
-        tool.AdjustHeight(-10, 9, 12, 32);
-        Assert.Equal(BuildShapes.MinHeight, tool.Height(9, 12, 32));
-        tool.AdjustHeight(+100, 9, 12, 32);
-        Assert.Equal(BuildShapes.MaxHeight, tool.Height(9, 12, 32));
-        tool.Reset();
-        Assert.Equal(BlockTool.DefaultHeight, tool.Height(9, 31, 32));
-
-        // The command carries the height for Wall and Box; the others send 1 and their cells ignore it.
-        int slice = 11;   // slice active: 11 - 9 + 1 = 3
-        tool.AdjustHeight(+2, 9, slice, sim.World.SizeY);   // 5
-        foreach (var shape in BlockTool.Shapes)
-        {
-            tool.SetShape(shape);
-            tool.Press(Top(2, 2));
-            var cmd = Assert.IsType<DesignateBuild>(tool.Release(sim, Top(6, 4), slice, shift: true).Command);
-            Assert.Equal(BuildShapes.UsesHeight(shape) ? 5 : 1, cmd.Height);
-        }
-        tool.SetShape(BuildShape.Line);
-        tool.Press(Top(2, 2));
-        tool.Move(Top(6, 2));
-        Assert.Equal(5, tool.Ghost(sim, null, slice)!.Cells.Count);   // a Line is one course whatever the height
-    }
-
-    [Fact]
     public void ReleaseAndDeconstructTools_SendCommands()
     {
         Assert.Equal(ToolKind.Blocks, ToolController.ForHotkey('K'));
@@ -171,8 +55,8 @@ public class BlockToolTests
         var max = new Int3(sim.World.SizeX - 1, sim.World.SizeY - 1, sim.World.SizeZ - 1);
         Assert.Equal(new ReleasePlan(new Int3(0, 0, 0), max), ToolController.ReleaseAll(sim.World));
 
-        // Deconstruct: a press on a building is the BLD-09 click; a press over no building starts a box drag that
-        // sends DesignateDeconstructBlocks for the same columns.
+        // Deconstruct: a press on a building is the BLD-09 click; a press over no building starts a per-block paint
+        // drag (M9-T1, BlockPaintTests.Deconstruct_ByBlock).
         var onHub = DeconstructTool.Press(sim, new PickHit(HubOrigin + Int3.Up, Int3.Up));
         Assert.Equal(DeconstructTool.Click(sim, new PickHit(HubOrigin + Int3.Up, Int3.Up)), (onHub.Command, onHub.Message));
         Assert.NotNull(onHub.Message);        // the Great Hall is prebuilt-only: refused, and no drag either
@@ -182,13 +66,11 @@ public class BlockToolTests
         Assert.True(onGround.StartDrag);
         Assert.False(DeconstructTool.Press(sim, null).StartDrag);
 
+        // The drag tools' controller no longer drags for Deconstruct.
         t.SetTool(ToolKind.Deconstruct);
         t.Press(Top(3, 4));
-        Assert.False(t.Dragging);             // Deconstruct only drags when the caller starts it
-        t.BeginDrag(Top(3, 4));
-        Assert.True(t.Dragging);
-        Assert.Equal(new DesignateDeconstructBlocks(new Int3(3, G - 1, 4), new Int3(6, 25, 9)), t.Release(Top(6, 9), 25));
         Assert.False(t.Dragging);
+        Assert.Null(t.Release(Top(6, 9), 25));
     }
 
     [Fact]
@@ -303,7 +185,7 @@ public class BlockToolTests
     {
         var sim = World();
         sim.World.SetBlock(new Int3(7, G, 5), BlockId.Stone);
-        var ghost = BlockTool.GhostFor(sim, new DesignateBuild(BuildShape.Line, new Int3(5, G, 5), new Int3(8, G, 5), 1, BlockId.Planks, false));
+        var ghost = BlockTool.GhostFor(sim, BlockId.Planks, false, BuildShapes.Cells(BuildShape.Line, new Int3(5, G, 5), new Int3(8, G, 5), 1));
         var blocks = new BlockColors(TestContent.Db);
         var entities = new EntityColors(TestContent.Db);
         var m = BlockGhostMesher.Build(ghost, blocks, entities);

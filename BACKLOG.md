@@ -270,7 +270,7 @@ record the new ADR in M8-T1.
 
 Human answers are in PROGRESS.md under "G4 answers". Right-drag orbit stays as it is (no task).
 
-- [ ] **M9-T1** Block tool places single blocks · specs: CON-*, VIEW-21..23 · deps: M8-GATE
+- [x] **M9-T1** Block tool places single blocks · specs: CON-*, VIEW-21..23 · deps: M8-GATE
   - G4 answer: "building should be one square at a time." The human chose single-block placement over shapes.
   - Remove the shape modes (Tab cycling, and height by +/- or Ctrl+wheel) from the player's block tool. A click on
     a block face plans or places one block in the cell against that face. The top face stacks upward, and a side

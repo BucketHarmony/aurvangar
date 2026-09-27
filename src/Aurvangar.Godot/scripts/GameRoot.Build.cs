@@ -68,11 +68,12 @@ public partial class GameRoot
             }
             case ToolKind.Deconstruct:
             {
-                // M8-T5: over a building it is the BLD-09 click; elsewhere a box drag of built blocks (CON-18).
+                // Over a building it is the BLD-09 click; elsewhere a per-block paint drag of built blocks (CON-18,
+                // M9-T1).
                 var press = DeconstructTool.Press(Sim, Hover);
                 if (press.Command != null) Sim.Enqueue(press.Command);
                 if (press.Message != null) _hud.Toast(press.Message);
-                if (press.StartDrag && Hover is { } h) _tool.BeginDrag(h);
+                if (press.StartDrag && Hover is { } h) DeconstructPaintStart(h);
                 return true;
             }
             case ToolKind.Blocks:
@@ -101,8 +102,8 @@ public partial class GameRoot
         }
         else if (_tool.Tool == ToolKind.Deconstruct)
         {
-            if (_tool.PreviewBox(SliceY) is var (min0, max0)) _toolPreview.Show(min0, max0, DeconstructMark);
-            else if (DeconstructTool.Target(Sim, Hover) is { } b)
+            UpdateDeconstructMarks();
+            if (!_deconPaint.Dragging && DeconstructTool.Target(Sim, Hover) is { } b)
             {
                 var (min, max) = BuildingVisuals.Bounds(b);
                 _toolPreview.Show(min, max, DeconstructTool.Refusal(Sim, b) == null ? DeconstructMark : GhostBad);
@@ -115,9 +116,9 @@ public partial class GameRoot
     private string? ClickToolTooltip()
     {
         if (_tool.Tool == ToolKind.Build && Ghost is { } g) return BuildTool.Tooltip(Sim, g);
-        if (_tool.Tool == ToolKind.Deconstruct && _tool.Dragging) return "Take down the built blocks in these columns (up to the view level)";
-        if (_tool.Tool == ToolKind.Deconstruct && DeconstructTool.Target(Sim, Hover) is { } b) return DeconstructTool.Tooltip(Sim, b);
-        return null;
+        if (_tool.Tool != ToolKind.Deconstruct) return null;
+        if (!_deconPaint.Dragging && DeconstructTool.Target(Sim, Hover) is { } b) return DeconstructTool.Tooltip(Sim, b);
+        return DeconstructPaint.Tooltip(_deconMarked, _deconPaint.Dragging);
     }
 
     /// <summary>Events for the HUD: the colony-lost modal, season changes (ECO-18) and refused commands.</summary>

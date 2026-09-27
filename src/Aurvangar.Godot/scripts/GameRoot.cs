@@ -101,7 +101,7 @@ public partial class GameRoot : Node3D
             : new System.Numerics.Vector3(w.SizeX / 2f, w.SizeY / 2f, w.SizeZ / 2f);
         var cameraRig = GetNode<CameraRig>("Camera");
         cameraRig.Init(new OrbitRig(w.SizeX, w.SizeZ, focus, focus.Y), () => SliceY);
-        cameraRig.RightClicked += () => { _tool.AbortDrag(); _blocks.AbortDrag(); };
+        cameraRig.RightClicked += () => { _tool.AbortDrag(); AbortPaint(); };
     }
 
     public override void _Process(double delta)
@@ -130,9 +130,9 @@ public partial class GameRoot : Node3D
     public override void _PhysicsProcess(double delta)
     {
         Hover = PickingEnabled ? PickUnderMouse() : PickOverride;
-        _hoverMarker.SetHit(_tool.Tool == ToolKind.Select || !(_tool.Dragging || _blocks.Dragging) ? Hover : null);
+        _hoverMarker.SetHit(_tool.Tool == ToolKind.Select || !(_tool.Dragging || _blocks.Dragging || _deconPaint.Dragging) ? Hover : null);
         _tool.Move(Hover);
-        if (_tool.Tool != ToolKind.Blocks) ShowBlockGhost(null);
+        if (_tool.Tool is not (ToolKind.Blocks or ToolKind.Deconstruct)) ShowBlockGhost(null);
         if (_tool.Tool == ToolKind.Blocks) UpdateBlockPreview();
         else if (!ToolController.IsDragTool(_tool.Tool) && _tool.Tool != ToolKind.Select) UpdateClickToolPreview();
         else if (_tool.PreviewBox(SliceY) is var (min, max))
