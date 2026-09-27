@@ -12,8 +12,8 @@ namespace Aurvangar.ViewCore.Scripts;
 /// released wall <see cref="SampleW"/> wide and <see cref="SampleH"/> high at z0 + <see cref="RowDz"/>, starting at
 /// x0 + <see cref="SampleW"/> * i, with a planned (never released) course of the same block on top, so the shot shows
 /// each material built and as a plan ghost. The pit, dug <see cref="QuarryDepth"/> layers deeper than the <c>digchop</c> pit,
-/// brings in the stone (ADR-070). The <c>materials</c> camera preset looks
-/// at the row.</summary>
+/// brings in the stone (ADR-070). A Water Pump at the nearest wet site (M10-T5, ADR-075) keeps the colony alive through
+/// the day-5 drought to day 10. The <c>materials</c> camera preset looks at the row.</summary>
 public static class MaterialsScript
 {
     public const int SampleW = 2, SampleH = 2, RowDz = 3;
@@ -45,6 +45,9 @@ public static class MaterialsScript
         {
             new DesignateDig(new Int3(pitMin.X, pitMin.Y - QuarryDepth, pitMin.Z), pitMax),
         };
+        // M10-T5: a Water Pump at the nearest wet site, as the build script picks it (on seed 1 MonumentScript.PumpOrigin).
+        var pump = sim.Content.Building("pump");
+        if (ScreenshotScripts.FindSite(sim, pump, new HashSet<Int3>(), wet: true) is { } ps) list.Add(ps);
         if (BlocksScript.Find(sim) is not { } s) return list;
         var blocks = Blocks(sim);
         int y = s.Y + 1, z = s.Z + RowDz;

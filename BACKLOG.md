@@ -329,7 +329,7 @@ Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is de
     block, all 5 alive.
   - Target: idle share at most 15% from release to completion (measure the same way as M9-T2). Run perf.sh.
     Regenerate goldens if needed, and record why.
-- [ ] **M10-T5** Materials script keeps its colony alive · deps: M9-GATE
+- [x] **M10-T5** Materials script keeps its colony alive · deps: M9-GATE
   - G5 issue: the `materials` script has no pump, and the colony dies of thirst on day 6.
   - Give the script a pump (and a levee if it needs one, as SurvivalScript does), so all 5 are alive at day 10.
     Add a test. Keep the six material samples built by tick 12000.

@@ -1788,3 +1788,17 @@ Consequences:
   `UpperCourse_FullEnoughBatchStarts_SmallOneWaitsForHeldCourseBelow` (the hold; fails under ADR-068).
 - The remaining idle time is mostly the last course and the door lintel (few cells left), and short waits while a
   held-back batch fills.
+
+## ADR-075: The materials script gets a pump and no levee (2026-09-27, M10-T5)
+Context: G5 issue 8. The `materials` screenshot script had no pump; stored water ran out in the day-5 drought and
+the colony was lost at tick 15,295. The backlog allowed a levee reservoir as in SurvivalScript (ADR-055/056).
+Decision:
+- `MaterialsScript.Commands` adds a Water Pump at the nearest wet site, found the way the `build` script finds it
+  (`ScreenshotScripts.FindSite(..., wet: true)`), so the script stays computed from the world (ADR-020). On seed 1
+  it is (54,18,76) rotation 0, the monument's pump, on the river bank; its worker uses the stand cell one level up.
+- No levee or reservoir. The river bank intake dries in the drought (4,704 dry drought ticks), but the pump fills
+  the store to about 110 water before it, and the store is 90 or more at every day report until the river returns. A reservoir
+  would add digging that competes with the samples and the pit for no gain in this run.
+- The pump's 12 logs come from the starting stock; the Planks and Beam samples still have enough (6 logs left).
+Consequences: `--script materials --ticks 24000` ends with 5 of 5 alive. A longer drought or more dwarves would
+need the SurvivalScript reservoir. `MaterialsScenarioTests` checks the samples at 12,000 and 5 alive at day 10.

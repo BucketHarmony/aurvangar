@@ -3102,3 +3102,26 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   jobs at once.
 - Next: M10-T5 (the materials script keeps its colony alive). The monument now completes at 16,200, so the
   `monument` 17,400 screenshot still shows it complete.
+
+## M10-T5 — Materials script keeps its colony alive (2026-09-27)
+- Done: G5 issue 8 (ADR-075). `MaterialsScript.Commands` adds a Water Pump at the nearest wet site, found like the
+  `build` script's (`ScreenshotScripts.FindSite(..., wet: true)`). On seed 1 that is (54,18,76) rotation 0, the
+  monument's river-bank pump. No levee or reservoir: the intake dries in the drought, but the ~110 stored water lasts
+  until the river returns (lowest day report: 90 at tick 16,800).
+  - Docs: testing.md (the `materials` script), MaterialsScript summary.
+- Tests: new `Scenarios/MaterialsScenarioTests.Seed1_Materials_SamplesBuiltByTick12000_AllAliveAtDay10`: all
+  commands accepted, one pump; at tick 12,000 all 24 sample cells hold their block and the pump is complete; at day 10
+  all 5 are alive and the site is still recovered from the planned course. Before the change it failed on the missing
+  pump.
+  - check.sh: 632 passed, 0 skipped, 0 failed. 0 warnings.
+- Numbers (`--script materials`, seed 1): 24,000 ticks, 5 of 5 alive (before: colony lost at tick 15,295), hash
+  `3cee28d02761b2b7`, pump dry 4,704 drought ticks, left at day 10: log 6, stone 63, water 110. 12,000 ticks: hash
+  `b1ce69d0ff0c67da` (was `98a885fcaf9bad76`; the pump's jobs change the run).
+- sim-reviewer: not run (no Aurvangar.Sim change). Golden: unchanged (the survival script is untouched). perf.sh: not
+  run (script-only change; no water, path or sim code touched).
+- Screenshot (Forward+, seed 1, looked at): `artifacts/screens/m10t5_mat12/materials.png` (`SCRIPT=materials
+  TICKS=12000 SHOTS=materials`). The six built samples with their planned ghost course, as in G5; the top bar now
+  reads "Drought, 2 days left ... Log 6 Stone 43 ... Water 100" (G5: Water 0). All five dwarves are hauling stone.
+- Decisions: ADR-075.
+- Next: M10-GATE (HUMAN-GATE G6). The materials shot is `SCRIPT=materials TICKS=12000 SHOTS=materials`; the colony
+  now survives a 24,000-tick run.

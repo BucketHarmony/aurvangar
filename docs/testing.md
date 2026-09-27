@@ -99,8 +99,8 @@ up a wall face beside the L instead (`TICKS=1500`: the built L, and the 4x6 ghos
 planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
 `TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag
 crosses it. `SCRIPT=materials` (`MaterialsScript`, M9-T4): one 2x2 released sample of every construction block in
-Blocks-menu order with a planned course of the same block on top, and a pit dug 7 deep for the stone;
-`TICKS=12000 SHOTS=materials` shows all six built. The harness does not rebuild the C# assembly reliably:
+Blocks-menu order with a planned course of the same block on top, a pit dug 7 deep for the stone, and a Water Pump
+at the nearest wet site (M10-T5); `TICKS=12000 SHOTS=materials` shows all six built, and all 5 dwarves live to day 10. The harness does not rebuild the C# assembly reliably:
 run `dotnet build src/Aurvangar.Godot` after code changes, before `screenshot.sh`.
 
 ## Scripted play
