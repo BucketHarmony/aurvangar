@@ -185,5 +185,83 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M6-T8** Definition-of-done walkthrough, headless · deps: M6-T7
   - `run-headless.sh --seed 1 --script survival --ticks 24000` and a checklist in PROGRESS.md mapping each
     step of the DoD session (docs/00-overview.md) to evidence (test name, stat, or screenshot).
-- [ ] **M6-GATE HUMAN-GATE G3: POC review** · deps: M6-T8
+- [x] **M6-GATE HUMAN-GATE G3: POC review** · deps: M6-T8
   - Final report: what works, what is weak, perf table, list of ADRs made, recommended next milestone. Stop.
+
+## M7 — Playability pass (G3 answers)
+
+Human answers are in PROGRESS.md under "G3 answers". Q2 (pumps may stand on dry ledges) and Q9 (defer region and
+building-lookup optimisation) need no task.
+
+- [ ] **M7-T1** Right-drag pans the camera · specs: VIEW-02, VIEW-13 · deps: M6-GATE
+  - G3 play feedback: the human keeps right-dragging to pan. Right-button drag pans like middle-drag (keep
+    middle-drag). A right click with no drag movement still aborts the tool drag in progress. Put the
+    click-vs-drag threshold logic in ViewCore with unit tests. Update the controls text if any.
+- [ ] **M7-T2** Pump entrance may stand one level up · specs: BLD-03, BLD-13 · deps: M6-GATE
+  - G3 answer 3b: when the pump's entrance cell is blocked by the next bank step, the pump may use a stand cell one
+    level up, the way levees stack. On seed 1 there must be wet pump sites that need no hand-dug notch (test it).
+    Keep the SurvivalScript notch unless removing it is needed; if goldens change, record why. ADR.
+- [ ] **M7-T3** Survival session builds a levee reservoir for its pump and farm · specs: ECO-15, BLD-13 · deps: M7-T2
+  - G3 answers 4 and 5: a planned colony can farm and drink through a drought. Moisture already counts any water
+    at or above level 128 (ECO-15); confirm it with a test in which a field beside a levee reservoir keeps growing
+    through the whole drought. Extend SurvivalScript so the pump draws from a levee-held reservoir (pump dry ticks
+    in the drought near 0) and one field sits by the held water (a second harvest before day 10). All 5 alive at
+    day 10. Regenerate goldens and record why.
+- [ ] **M7-T4** Dwarves eat the most plentiful food first · specs: ECO-04 · deps: M6-GATE
+  - G3 answer 6: pick the food item with the most units in reachable storage (ties by item id). Test: with
+    berries and potatoes stored, potatoes are eaten while they outnumber berries.
+- [ ] **M7-T5** Give-up mark for jobs that can never succeed · specs: JOB-09, VIEW-15 · deps: M6-GATE
+  - G3 answer 7: a recurring haul, delivery or pump job that is reposted N times (pick N, ADR) without ever
+    succeeding is marked unreachable and stops reposting until the world changes near it (a walkability change
+    or a new storage). The HUD shows a notice. Scenario test with an unreachable pump entrance.
+- [ ] **M7-T6** No dig strands any dwarf · specs: DSG-08, JOB-09 · deps: M6-GATE
+  - G3 answer 8: extend the strand rule (ADR-037) from the digger to every dwarf: a dig that would cut any dwarf's
+    standing cell off from the Great Hall's region waits. Scenario test with a second dwarf working inside the pit.
+    Watch the perf budget (one region check per candidate dig).
+- [ ] **M7-T7** Readable labels and timed screenshot scripts · specs: VIEW-15 · deps: M7-T3
+  - The harness ghost tooltip must not overlap a building billboard (build1600 shot). The screenshot harness can
+    run timed scripts (SCRIPT=survival enqueues each command at its tick), so the flooded tunnel, the breach
+    levees and the reservoir can be shot. Render and look.
+
+## M8 — Free-form construction (monuments)
+
+G3 play feedback: "not much for me to do. I want to build great constructs, I want to plan monuments." The human
+chose free-form block building. Prefab buildings stay for functional buildings (hall, warehouse, pump, levee). The
+player also paints structure block by block, and dwarves build it. This amends ADR-001 (prefab-only construction);
+record the new ADR in M8-T1.
+
+- [ ] **M8-T1** Construction spec and ADR · deps: M7-T7
+  - Write `docs/specs/construction.md` with rule IDs (CON-xx) and update docs/00-overview.md scope. The spec covers:
+    - Buildable block types in data (a stone wall from stone, a wood wall/floor from logs, at least one more
+      decorative block such as brick or polished stone). Each has an item cost, and the view has a colour.
+    - Placement shapes: single, line, wall (line x height), floor (rectangle), hollow box.
+    - Support rule: no floating blocks. A block needs a solid block below it or next to it that is itself
+      supported or terrain.
+    - Build order: bottom-up and reachable-first.
+    - Dwarves stand on already-built blocks or terrain. No walling a dwarf in (reuse the strand rule).
+    - Interaction with water: a built wall holds water like a levee.
+    - A plan layer (below).
+  - Add placeholder acceptance tests with `Skip = "M8-Tn"` for the tasks below.
+- [ ] **M8-T2** Build-block designations and jobs · specs: CON-* · deps: M8-T1
+  - New commands (with CommandCodec entries) that designate block placement in the spec's shapes. Build jobs fetch
+    the material from storage and place it through `WorldActions.PlaceBlock`, obeying the support and build-order
+    rules. Designations are saved (bump FormatVersion) and hashed. Cancel refunds nothing that was not yet placed.
+- [ ] **M8-T3** Deconstruct placed blocks · specs: CON-* · deps: M8-T2
+  - A dig or deconstruct on a player-built block returns its material as a pile. It never removes a block that
+    other built blocks depend on for support; those wait, or come down top-first.
+- [ ] **M8-T4** Plan layer for monuments · specs: CON-* · deps: M8-T2
+  - The player can lay out a design as planned blocks that dwarves do NOT build yet. The plan shows the total
+    material needed against what is stored. A command releases the whole plan (or a selected part) to the builders.
+    Plans are saved and hashed.
+- [ ] **M8-T5** Godot: block build tool, plan view, material totals · specs: CON-*, VIEW-* · deps: M8-T3, M8-T4
+  - A tool with shape modes, height set by drag or the slice level, and ghost blocks coloured by material. Invalid
+    cells are red with a reason. Plan blocks render as translucent ghosts; built blocks render as terrain. The HUD
+    shows material needed versus stored. Keep logic in ViewCore with tests. Render screenshots and look.
+- [ ] **M8-T6** Monument scenario · deps: M8-T5
+  - A MonumentScript (seed 1) plans and releases a stone tower (at least 7x7, 8 high, hollow, with a door) plus a
+    walled courtyard. Dwarves quarry stone by digging the hill. Tests: it completes by day 10 with all 5 alive,
+    no dwarf is walled in, no floating block exists, and a save/load mid-build continues identically. Run
+    perf.sh; the full tick stays within budget. Headless and screenshot support for `--script monument`.
+- [ ] **M8-GATE HUMAN-GATE G4: build a monument** · deps: M8-T6
+  - Report with screenshots of the monument going up (several ticks), the perf table and open issues. Ask the
+    human to build something by hand and report how it felt. Stop.

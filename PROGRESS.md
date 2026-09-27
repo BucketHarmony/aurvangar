@@ -1867,3 +1867,24 @@ All shots are under `artifacts/screens/g3/`.
       milestone plan from you. No backlog task adds those systems until then.
 
 Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
+
+### G3 answers (human, 2026-09-26)
+
+- **Hands-on play (Q1):** the human played the Godot build and called it "a great start". POC accepted; gate G3
+  closed. Feedback:
+  - "I find I am right-clicking to pan and keep forgetting it is center mouse." -> M7-T1.
+  - "It feels a little like there is not much for me to do. I want to build great constructs, I want to plan
+    monuments." Asked what that means, the human chose **free-form block building**: paint walls, floors and
+    shapes block by block, with dwarves hauling material and building it. -> new milestone M8. This amends
+    ADR-001 (prefab-only); prefab functional buildings stay.
+- **Q2-Q10:** the human took the recommendations.
+  - Q2: keep allowing pumps on dry ledges (they flag NoWater).
+  - Q3: (b) the pump may use a stand cell one level up -> M7-T2.
+  - Q4: yes, player-held water keeps fields moist -> M7-T3.
+  - Q5: yes, the survival session builds a real levee reservoir -> M7-T3 (regenerate goldens).
+  - Q6: eat the most plentiful food first -> M7-T4.
+  - Q7: add a give-up mark with a HUD notice -> M7-T5.
+  - Q8: the strand rule protects every dwarf -> M7-T6.
+  - Q9: defer incremental regions and the building index.
+  - Q10: M7 playability pass (plus right-drag pan, label overlap, timed screenshot scripts), then M8 free-form
+    construction and monuments, ending at gate G4.
