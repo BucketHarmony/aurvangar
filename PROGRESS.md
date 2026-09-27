@@ -2950,3 +2950,17 @@ Block building controls (M9-T1, ADR-067):
 5. **Anything else** from your play session: bugs, confusions, or things you wanted to build and could not.
 
 Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
+
+### G5 answers (human, 2026-09-27)
+
+- The human reviewed the G5 report and said: "Looks good please continue." Gate G5 is closed. The human gave no
+  separate answers to Q1-Q5, so the orchestrator took its recommendations:
+  - Q1: the hand-build feel is accepted as it is.
+  - Q2: add vertical painting from a side face -> M10-T3.
+  - Q3: surface stone is deferred and asked again at G6. Worldgen changes would move the survival and monument
+    scripts.
+  - Q4: more construction feel next, and fix the issues G5 found:
+    - stair steps drawn red -> M10-T1;
+    - shortage shown late -> M10-T2;
+    - idle builders -> M10-T4;
+    - the materials script dies of thirst -> M10-T5.

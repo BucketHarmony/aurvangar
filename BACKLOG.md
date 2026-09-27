@@ -296,6 +296,43 @@ Human answers are in PROGRESS.md under "G4 answers". Right-drag orbit stays as i
     example: rough stone or rubble from stone, a dirt or clay block, a wood beam. Add new items only if a block
     needs them.
   - The picker lists them. A spec update adds the new CON rows. There are tests for cost and refund.
-- [ ] **M9-GATE HUMAN-GATE G5: hand-build review** · deps: M9-T1, M9-T2, M9-T3, M9-T4
+- [x] **M9-GATE HUMAN-GATE G5: hand-build review** · deps: M9-T1, M9-T2, M9-T3, M9-T4
   - Report with screenshots of single-block painting, a hand-style build in progress and the new materials, plus
     the perf table and open issues. Ask the human to build by hand again and report how it felt. Stop.
+
+## M10 — Construction feel (G5 answers)
+
+Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is deferred to gate G6.
+
+- [ ] **M10-T1** Stair steps waiting on planned support are not red · specs: CON-*, VIEW-22 · deps: M9-GATE
+  - G5 issue 5: the monument's inner stair steps read `NoSupport` and draw red until the wall they lean on is
+    built, then build fine.
+  - A planned or released cell that will be supported once planned or released cells below it or beside it are
+    built reads as a waiting status (for example "waiting for support"), not red. Red is kept for cells that can
+    never be supported by the plan.
+  - Scenario test on the monument plan: no stair step is red at tick 11000. A truly floating plan cell is still red.
+- [ ] **M10-T2** Show material shortage while dragging · specs: VIEW-21..23 · deps: M9-GATE
+  - G5 issue: with 0 stone stored, a held stone drag looks valid, and the shortage only shows after release.
+  - While dragging, the tool ghost and the tooltip show the drag's cost against free stock (stock minus what
+    released blocks will use). Cells beyond the stock are drawn amber (short, not invalid).
+  - Put the logic in ViewCore with tests. Render screenshots and look at them.
+- [ ] **M10-T3** Vertical painting from a side face · specs: VIEW-21 · deps: M9-GATE
+  - G5 Q2 (the recommendation was taken): a drag that starts on a side face paints in that face's vertical plane,
+    so a wall face (a column or a rectangle of cells the cursor passes) can be painted in one drag. A drag from a
+    top face stays horizontal. Cells are sent bottom-up, so each has support.
+  - Put the logic in ViewCore with tests. Amend ADR-067. Render screenshots and look at them.
+- [ ] **M10-T4** Fewer idle builders between courses · specs: CON-*, JOB-* · deps: M9-GATE
+  - G5 issue 2: about 27% of dwarf time is idle at the end of each layer after a whole-plan release.
+  - Let the next course start where the course below is already built locally (for example, a cell whose supports
+    are all built may start even while other parts of the lower course are still in jobs). Keep ADR-068's full
+    batches: at least 4 blocks per trip. Keep the monument's checks: done by day 10, no dwarf walled in, no floating
+    block, all 5 alive.
+  - Target: idle share at most 15% from release to completion (measure the same way as M9-T2). Run perf.sh.
+    Regenerate goldens if needed, and record why.
+- [ ] **M10-T5** Materials script keeps its colony alive · deps: M9-GATE
+  - G5 issue: the `materials` script has no pump, and the colony dies of thirst on day 6.
+  - Give the script a pump (and a levee if it needs one, as SurvivalScript does), so all 5 are alive at day 10.
+    Add a test. Keep the six material samples built by tick 12000.
+- [ ] **M10-GATE HUMAN-GATE G6: construction feel review** · deps: M10-T1, M10-T2, M10-T3, M10-T4, M10-T5
+  - Report with screenshots of vertical painting, the shortage display and the monument's stair steps mid-build,
+    plus the perf table and open issues. Ask again about surface stone (G5 Q3) and the next direction. Stop.
