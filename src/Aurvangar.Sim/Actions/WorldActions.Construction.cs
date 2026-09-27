@@ -36,7 +36,8 @@ public sealed partial class WorldActions
 
     /// <summary>One tick of work on a building. A construction site needs every cost item delivered (else
     /// InvalidTarget) and completes at BuildTicks (BLD-08). A building being deconstructed is removed after
-    /// half its build ticks (BLD-09); that last tick is Blocked while an agent holds a cell on top of it. A
+    /// half its build ticks (BLD-09); that last tick is Blocked while an agent holds a cell on top of it, or while a
+    /// built block depends on its footprint (CON-10). A
     /// blueprint takes no work (InvalidTarget); a complete producer runs its cycle (<see cref="PumpTick"/>, BLD-13), any
     /// other complete building accepts the tick and nothing happens.</summary>
     private ActionResult WorkOnBuilding(Agent a, Building b)
@@ -49,7 +50,8 @@ public sealed partial class WorldActions
                 if (++b.Progress >= b.Def.BuildTicks) Complete(b);
                 return ActionResult.Ok;
             case BuildingState.Deconstructing:
-                if (b.Progress + 1 >= Construction.DeconstructTicks(b.Def) && HoldsTop(b)) return ActionResult.Blocked;
+                if (b.Progress + 1 >= Construction.DeconstructTicks(b.Def)
+                    && (HoldsTop(b) || Construction.SupportsBlocks(_sim, b))) return ActionResult.Blocked;   // CON-10
                 if (++b.Progress >= Construction.DeconstructTicks(b.Def)) TearDown(b);
                 return ActionResult.Ok;
             case BuildingState.Complete:

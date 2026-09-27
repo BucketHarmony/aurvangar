@@ -56,6 +56,7 @@ public static partial class JobRunner
             if (!Farming.FarmSystem.StillWanted(sim, job)) continue;   // ADR-047: withdrawn at the next farm step
             if (!Plants.BushHarvest.StillWanted(sim, job)) continue;   // ADR-048: withdrawn at the next plant step
             if (job.Kind == JobKind.Dig && DigStrand.StrandsOthers(sim, job.Target, a.Id)) continue;   // M7-T6
+            if (job.Kind == JobKind.Dig && Blocks.Support.Depends(sim, job.Target)) continue;   // CON-10
             if (job.Kind == JobKind.Build && BuildStrandsOthers(sim, job, a)) continue;   // CON-14
             best = job;
             bestDist = dist;
@@ -163,9 +164,10 @@ public static partial class JobRunner
                 return;
             case StepKind.Work:
                 if (job.Kind == JobKind.Dig && a.StepProgress == 0
-                    && (DigStrand.Strands(sim, step.Cell, a.Cell) || DigStrand.StrandsOthers(sim, step.Cell, a.Id)))
+                    && (DigStrand.Strands(sim, step.Cell, a.Cell) || DigStrand.StrandsOthers(sim, step.Cell, a.Id)
+                        || Blocks.Support.Depends(sim, step.Cell)))
                 {
-                    StandDown(sim, a, job);   // M4-T14: the world changed on the way; do not start a stranding dig
+                    StandDown(sim, a, job);   // M4-T14, CON-10: the world changed on the way; do not start this dig
                     return;
                 }
                 if (job.Kind == JobKind.Build && a.StepProgress == 0 && PlaceStrandsAny(sim, a, step.Cell))
@@ -198,9 +200,10 @@ public static partial class JobRunner
                     Fail(sim, a, job);
                     return;
                 }
-                if (DigStrand.Strands(sim, step.Cell, a.Cell) || DigStrand.StrandsOthers(sim, step.Cell, a.Id))
+                if (DigStrand.Strands(sim, step.Cell, a.Cell) || DigStrand.StrandsOthers(sim, step.Cell, a.Id)
+                    || Blocks.Support.Depends(sim, step.Cell))
                 {
-                    StandDown(sim, a, job);   // M4-T14 (the digger), M7-T6 (any other dwarf)
+                    StandDown(sim, a, job);   // M4-T14 (the digger), M7-T6 (any other dwarf), CON-10 (a built block rests on it)
                     return;
                 }
                 r = act.Dig(a.Id, step.Cell);
@@ -234,14 +237,14 @@ public static partial class JobRunner
 
     /// <summary>M5-T2 (BLD-08/09): building work runs until the site is complete or the building is gone, not for a
     /// fixed count (progress lives on the building, so a new worker carries on). A deconstruction's last tick stands
-    /// down when removing the building would cut the worker off from the Great Hall (M4-T14), and waits like DSG-08
-    /// while an agent is on top of it.</summary>
+    /// down when removing the building would cut the worker off from the Great Hall (M4-T14) or unground a built block
+    /// placed against it after the command (CON-10), and waits like DSG-08 while an agent is on top of it.</summary>
     private static void BuildWork(Simulation sim, Agent a, Job job, JobStep step)
     {
         var b = sim.Buildings.Get(new BuildingId(step.Target));
         if (job.Kind == JobKind.Deconstruct && b is { State: Buildings.BuildingState.Deconstructing }
             && b.Progress + 1 >= Buildings.Construction.DeconstructTicks(b.Def)
-            && Buildings.Construction.WouldStrand(sim, b, a.Cell))
+            && (Buildings.Construction.WouldStrand(sim, b, a.Cell) || Buildings.Construction.SupportsBlocks(sim, b)))
         {
             StandDown(sim, a, job);
             return;

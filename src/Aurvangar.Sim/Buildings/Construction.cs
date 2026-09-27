@@ -27,7 +27,8 @@ public static partial class Construction
         sim.Events.Emit(new BuildingPlaced(b!.Id));
     }
 
-    /// <summary>BLD-09: cancel a blueprint or site, or start deconstructing a complete building.</summary>
+    /// <summary>BLD-09: cancel a blueprint or site, or start deconstructing a complete building. Rejected with
+    /// SupportsBlocks when removing a complete building's footprint would unground a built block (CON-10).</summary>
     public static void Deconstruct(Simulation sim, string tag, BuildingId id)
     {
         var b = sim.Buildings.Get(id);
@@ -35,6 +36,7 @@ public static partial class Construction
         if (b.Def.PrebuiltOnly) { Reject(sim, tag, "PrebuiltOnly"); return; }
         if (b.State == BuildingState.Deconstructing) { Reject(sim, tag, "AlreadyDeconstructing"); return; }
         if (HasBuildingOnTop(sim, b)) { Reject(sim, tag, "BuildingOnTop"); return; }
+        if (b.State == BuildingState.Complete && SupportsBlocks(sim, b)) { Reject(sim, tag, "SupportsBlocks"); return; }
         if (b.State == BuildingState.Complete)
         {
             b.State = BuildingState.Deconstructing;   // the tick posts its Deconstruct job
@@ -106,6 +108,12 @@ public static partial class Construction
                 return true;
         return false;
     }
+
+    /// <summary>CON-10: the building's BuildingSolid footprint is ground for a built block that would not be grounded
+    /// without it. Only a building that sets blocks and is complete (or being deconstructed) has such a footprint.</summary>
+    public static bool SupportsBlocks(Simulation sim, Building b) =>
+        b.Def.SetsBlocks && (b.State is BuildingState.Complete or BuildingState.Deconstructing)
+        && Blocks.Support.Depends(sim, b.FootprintCells().ToList());
 
     /// <summary>Another building stands on this one's top layer (stacked levees).</summary>
     public static bool HasBuildingOnTop(Simulation sim, Building b)

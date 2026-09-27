@@ -1431,3 +1431,28 @@ Consequences:
 - `ContentDbTests` asserts 11 block types.
 - Save format v6; v5 files are refused (SAV-04). The seed-1 goldens are unchanged: an empty plan store adds nothing to
   the hash.
+
+## ADR-063: Deconstructing built blocks: implementation choices (2026-09-27, M8-T3)
+Context: M8-T3 implements CON-10, CON-17 and CON-18. A few points were open.
+Decision:
+- **One support test, `Support.Depends`.** It takes a set of removed cells: one cell for a dig, the whole footprint
+  for a building (cells of the same footprint do not hold each other up). Each built up/side neighbour gets its own
+  grounding search, depth-first with the down step tried first, capped at 4096 visited blocks (over the cap =
+  depends, CON-10). A cell with no built neighbour answers after 5 lookups, so terrain digs pay almost nothing.
+- **Where it applies.** `DesignationSystem` posts no job for such a mark (it waits and never turns red);
+  `JobRunner.Select` skips an already-posted one; Work start and the Dig step stand down with the JOB-08 cooldown and
+  no failure, as the strand rule does. `WorldActions.Dig` returns `Blocked`.
+- **Teardown guard.** The `Deconstruct` command rejects `SupportsBlocks` only for a complete building. A block can
+  still be placed against a building that is already being deconstructed (its BuildingSolid is ground for placement
+  support). The last Deconstruct tick is then `Blocked` in `WorldActions` and the job stands down without a failure
+  until the block is gone, so the CON-09 invariant holds on every path.
+- **`NothingToDeconstruct`** is also the reason for a box wholly outside the world (DesignateDig says "box is outside
+  the world"); the command has one rejection reason.
+- **Refund pile** goes on the dug cell like a natural drop. Piles left in mid-air by digging under them are an
+  existing behaviour (natural digs do it too); they are still hauled from any stand cell in reach.
+- **Test invariant helper.** `Tests/Support/Grounding.Floating` checks CON-09 with its own flood (up/sideways from
+  blocks resting on ground), independent of `Support`, for reuse in M8-T6.
+Consequences:
+- A tall single-column pillar comes down strictly top-first and a cantilever from its free end. A wide structure is
+  only biased top-down (DSG-04): a lower block goes whenever its neighbours stay grounded without it.
+- Seed-1 goldens are unchanged (no built blocks in the survival session).

@@ -246,7 +246,7 @@ record the new ADR in M8-T1.
   - New commands (with CommandCodec entries) that designate block placement in the spec's shapes. Build jobs fetch
     the material from storage and place it through `WorldActions.PlaceBlock`, obeying the support and build-order
     rules. Designations are saved (bump FormatVersion) and hashed. Cancel refunds nothing that was not yet placed.
-- [ ] **M8-T3** Deconstruct placed blocks · specs: CON-10, CON-17, CON-18 · deps: M8-T2
+- [x] **M8-T3** Deconstruct placed blocks · specs: CON-10, CON-17, CON-18 · deps: M8-T2
   - A dig or deconstruct on a player-built block returns its material as a pile. It never removes a block that
     other built blocks depend on for support; those wait, or come down top-first.
 - [ ] **M8-T4** Plan layer for monuments · specs: CON-04, CON-05 (Planned), CON-06, CON-07 (ReleasePlan) · deps: M8-T2

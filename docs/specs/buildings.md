@@ -77,8 +77,10 @@ checked right after `Overlaps` (CON-08).
   materials are refunded as piles at the entrance. On a complete building it starts deconstruction: one
   Deconstruct job (half build ticks), then footprint cells revert to Air and 50% of cost (rounded down), plus
   anything stored, is dropped as piles at the entrance. Rejected (`CommandRejected`) for an unknown id, a
-  prebuilt-only building, one already being deconstructed, or one with another building on top (ADR-041). M8-T3 adds `SupportsBlocks`:
-  a footprint cell holds up a built block (CON-10).
+  prebuilt-only building, one already being deconstructed, or one with another building on top (ADR-041), or
+  (M8-T3) `SupportsBlocks` for a complete building whose footprint holds up a built block (CON-10; checked after
+  `BuildingOnTop`). A block placed against a building after its deconstruction started holds the teardown back:
+  the last Deconstruct tick stands down until the block is gone (ADR-063).
 
 ## Storage (BLD-10..12)
 

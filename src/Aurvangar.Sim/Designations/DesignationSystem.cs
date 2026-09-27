@@ -28,19 +28,38 @@ public static class DesignationSystem
     /// under it get <c>Dig</c>, including a plant's floor (M4-T15: its job waits until the plant is gone, DSG-03); <c>DigUnreachable</c> becomes <c>Dig</c> again (a retry); others are unchanged.</summary>
     public static void DesignateDig(Simulation sim, string tag, Int3 a, Int3 b)
     {
+        if (!Clamp(sim.World, a, b, out var min, out var max)) { Reject(sim, tag); return; }
+        MarkDigs(sim, min, max, builtOnly: false);
+    }
+
+    /// <summary>CON-18 (M8-T3): like <see cref="DesignateDig"/>, but only built blocks (construction block types) in
+    /// the box get <c>Dig</c>, so a drag over a monument leaves its ground alone. Rejected with NothingToDeconstruct
+    /// when the box holds no built block that can be marked.</summary>
+    public static void DesignateDeconstructBlocks(Simulation sim, string tag, Int3 a, Int3 b)
+    {
+        if (!Clamp(sim.World, a, b, out var min, out var max) || MarkDigs(sim, min, max, builtOnly: true) == 0)
+            sim.Events.Emit(new CommandRejected(tag, "NothingToDeconstruct"));
+    }
+
+    /// <summary>DSG-02 marking over a clamped box, y from 1 up; returns the cells that are (now) marked Dig.</summary>
+    private static int MarkDigs(Simulation sim, Int3 min, Int3 max, bool builtOnly)
+    {
         var world = sim.World;
-        if (!Clamp(world, a, b, out var min, out var max)) { Reject(sim, tag); return; }
         var building = BuildingCells(sim);
+        int marked = 0;
         for (int y = Math.Max(min.Y, 1); y <= max.Y; y++)
             for (int z = min.Z; z <= max.Z; z++)
                 for (int x = min.X; x <= max.X; x++)
                 {
                     var c = new Int3(x, y, z);
-                    var def = sim.Content.Block(world.GetBlock(c));
-                    if (!def.Solid || !def.Diggable) continue;
+                    var block = world.GetBlock(c);
+                    var def = sim.Content.Block(block);
+                    if (!def.Solid || !def.Diggable || (builtOnly && !def.IsConstruction)) continue;
                     if (building.Contains(world.Index(c)) || building.Contains(world.Index(c + Int3.Up))) continue;
                     if (sim.Designations.Get(c) != DesignationMark.Dig) sim.Designations.Set(c, DesignationMark.Dig);
+                    marked++;
                 }
+        return marked;
     }
 
     /// <summary>DSG-05. Trees whose base is inside the XZ rectangle, any Y. Re-marking clears a chop give-up.</summary>
@@ -92,7 +111,7 @@ public static class DesignationSystem
     // ---- tick (ARCH-01 step 8) ----
 
     /// <summary>DSG-03/04 and chop posting. One Dig job per <c>Dig</c> mark on a solid, diggable, exposed cell without
-    /// a job and without a plant on top (M4-T15); a mark whose cell is no longer solid (and, for Dig, has no job) is cleared. Open dig jobs get priority
+    /// a job, without a plant on top (M4-T15) and on which no built block depends (CON-10); a mark whose cell is no longer solid (and, for Dig, has no job) is cleared. Open dig jobs get priority
     /// 25 + min(y − lowest marked y, <see cref="MaxHeightBonus"/>), recomputed every tick. One Chop job per marked,
     /// not given-up tree without a job. Marks, trees and jobs are visited in ascending index / id order.</summary>
     public static void Tick(Simulation sim)
@@ -156,6 +175,7 @@ public static class DesignationSystem
             var def = sim.Content.Block(world.GetBlock(c));
             if (!def.Solid || !def.Diggable || !Exposed(world, c)) continue;
             if (held || sim.Plants.IsOccupied(c + Int3.Up)) continue;   // M4-T15: a plant's floor waits for the plant
+            if (Blocks.Support.Depends(sim, c)) continue;   // CON-10: a built block rests on it; it waits (never red)
             sim.Jobs.Post(JobKind.Dig, c,
                 new[] { JobStep.GoTo(c, GoalMode.Dig), JobStep.Work(c, def.Hardness), JobStep.Dig(c) },
                 new[] { Reservation.OnCell(c) }, priority);

@@ -19,6 +19,8 @@
   `Empty` (Farmland stays Farmland), and cancels open jobs for those targets (claimed jobs release and the
   agent goes idle).
   M8-T2 (CON-07): it also removes block plan entries in the box and cancels the Build jobs that hold them.
+  M8-T3 (CON-10): no job is posted for a marked cell that a built block depends on for support; it waits and is
+  never turned `DigUnreachable` for that. `DesignateDeconstructBlocks(box)` (CON-18) marks only built blocks.
 - **DSG-07** After a Dig completes the designation is cleared.
 - **DSG-08** A dig that would remove the block an agent is standing on is deferred while any agent stands there.
 - **DSG-09** (M4-T14, ADR-037) A dig is never taken or finished from a stand cell that the dig would cut off from

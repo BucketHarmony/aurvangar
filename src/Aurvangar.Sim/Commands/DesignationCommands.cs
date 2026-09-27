@@ -36,3 +36,12 @@ public sealed record DesignateFarm(int X0, int Z0, int X1, int Z1) : ICommand
 
     public void Apply(Simulation sim) => Farming.FarmSystem.Designate(sim, Tag, X0, Z0, X1, Z1);
 }
+
+/// <summary>CON-18 (M8-T3): mark only the built blocks (construction block types) of the box for digging, which
+/// refunds their cost (CON-17). A box with no built block is rejected with NothingToDeconstruct.</summary>
+public sealed record DesignateDeconstructBlocks(Int3 A, Int3 B) : ICommand
+{
+    public string Tag => "DesignateDeconstructBlocks";
+
+    public void Apply(Simulation sim) => DesignationSystem.DesignateDeconstructBlocks(sim, Tag, A, B);
+}

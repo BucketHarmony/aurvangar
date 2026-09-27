@@ -9,16 +9,6 @@ using Xunit;
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class BlockDeconstructScenarioTests
-    {
-        [Fact(Skip = "M8-T3")] public void DigBuiltBlock_RefundsFullCost() => Placeholder.Write("CON-17: digging Masonry drops 1 stone, Planks 1 log and PolishedStone 2 stone as one pile on the dug cell, and the dig takes the block's hardness in ticks; the piles are hauled to storage");
-        [Fact(Skip = "M8-T3")] public void DeconstructBlocks_MarksOnlyBuiltBlocks() => Placeholder.Write("CON-18: DesignateDeconstructBlocks over a wall and the ground around it marks only the wall's blocks; a box with no built block is rejected with NothingToDeconstruct");
-        [Fact(Skip = "M8-T3")] public void Tower_ComesDownTopFirst_NoBlockEverUngrounded() => Placeholder.Write("construction.md scenario 7, CON-10: a marked tower and a bridge span are removed; the CON-09 invariant (every built block grounded) holds after every tick; supporting blocks wait (no failures, no DigUnreachable) and the span comes down from its free end");
-        [Fact(Skip = "M8-T3")] public void DigUnderBuiltBlock_WaitsAndActionBlocked() => Placeholder.Write("CON-10: a dig mark on the terrain block under a wall posts no job while the wall stands; WorldActions.Dig on it returns Blocked; once the wall above is deconstructed the dig proceeds");
-        [Fact(Skip = "M8-T3")] public void DeconstructLeveeUnderBlocks_RejectedSupportsBlocks() => Placeholder.Write("CON-10/BLD-09: Deconstruct of a complete levee with a Masonry block on top is rejected with SupportsBlocks (after BuildingOnTop in the check order)");
-    }
-
-    [Trait("Category", "Scenario")]
     public class BlockPlanScenarioTests
     {
         [Fact(Skip = "M8-T4")] public void PlannedEntries_NotBuilt() => Placeholder.Write("construction.md scenario 8, CON-04/07: DesignateBuild with Plan = true adds Planned entries; no Build job is posted in 2000 ticks with stone in stock; StatusOf == Planned");

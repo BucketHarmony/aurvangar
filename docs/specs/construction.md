@@ -168,9 +168,13 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     - Such a mark waits and never turns `DigUnreachable` for this reason.
     - DSG-03 exposure and the DSG-04 top-down bias then take a structure down top-first.
     - A sideways span comes down from its free end.
+  - Work start also stands down for such a dig, as for the strand rule (M8-T3, ADR-063).
   - `WorldActions.Dig` returns `Blocked` for such a block, so the API keeps the invariant.
   - BLD-09: `Deconstruct` of a complete `setsBlocks` building with any footprint cell that others depend on is
-    rejected with `SupportsBlocks`. It is checked after `BuildingOnTop`.
+    rejected with `SupportsBlocks`. It is checked after `BuildingOnTop`. A block placed against the building after
+    the command was accepted holds the teardown back: the last Deconstruct tick is `Blocked` in `WorldActions` and
+    the job stands down (no failure) until the block is gone (ADR-063).
+  - The search is depth-first and tries the down step first, so a column or wall answers in about its height.
 
 ## Build jobs (CON-11..15)
 
@@ -287,7 +291,7 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   50%: blocks are cheap, and redesigning a monument should not be punished. The cost is one item type of at most 10
   (CON-02), so it always fits one pile. Natural drops are unchanged.
 - **CON-18** `DesignateDeconstructBlocks(A, B)` sets Dig marks (DSG-01) on built blocks in the box, and only on them.
-  - With none, it is rejected with `NothingToDeconstruct`.
+  - With none (including a box wholly outside the world), it is rejected with `NothingToDeconstruct`.
   - The rest of DSG applies: exposure (DSG-03), top-down bias (DSG-04), the strand rule (DSG-09) and the CON-10
     support wait.
   - `DesignateDig` also marks built blocks (they are diggable). This command exists so a drag over a monument does

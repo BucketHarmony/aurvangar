@@ -2258,3 +2258,48 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   `BlockPlans.StatusOf`/`CanPlan` rebuild scans per call (batch them for ghosts); `CancelHolder` rebuilds HeldCells per
   repainted cell; the 16384-cell plan-support cap rejects everything for very large connected plans; `HasMaterial`
   ignores stock promised to unclaimed Build jobs, so a status can read Ready while Post skips it.
+
+## M8-T3 — Deconstruct placed blocks (2026-09-27)
+- Done: CON-10, CON-17 and CON-18.
+  - `Support.Depends(sim, cells)` (`Blocks/Support.cs`): removing the cells would unground a built block among their
+    up/side neighbours. Depth-first grounding search, down step first, cap 4096 per neighbour (over = depends).
+  - Digs: `DesignationSystem` posts no job for a mark a built block depends on (waits, never red); `JobRunner.Select`
+    skips such a posted job; Work start and the Dig step stand down (cooldown, no failure). `WorldActions.Dig` returns
+    `Blocked`.
+  - CON-17: digging a built block drops its whole cost as one pile on the dug cell (Masonry 1 stone, Planks 1 log,
+    PolishedStone 2 stone); the dig takes the block's hardness.
+  - CON-18: new command `DesignateDeconstructBlocks(A, B)` (CommandCodec entry) marks only built blocks;
+    `NothingToDeconstruct` when there are none. Shares the marking loop with `DesignateDig`.
+  - BLD-09: `Deconstruct` of a complete building whose footprint holds up a built block is rejected with
+    `SupportsBlocks` (after `BuildingOnTop`). A block placed against a building already being deconstructed holds the
+    teardown back (last tick `Blocked`, the job stands down) until the block is gone.
+  - No new state: no save or hash change. Spec notes in construction.md (CON-10, CON-18), buildings.md (BLD-09),
+    designations.md (DSG-03).
+- Tests: the 5 M8-T3 placeholders moved to `Scenarios/BlockDeconstructScenarioTests` with bodies, plus one more
+  (`DeconstructingLevee_WaitsForBlocksLeaningOnIt`). 5 of 6 fail with `Depends` stubbed to false and the refund off
+  (the sixth needs the new command, so it did not compile before). New helper `Support/Grounding.Floating` checks the
+  CON-09 invariant independently of the sim code; the tower/bridge scenario asserts it every tick (M8-T6 can reuse
+  it). check.sh: 577 passed, 14 skipped (M8-T4..T6), 0 failed.
+- Decisions: ADR-063.
+- sim-reviewer: not run (Aurvangar.Sim change about 120 lines, under the ~150 threshold).
+- Golden: unchanged. Headless `--seed 1 --script survival --ticks 24000`: hash `4caa8837b195f900` (unchanged),
+  5,429 ticks/s, 0 trapped.
+- Perf: perf.sh 8/8 passed (1 skipped, M8-T6).
+
+  | Test | Measured |
+  |---|---|
+  | WAT-P1 | 1.28 ms (23,048 active); 0.85 ms at 128×128 |
+  | WAT-P2 | 699 active |
+  | ECO-16 | 0.848 ms |
+  | SIM-P1 | median 2.314 ms, p95 2.495 ms |
+  | PTH-P1 | p95 0.608 ms |
+  | PTH-P2 | warm 3.99 ms, cold 6.06 ms (budget 25 ms; this varies run to run, path code untouched) |
+  | MESH-P1 | 0.623 ms |
+- Screenshots: none (no rendering or Godot change).
+- Next: M8-T4 (plan layer: `ReleasePlan`, `Needed`, Planned end to end). Notes:
+  - A wide structure only comes down top-down by the DSG-04 bias; strict top-first holds only where support forces
+    it (columns, cantilevers).
+  - Refund piles can be left in mid-air when the block under them is dug later (as with natural digs); they are
+    still hauled.
+  - check.sh shows a pre-existing Godot CS0108 warning (`BuildingRenderer.Scale` hides `Node3D.Scale`, since M7-T7);
+    it does not fail the build. Worth a rename in M8-T5.
