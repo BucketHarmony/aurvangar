@@ -3833,3 +3833,231 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   arrival, and dropping the Pay leftover. They are still optional.
 - Next: M11-GATE (HUMAN-GATE G7), the economy review. Use `SCRIPT=economy` shots at 3400 (with `PANEL=trade`), 5200
   and 7900, plus a `hub` shot for the starting wagon.
+
+## M11-GATE — HUMAN-GATE G7: economy review (2026-09-27)
+
+**Status: waiting for human review. The gate box in BACKLOG.md is NOT checked; check it after review.**
+All M11 tasks (T1..T11) are checked. The backlog has nothing after this gate. No code changed for this report.
+
+### Verdict in one paragraph
+The G6 answers are in. The colony starts with a wagon of building supplies beside the Great Hall (40 log, 60 stone,
+20 planks, 20 cut stone), so stone is there from day 1 (M11-T2). Levees have no entrance (M11-T1). The dig tool
+digs a stair down to the view level, a waiting dig mark says why it waits, and the HUD shows the slice keys and the
+view level (M11-T8). Piles and buildings with nothing under them fall or collapse (M11-T9). Blocks can be built as a
+slab, stair (4 rotations) or pillar, drawn at 0.25 m detail (M11-T10, M11-T11). The economy is in: a Sawmill (1 log
+-> 2 planks) and a Stonecutter (1 stone -> 1 cut stone) with Make N / Keep N orders, refined blocks that cost planks
+or cut stone, and a trade wagon that comes on a schedule with four fixed offers (M11-T3..T6). The scripted economy
+run on seed 1 builds both workshops, meets its Keep orders by tick 1,700, makes 4 trades over 3 visits and finishes
+a 48-block refined hall at tick 7,801 (day 3) with 0 failed jobs and 5 of 5 alive (M11-T7). Every perf budget
+passes; the tightest is the shaped-chunk mesher at 58%. The weak points: shapes are only visual (a dwarf stands
+0.5 above a slab), the workshops look like plain boxes, the Keep order on cut stone eats all raw stone, and the
+trade panel is mostly greyed out once the workshops have used the logs. **Nobody has played the economy loop by
+hand yet.** That is the main question of this gate.
+
+### Build and test results (this run, HEAD = M11-T7 `7f2d4e5`)
+- `./scripts/check.sh`: **OK**. 764 passed, 0 skipped, 0 failed (non-Perf, Debug). The solution and the Godot csproj
+  both build with 0 warnings. (G6: 632 tests.)
+- `./scripts/perf.sh` (run serially, Release): **OK**. 11 of 11 passed. The numbers below come from a re-run of the
+  same Release build with detailed logging. SAV-05 (save size) runs in check.sh and passed.
+
+| ID | What | Budget | Measured | Use |
+|---|---|---|---|---|
+| WAT-P1 | water step, 192×128 sustained (≥ 23,048 active) | ≤ 4 ms | median 1.27 ms, p95 1.34 | 32% |
+| WAT-P1 | water step, 128×128 (15,494 active) | ≤ 4 ms | median 0.84 ms, p95 0.87 | 21% |
+| WAT-P2 | seed-1 settled river, active cells at tick 1200 | ≤ 3,000 | 699 (step median 0.033 ms) | 23% |
+| PTH-P1 | A*, 200 paths of 90..110 cells | p95 ≤ 1.5 ms | median 0.255, p95 0.698, max 0.916 ms | 47% |
+| PTH-P2 | region rebuild, seed 1 | ≤ 25 ms | warm 2.11 ms, cold 2.40 ms | 10% |
+| ECO-16 | moisture recompute | ≤ 3 ms | median 0.908 ms, p95 0.984 | 30% |
+| MESH-P1 | chunk (3,0,2), 581 quads | ≤ 6 ms | median 0.593 ms, p95 0.707 (slice 0.515) | 10% |
+| MESH-P1 | same chunk, every column's top cell shaped (1,024 cells, 5,778 quads) | ≤ 6 ms | median 3.498 ms, p95 4.256 | 58% |
+| SIM-P1 | full tick, survival script, ticks 12,000-12,499 (drought) | median ≤ 8 ms | median 2.357, p95 2.534, max 3.46 ms | 29% |
+| CON-P1 | full tick, monument script, ticks 13,000-13,499 | median ≤ 8 ms | median 0.113, p95 0.599, max 2.66 ms | 1% |
+| CRF-P1 | full tick, economy script, ticks 3,700-4,199 (trader in, both workshops working) | median ≤ 8 ms | median 0.812, p95 3.880, max 6.58 ms | 10% |
+| SAV-05 | save at day 5 | ≤ 3 MB | 31,781 bytes (M6-T7) | 1% |
+
+Nothing is within 20% of its limit. The shaped-chunk case (a worst case: every surface cell shaped) is the closest at
+58%. In CRF-P1, the workshops take 3.0 ms and the traders 1.4 ms over 500 ticks, but the **build poster takes
+322 ms** (about 0.64 ms per tick) while the refined hall is going up. That is the source of the 3.9 ms p95 (see
+issue 12). CON-P1 now covers blocks 130 → 142 of 221 (the monument timeline moved with the wagon stock).
+
+### Headless runs (this run, `--seed 1 --ticks 24000`)
+- `--script survival`: hash **`3a0eff48474200ff`** (same as M11-T5), 2,865 ticks/s, tick median 0.088 ms, p95
+  1.98 ms. **5/5 alive at day 10**. 435 jobs done, 1 failed (the Flee job noted in M11-T9). 73 of 73 cells dug, 23 of
+  23 trees felled, 60 crops harvested, 0 withered. The pump is dry on 886 ticks, **0 in the drought**. Stored at
+  day 10: log 84, stone 82, berries 65, potato 160, water 110, planks 20, cut stone 20.
+- `--script monument`: hash **`1befa2598908a218`**, 1,968 ticks/s, tick median 0.090 ms, p95 3.69 ms. **5/5 alive
+  at day 10**. 568 jobs done, 3 failed. 250 of 250 cells dug, 7 of 7 trees felled, 0 trapped, 1 item left on the
+  ground. The pump is dry on 5,015 ticks (4,704 in the drought), as at G6. Stored at day 10: log 16, stone 66,
+  berries 71, water 110, planks 20, cut stone 20.
+- `--script materials`: hash **`4069caf964b11a27`**, 1,442 ticks/s, tick median 0.110 ms, p95 4.83 ms. **5/5 alive
+  at day 10**. 911 jobs done, 2 failed. 700 of 704 cells dug (3 unreachable, 1 still marked). Pump dry on 5,015
+  ticks (4,704 in the drought). Stored at day 10: log 20, stone 143, berries 71, water 110, planks 16.
+- `--script economy`: hash **`185c02b20d8b8d86`** (same as M11-T7), 3,081 ticks/s, tick median 0.073 ms, p95
+  1.91 ms. **5/5 alive at day 10**. 265 jobs done, **0 failed**. 26 of 26 trees felled. **Hall 48/48**, planks 30 and
+  cut stone 40 at day 10 (both Keep orders met). Pump dry on 5,015 ticks (4,704 in the drought). Stored at day 10:
+  log 4, stone 47, berries 65, water 110. 1 item left on the ground.
+- From the M11-T7 scenario tests: Keep orders met at tick 1,599 (planks) and 1,696 (cut stone); 4 accepts, 4 deals
+  fully granted, 3 visits; the hall is done at tick 7,801.
+
+### Screenshots (Godot 4.6.2 .NET, Forward+, seed 1; rendered for this gate and looked at)
+- `artifacts/screens/g7_wagon/hub.png` (`TICKS=60 SHOTS=hub`, day 1). **The starting wagon.** A red-brown wagon
+  with a cream cover and dark wheels stands north-west of the Great Hall (the orange block). The top bar reads "Log 40
+  Stone 60 Berries 40 Potato 0 Water 30 Planks 20 Cut stone 20". The Trade button is greyed (no wagon in yet). The
+  bottom-right line reads "View level: top (63) · PageUp/PageDown or [ ] to slice". All 5 dwarves are Harvesting.
+  The wheels are small at this zoom; the cover is what makes it read as a wagon.
+- `artifacts/screens/g7_economy_3400_trade/workshop.png` (`SCRIPT=economy TICKS=3400 PANEL=trade`, day 2). **The
+  trade panel and the workshops.** Around the hall stand the starting wagon, the purple trade wagon, the Sawmill
+  (small brown block) and the Stonecutter (grey block). Log piles of 4 lie around the felling area, with chop marks
+  on the trees. The panel reads "Trade wagon: leaves in 14h" and lists the offers: "10 log -> 10 stone, 2 lots left,
+  have 7 log" (orange, accepts greyed), "10 potato -> 12 stone, have 0 potato" (greyed), "10 stone -> 10 log, 3 lots
+  left, have 52 stone" (**enabled**, Accept 1 / Accept all (3)), "10 log -> 6 cut stone, have 7 log" (greyed). Deals:
+  "2 x 10 log -> 10 stone: paid 20/20, granted 2/2". The toast at bottom left reads "A trade wagon has arrived: open
+  Trade to see its offers (leaves in 14h)". The toolbar button reads "Trade (wagon in)".
+- `artifacts/screens/g7_economy_3400_trade/economy.png` (same run, the `economy` camera). The same panel over the
+  empty hall site; the hall is not released until tick 3,600, so there is nothing to see yet but the slope.
+- `artifacts/screens/g7_economy_3400_workshop/workshop.png` (`PANEL=workshop`). **The workshop panel.** "Sawmill",
+  status "Sawmill: orders met" in blue, "Saw planks: 1 log -> 2 planks", Make / **Keep** (selected), "- 30 +", "in
+  stock 30", Clear, and the hint "Make N: craft N, then stop · Keep N: keep N in stock · Shift: steps of 5". The HUD
+  shows Planks 30 and Cut stone 40. The panel is compact and reads clearly.
+- `artifacts/screens/g7_economy_5200/economy.png` (day 3). **Refined blocks going up.** The blue-grey Slate course is
+  down on both sides of the two-high door gap, with part of the white Polished stone course and tan planks ghosts
+  above. The top bar reads "Building: planks 14/30, cut stone 26/1", with cut stone in orange (25 short). Dwarves:
+  one "Cut stone", two "Hauling log", one "Placing blocks", one Idle. The toast reads "The trade wagon has left".
+- `artifacts/screens/g7_economy_7900/economy.png` (day 4). **The finished refined hall**: a 5x5 box, three courses
+  high, blue-grey Slate at the bottom, white Polished stone in the middle and tan Wood planks on top, with the door
+  gap at the front and the planks stair block inside. Two dwarves stand on the top course. The top bar reads "Log 64
+  **Stone 0** Berries 69 Water 100 Planks 30 Cut stone 25" (issue 5). 4 dwarves are Idle, 1 is cutting stone.
+- `artifacts/screens/g7_shapes/shapes.png` (`SCRIPT=shapes TICKS=2400`, day 2). **Fine shapes.** A grey stone stair
+  of half-steps climbs to a landing; two thin pillars hold a planks slab roof; a Slate slab row and a planks slab row
+  lie half height in the grass; the planned Polished stone stairs are translucent step shapes. The options row reads
+  "Slate tiles stair, climbing south | Block | Slab | **Stair** | Pillar | Rotate (R)". The tooltip reads "Build Slate
+  tiles stair, climbing south (3 blocks, 9 cut stone) / 12 cut stone free / Click a face: one block. ... P plan, V
+  shape, R rotate"; its last line runs to the right screen edge (issue 10). A dwarf stands on the stair, level with
+  the top of the full cell, not on the drawn step (issue 1).
+- `artifacts/screens/g7_stairs/stairs.png` (`SCRIPT=stairs TICKS=700`, day 1). **Dig stairs.** The view is sliced to
+  level 22 ("View level: 22 of 63 (41 down) · PageUp/PageDown or [ ] to move"). The dig options row reads "Dig: Box |
+  **Stair down (T)** · drag from the top cell: one level down per cell, to the view level (lower it with PageDown or
+  [ ])". The stair head is a narrow slot in the cut face, and the straight pit beside it has two dwarves in it. The
+  label over a pit cell reads "Dig: would trap a dwarf (a dwarf climbs 1 level; dig a stair down, T)". Past the
+  first step the stair is a covered tunnel, so from above it is only a slot (issue 3).
+
+### What was built since G6 (M11)
+- M11-T1 (ADR-076): levees have no entrance. A builder stands on any reachable cell beside the footprint, a level up
+  or down included, so stacked levees still build. A new placement result, "No room for a builder beside it".
+- M11-T2 (ADR-077): the starting Wagon, a prebuilt `receives: false` storage beside the hall. Starting stock is data
+  (`startStock`). It can be torn down for 10 logs once empty.
+- M11-T8 (ADR-078): dig Stair down mode (T), wait reasons on dig marks (`DigStatus`), and the slice hint in the HUD.
+- M11-T9 (ADR-079, new `docs/specs/gravity.md`, GRV-01..10): piles fall at once to the first standable cell and
+  merge. A building with no support collapses (half its cost and all its stock drop as piles, dwarves are moved
+  out). The Great Hall is anchored. Terrain cave-ins are out.
+- M11-T10 (ADR-080, CON-19..22): shapes in data (Full, Slab, Stair x4, Pillar) with integer shaped costs (slab 50%,
+  stair 75%, pillar 25%). Saved (v7) and hashed. Every shape is one full solid cell for the sim.
+- M11-T11 (ADR-081, VIEW-27): 4x4x4 sub-cell patterns in the mesher, V to cycle shapes, R to rotate, shape ghosts.
+- M11-T3 (ADR-082, new `docs/specs/crafting.md`, CRF-01..24, P1): the economy spec.
+- M11-T4 (ADR-083): planks and cut stone items, Sawmill and Stonecutter, Make/Keep orders, Craft and Unload jobs,
+  refined block costs (Wood planks: planks; Polished stone and Slate: cut stone). Save v8.
+- M11-T5 (ADR-084): the trade wagon: first arrival at tick 3,000, then every 7,200, stays 1,800, 4 fixed offers,
+  pay-first Trade jobs. Save v9.
+- M11-T6 (ADR-085, VIEW-28..30): the workshop panel, the trade panel, the Trade button, toasts and workshop alerts.
+- M11-T7 (ADR-086): the EconomyScript and CRF-P1.
+
+### What is weak (open issues, with evidence)
+1. **Shapes are only visual** (CON-21, ADR-080). The sim treats a slab, stair or pillar as a full cell, so a dwarf
+   stands 0.5 above a drawn slab and walks over a stair as if it were a block (`g7_shapes`). See Q3.
+2. **Dwarves climb only 1 level.** A room taller than one course needs inner stairs to build its top (the economy
+   hall failed at 30 of 46 blocks before the script added a two-step stair, M11-T7), and a pit deeper than 1 needs a
+   dig stair. A player has to know this.
+3. **The dig stair is hard to see from above.** Past the first step it is a covered tunnel; only the slot at its head
+   shows unless the view is sliced lower (`g7_stairs`).
+4. **The trade accept buttons are greyed once the workshops have eaten the stock.** At the first visit the colony has
+   7 logs, because the Sawmill turned the wagon's logs into planks, so 3 of the 4 offers are disabled
+   (`g7_economy_3400_trade`). The script chops trees first so that later visits can be paid. A player who sets a
+   Keep order and then waits for the wagon will find little to trade.
+5. **New: the Keep order on cut stone eats all raw stone.** At day 4 the top bar reads Stone 0 with cut stone 25 of
+   a Keep 40 (`g7_economy_7900`). Orders have no "leave N raw" limit, so a Keep order can starve plain stone
+   building. Stone comes back only by trade (47 at day 10).
+6. **New: the workshops look like plain boxes.** The Sawmill is a small brown block and the Stonecutter a grey block,
+   with no label, tool or pile to say what they are (`g7_economy_3400_workshop`). You find out by clicking one.
+7. **Optional carryovers, still not done:** a Craft retry cooldown across re-posts (M11-T4); a RunStep guard for a
+   workshop torn down mid-work (M11-T4); a `BuildingPlaced` event when a trader arrives (M11-T5); dropping the logs
+   left over in a dwarf's hands after a Pay step (M11-T5).
+8. **Generated art assets.** About 150 files appeared under `src/Aurvangar.Godot/assets/generated/` (`brand/`,
+   `portrait/`, `texture/`, `ui/`, `manifest.json`) during M11-T7 and were committed with it (153 files in
+   `7f2d4e5`). No code references them. Their origin is unknown to the build loop. See Q4.
+9. **New: right-drag still orbits.** The camera's right-drag (and middle-drag) orbits the view (`OrbitRig.Drag`);
+   there is no mouse pan. A right-drag pan was asked for in an earlier session and has not been built.
+10. **New: long tooltips run to the screen edge.** The block tool tooltip's last line in `g7_shapes` reaches the right
+    edge of the window.
+11. **New: the building shortfall text reads oddly.** "Building: planks 14/30, cut stone 26/1" is "needed/have"; "26
+    needed, 1 have" would be clearer (`g7_economy_5200`).
+12. **The build poster costs more with refined plans.** In CRF-P1 it takes 322 ms over 500 ticks (about 0.64 ms per
+    tick) while the 48-block hall builds, against 3.0 ms for the workshops. Far inside budget, but it grows with
+    plan size (G6 issue 10).
+13. **Pumps run dry in the drought** in the monument, materials and economy scripts (4,704 drought ticks each). Only
+    the survival reservoir pump keeps running. Those colonies live on about 110 stored water.
+14. **Not played by hand.** Everything in M11 is proven by tests, scripts and screenshots. The economy loop, the
+    workshop panel, the trade panel, stair digging and shape painting have not been used by a person.
+
+### ADRs made since G6 (11)
+076 levees have no entrance, 077 starting wagon and data start stock, 078 dig stairs and wait reasons, 079 gravity
+for piles and buildings, 080 fine block shapes in the sim, 081 fine shapes in the view, 082 economy and crafting
+design, 083 workshops, orders and craft jobs, 084 trade wagon, 085 workshop and trade panels, 086 economy script.
+
+### How to play
+Launch the game (PowerShell):
+
+```powershell
+& "C:\tools\godot\Godot_v4.6.2-stable_mono_win64.exe" --path "E:\ai\aurvangar\src\Aurvangar.Godot"
+```
+
+Controls:
+- **Camera:** W A S D or the arrow keys move; Q and E turn in steps; the mouse wheel zooms; right-drag or
+  middle-drag orbits. A right click (no drag) cancels the current drag.
+- **Time:** Space pauses and resumes; 1, 2 and 3 set the speed. **F5** quick-saves and **F9** quick-loads. **F3**
+  toggles the debug overlay.
+- **Slices:** **PageUp / PageDown** (or **]** / **[**) move the view level up and down. The bottom-right line shows
+  the level.
+- **Esc**: Select tool. **Click a dwarf row** in the Dwarves panel to centre on that dwarf.
+- **G**: dig (drag a box). **T** while digging switches to **Stair down**: drag from the top cell and it digs a
+  1-wide stair, one level down per cell, to the view level (lower the view with PageDown first). Hover a waiting
+  mark to see why it waits.
+- **C**: chop trees. **F**: farm. **Z**: cancel marks.
+- **B**: build a building (B again for the next one; **R** rotates; Shift keeps the tool). The list includes the
+  Warehouse, Pump, Levee, **Sawmill** and **Stonecutter**.
+- **K**: block tool. Pick the material from the Blocks menu. **V** cycles the shape (Block, Slab, Stair, Pillar) and
+  **R** rotates a stair; the options row has the same buttons. Click a face for one block; drag from a top face for
+  a course, from a side face for a wall. Amber cells are short of material; red cells are invalid.
+- **P**: plan mode (with the block tool). **L**: release a box of the plan; **Release all** releases it all.
+- **X**: deconstruct blocks or a building (the Wagon only once it is empty).
+- **Click a workshop** (with Select) to open its panel: choose Make or Keep per recipe, set the count with - and +
+  (Shift for steps of 5), or Clear.
+- **Trade** (toolbar button): opens the trade panel while a trade wagon is in. The button's tooltip says when the
+  next one comes. Accept 1 or Accept all buys lots; dwarves carry the payment and bring the goods to storage. The
+  first wagon comes at about the middle of day 2.
+
+Try: start, build a Sawmill and a Stonecutter (B), open each and set Keep orders, chop trees for logs, wait for the
+trade wagon and buy stone, then build a small hall with Slate, Polished stone and Wood planks (add an inner stair if
+it is more than one course high).
+
+### Questions for the human
+1. **Play**: start, craft, trade, build. How did the economy loop feel? Useful points: could you find the workshops
+   and set orders? Did the trade wagon's offers make sense, and did you have anything to pay with? Did refined blocks
+   feel worth the extra step?
+2. **Were the dig stairs, gravity and fine shapes what you meant?** Was the stair-down dig easy to use with the slice
+   view? Did falling piles and collapsing buildings behave as you expected?
+3. **Should slabs and stairs be real half-heights for walking?** Today a dwarf stands 0.5 above a drawn slab
+   (issue 1). Making a stair block walkable as a step (and letting dwarves climb it) is a sim change to paths,
+   standing and support, with new tests and goldens.
+4. **Generated art.** About 150 generated art files (brand icons, portraits, textures, UI) appeared under
+   `src/Aurvangar.Godot/assets/generated/` with a `manifest.json` during M11-T7 and were committed with it. Were they
+   yours? Should the UI use them (portraits in the Dwarves panel, textures on blocks, an app icon), or should they be
+   removed from git?
+5. **Next direction.** Options:
+   - economy depth: a "leave N raw" limit on orders, more recipes and offers, a clearer workshop look (issues 4-6);
+   - walkable shapes and taller climbs (issues 1-2);
+   - camera and UI polish: right-drag pan, tooltip layout, a clearer shortfall text (issues 9-11);
+   - monuments with a purpose, or water for the drought (issue 13).
+   Which should come next?
+6. **Anything else** from your play session: bugs, confusions, or things you wanted to do and could not.
+
+Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
