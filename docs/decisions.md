@@ -1675,3 +1675,26 @@ Decision:
   dirt layers cover the stone near the hub (a 2-deep pit gives about 6 stone). All six are built by tick 12000.
 - **Test data:** `BlockContentTests`' "json id with no BlockId value" case added id 11 after the last block. Id 11
   is now Rubble, so the case adds id 99 after Slate instead. The case still checks the same rule.
+
+## ADR-071: A released entry the plan will support waits for support instead of reading NoSupport (2026-09-27, M10-T1)
+Context: G5 issue 5. After the monument's whole-plan release, the inner stair steps (which lean sideways on the
+tower wall, with air below them) failed CON-05 check 5 (placement support) until the wall course beside them was
+built. They read `NoSupport` and drew red with an outline (VIEW-22), though they built fine later: 6 at tick 11,000
+and 2 at tick 14,000. Red is meant for entries the builders can never do.
+Decision:
+- **New status `WaitSupport`**, checked in the slot of check 5: when placement support fails, the entry is
+  `WaitSupport` if CON-09 *plan* support holds for it (a down/sideways path through entries of either state reaches a
+  solid block), and `NoSupport` otherwise. So `NoSupport` now means "nothing in the plan or the world can hold it up",
+  for example after a cancel removed the entries it leaned on.
+- The enum value sits before `NoSupport` (`BuildStatus` is derived, never saved or hashed, so renumbering is safe).
+- `BuildScan.PlanSupported` runs one `Support.PlanSupported` flood over every entry, on the first entry per scan
+  that fails placement, and caches it for the scan. It is O(entries). Over `Support.PlanFloodCap` (16,384) collected
+  cells nothing counts as supported, so a huge plan falls back to the old `NoSupport` (conservative).
+- An entry that leans on a *Planned* (not released) entry also waits: the player can release the rest.
+- The view: `WaitSupport` is not stuck, so it draws as a normal released ghost. Its hover text is "waiting for
+  support".
+- Neither status posts a job, so the build order, the golden hashes and the monument timeline are unchanged.
+Consequences:
+- `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the ledge cell beside a released entry on the post now reads
+  `WaitSupport` (was `NoSupport`). The behaviour changed on purpose. The truly floating case is covered by the new
+  `LeaningOnPlannedCells_Waits_TrulyFloating_StaysRed`.

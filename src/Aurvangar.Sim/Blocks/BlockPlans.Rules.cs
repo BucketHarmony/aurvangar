@@ -98,7 +98,8 @@ public sealed partial class BlockPlans
         if (scan.Held is not null && scan.Held.ContainsKey(index)) return BuildStatus.InJob;
         if (sim.GiveUps.Count > 0 && sim.GiveUps.IsGivenUp(GiveUpSource.Build, index)) return BuildStatus.GivenUp;
         if (sim.Plans.Has(cell + Int3.Down)) return BuildStatus.BelowFirst;
-        if (!Support.Placement(world, cell)) return BuildStatus.NoSupport;
+        if (!Support.Placement(world, cell))
+            return scan.PlanSupported(cell) ? BuildStatus.WaitSupport : BuildStatus.NoSupport;
         if (scan.CourseBelow(cell)) return BuildStatus.CourseBelow;
         if ((!ignoreAgents && (sim.Agents.AnyHolds(cell) || sim.Agents.AnyHolds(cell + Int3.Down)))
             || !sim.Piles.At(cell).IsEmpty || sim.Plants.IsOccupied(cell))
@@ -135,6 +136,8 @@ internal sealed class BuildScan
     /// <summary>Cells Build jobs hold, other than <see cref="Self"/>'s, by y (lookups only), built on first use and
     /// kept current by <see cref="AddHeld"/>.</summary>
     private Dictionary<int, List<Int3>>? _heldByY;
+    /// <summary>Entry cell indices the plan supports (lookups only), built on first use.</summary>
+    private HashSet<int>? _planSupported;
 
     public BuildScan(Simulation sim, Dictionary<int, Job>? held, Job? self = null)
     {
@@ -169,6 +172,20 @@ internal sealed class BuildScan
             if (Math.Abs(c.X - cell.X) <= BlockPlans.CourseRadius && Math.Abs(c.Z - cell.Z) <= BlockPlans.CourseRadius)
                 return true;
         return false;
+    }
+
+    /// <summary>CON-05 check 5 split (M10-T1, ADR-071): the plan supports <paramref name="cell"/> (CON-09 plan support
+    /// over every entry, either state), so it waits for the entries it leans on rather than never being built. One
+    /// flood over all entries, run on first use per scan.</summary>
+    public bool PlanSupported(Int3 cell)
+    {
+        if (_planSupported is null)
+        {
+            var cells = new List<Int3>(Sim.Plans.Count);
+            foreach (var (c, _) in Sim.Plans.All) cells.Add(c);   // ascending index
+            _planSupported = Support.PlanSupported(Sim, cells);
+        }
+        return _planSupported.Contains(Sim.World.Index(cell));
     }
 
     /// <summary>The poster's new job holds <paramref name="c"/> (the held map and the course check).</summary>

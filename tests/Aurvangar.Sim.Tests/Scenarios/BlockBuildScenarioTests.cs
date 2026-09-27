@@ -82,7 +82,7 @@ public partial class BlockBuildScenarioTests
             .Agent(new Int3(14, G, 14)).Agent(new Int3(12, G, 16)).Build();
 
         sim.Tick();                                // regions are built at the end of the first tick
-        var noSupport = new Int3(6, G + 1, 5);     // beside (5,10,5), which is supported by the post
+        var waitSupport = new Int3(6, G + 1, 5);   // beside the entry (5,10,5), which the post supports
         var column = new Int3(10, G, 10);
         var belowFirst = column + Int3.Up;
         var noMaterial = new Int3(8, G, 16);       // Planks: no log anywhere
@@ -96,7 +96,7 @@ public partial class BlockBuildScenarioTests
         sim.Tick();
         Assert.Equal(7, sim.Plans.Count);
 
-        Assert.Equal(BuildStatus.NoSupport, sim.Plans.StatusOf(sim, noSupport));
+        Assert.Equal(BuildStatus.WaitSupport, sim.Plans.StatusOf(sim, waitSupport));   // M10-T1 (ADR-071): was NoSupport
         Assert.Equal(BuildStatus.BelowFirst, sim.Plans.StatusOf(sim, belowFirst));
         Assert.Equal(BuildStatus.NoMaterial, sim.Plans.StatusOf(sim, noMaterial));
         Assert.Equal(BuildStatus.Occupied, sim.Plans.StatusOf(sim, occupied));
@@ -107,7 +107,7 @@ public partial class BlockBuildScenarioTests
         Assert.Null(sim.Plans.StatusOf(sim, new Int3(3, G, 3)));
 
         var held = BlockBuildSystem.HeldCells(sim);
-        foreach (var c in new[] { noSupport, belowFirst, noMaterial, occupied, noAccess })
+        foreach (var c in new[] { waitSupport, belowFirst, noMaterial, occupied, noAccess })
             Assert.False(held.ContainsKey(sim.World.Index(c)), $"{c} is held by a Build job");
 
         // Stone does not help a Planks entry; logs do.

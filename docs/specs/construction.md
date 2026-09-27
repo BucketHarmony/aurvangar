@@ -73,7 +73,10 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   2. `InJob`: a Build job holds the cell (CON-12).
   3. `GivenUp`: its JOB-12 mark (CON-15) is given up.
   4. `BelowFirst`: the cell directly below has an entry. This gives bottom-up order.
-  5. `NoSupport`: placement support fails (CON-09).
+  5. Placement support fails (CON-09):
+     - `WaitSupport` (M10-T1, ADR-071): CON-09 plan support holds for the cell (through entries of either state), so
+       it will be supported once the entries it leans on are built;
+     - `NoSupport` otherwise: the plan can never hold it up.
   6. `CourseBelow` (M9-T2, ADR-068): a Build job holds a cell one course down (y - 1) within
      `BlockPlans.CourseRadius` (8) horizontally (Chebyshev). A structure then rises course by course, and a whole
      course turns `Ready` together, so it goes out in full batches. Only held cells count, so a stuck entry below
@@ -90,7 +93,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   11. `Ready`.
 
   The build poster uses exactly this function (`Ready` means a job may be posted). Checks 1 to 5 and 7 are O(1);
-  check 6 scans the held cells one course down (built once per scan). Checks 8 and 9 cost a region lookup and a cached what-if flood. The view reads statuses (VIEW-22). It must not call
+  check 6 scans the held cells one course down (built once per scan); check 5's plan support is one flood over all
+  entries, run once per scan on first need. Checks 8 and 9 cost a region lookup and a cached what-if flood. The view reads statuses (VIEW-22). It must not call
   `StatusOf` for every entry every frame; M8-T5 decides how often.
 - **CON-06** Material totals. `BlockPlans.Needed(PlanState? state)` returns, for each item, the sum of cost over
   entries in that state (or over all entries), in ascending item id order. The HUD compares it with

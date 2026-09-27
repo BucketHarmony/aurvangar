@@ -304,7 +304,7 @@ Human answers are in PROGRESS.md under "G4 answers". Right-drag orbit stays as i
 
 Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is deferred to gate G6.
 
-- [ ] **M10-T1** Stair steps waiting on planned support are not red · specs: CON-*, VIEW-22 · deps: M9-GATE
+- [x] **M10-T1** Stair steps waiting on planned support are not red · specs: CON-*, VIEW-22 · deps: M9-GATE
   - G5 issue 5: the monument's inner stair steps read `NoSupport` and draw red until the wall they lean on is
     built, then build fine.
   - A planned or released cell that will be supported once planned or released cells below it or beside it are

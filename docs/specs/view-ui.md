@@ -92,7 +92,7 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   - `Released` entries at alpha 0.45;
   - `Planned` entries at alpha 0.25, lightened;
   - Released entries whose status is `GivenUp`, `NoAccess`, `WouldStrand` or `NoSupport` red with a dark outline
-    (`InvalidCellStyle`, M9-T3).
+    (`InvalidCellStyle`, M9-T3). `WaitSupport` (M10-T1) is not red: the plan will support the entry.
 
   Ghosts above `SliceY` are hidden. Built blocks mesh as terrain (VIEW-03) with their palette colours. Hovering an
   entry shows its label and status text ("Stone wall: waiting for the block below").

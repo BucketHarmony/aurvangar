@@ -6,6 +6,7 @@ using Aurvangar.Sim.Jobs;
 using Aurvangar.Sim.Save;
 using Aurvangar.Sim.Tests.Support;
 using Aurvangar.Sim.World;
+using Aurvangar.ViewCore.Entities;
 using Aurvangar.ViewCore.Screenshots;
 using Aurvangar.ViewCore.Scripts;
 using Xunit;
@@ -29,6 +30,8 @@ public sealed class MonumentRun
     /// <summary>Build trips: each time a dwarf is past the pickup of a Build job it claimed (a re-claim after a failure
     /// is a new trip).</summary>
     public int BuildTrips { get; }
+    /// <summary>M10-T1: every entry's CON-05 status at the G5 screenshot ticks (11,000 and 14,000).</summary>
+    public Dictionary<long, List<(Int3 Cell, PlanEntry Entry, BuildStatus Status)>> StatusesAt { get; } = new();
 
     public MonumentRun()
     {
@@ -49,6 +52,7 @@ public sealed class MonumentRun
             }
             foreach (var e in Sim.Events.Drain())
                 if (e is CommandRejected r) Rejected.Add($"tick {Sim.Clock.Tick}: {r.Command} {r.Reason}");
+            if (Sim.Clock.Tick is 11000 or 14000) StatusesAt[Sim.Clock.Tick] = Sim.Plans.Statuses(Sim);
             if (Sim.Clock.Tick % 100 != 0) continue;
             int hall = Sim.Regions.RegionOf(hub.EntranceCell);
             foreach (var a in Sim.Agents.All)
@@ -119,6 +123,32 @@ public class MonumentScenarioTests : IClassFixture<MonumentRun>
         double perTrip = (double)MonumentScript.PlannedCells.Count / Math.Max(_run.BuildTrips, 1);
         _out.WriteLine($"monument: {_run.BuildTrips} build trips, {perTrip:F2} blocks per trip, complete at tick {_run.CompletedAt}");
         Assert.True(perTrip >= 4.0, $"{perTrip:F2} blocks per trip ({_run.BuildTrips} trips)");
+    }
+
+    /// <summary>M10-T1 (G5 issue 5; CON-05, VIEW-22, ADR-071): after the whole-plan release, the inner stair steps
+    /// that lean on a wall not yet built wait for support; none of them, and no other entry, is red.</summary>
+    [Fact]
+    public void Seed1_Monument_StairSteps_WaitForSupport_NotRed()
+    {
+        var stairs = new HashSet<Int3>();
+        foreach (var (_, c) in MonumentScript.Commands)
+            if (c is DesignateBuild { Shape: BuildShape.Stair } d)
+                foreach (var cell in BuildShapes.Cells(d.Shape, d.A, d.B, d.Height)) stairs.Add(cell);
+        Assert.NotEmpty(stairs);
+        int waiting = 0;
+        foreach (long tick in new long[] { 11000, 14000 })
+        {
+            var statuses = _run.StatusesAt[tick];
+            Assert.NotEmpty(statuses);
+            _out.WriteLine($"tick {tick}: " + string.Join(", ", statuses.GroupBy(s => s.Status).OrderBy(g => g.Key)
+                .Select(g => $"{g.Key} {g.Count()}")));
+            foreach (var (cell, _, status) in statuses)
+            {
+                Assert.False(PlanGhostMesher.IsStuck(status), $"tick {tick}: {cell} is {status} (red)");
+                if (stairs.Contains(cell) && status == BuildStatus.WaitSupport) waiting++;
+            }
+        }
+        Assert.True(waiting > 0, "no stair step was waiting for support; the case is not exercised");
     }
 
     [Fact]

@@ -2964,3 +2964,36 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     - shortage shown late -> M10-T2;
     - idle builders -> M10-T4;
     - the materials script dies of thirst -> M10-T5.
+
+## M10-T1 — Stair steps waiting on planned support are not red (2026-09-27)
+- Done: G5 issue 5 (ADR-071).
+  - **New CON-05 status `WaitSupport`** in the slot of check 5. When placement support fails, the entry reads
+    `WaitSupport` if CON-09 plan support holds for it (through entries of either state), and `NoSupport` otherwise.
+    `NoSupport` now means the plan can never hold the entry up, for example after a cancel removed what it leaned on.
+  - `BuildScan.PlanSupported` runs one `Support.PlanSupported` flood over all entries, on the first entry per scan
+    that fails placement. Over the 16,384 flood cap it falls back to `NoSupport`.
+  - View: `WaitSupport` is not stuck, so it draws as a normal released ghost. Its hover text is "waiting for support".
+  - Docs: construction.md CON-05 and VIEW-22.
+- Tests:
+  - New `MonumentScenarioTests.Seed1_Monument_StairSteps_WaitForSupport_NotRed`. `MonumentRun` records every
+    entry's status at ticks 11,000 and 14,000. No entry is stuck (red) at either tick, and some stair steps are
+    `WaitSupport`. Before the change it failed: "tick 11000: (61,25,40) is NoSupport (red)".
+  - New `BlockBuildScenarioTests.LeaningOnPlannedCells_Waits_TrulyFloating_StaysRed`. A ledge that leans on
+    released and Planned entries waits. A ledge whose support was cancelled stays `NoSupport` and red, and it is
+    still red after the other ledge is built.
+  - `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the cell beside the released entry on the post now reads
+    `WaitSupport` (was `NoSupport`). The behaviour changed on purpose (ADR-071).
+  - check.sh: 618 passed, 0 skipped, 0 failed. 0 warnings.
+- Numbers (monument, seed 1):
+  - statuses at tick 11,000: InJob 23, BelowFirst 120, WaitSupport 6 (G5: NoSupport 6);
+  - at tick 14,000: InJob 14, BelowFirst 61, WaitSupport 2, CourseBelow 11 (G5: NoSupport 2).
+- Decisions: ADR-071.
+- sim-reviewer: not run (the Aurvangar.Sim diff is about 20 lines).
+- Golden: unchanged. Neither status posts a job. Headless `--script monument --ticks 24000`: hash
+  `320a8b23d7ef322e` (same as M9-T2), 5 of 5 alive, 1 failed job.
+- Perf (perf.sh, all 9 pass): CON-P1 median 0.032 ms, p95 1.16 ms; the build poster takes 14.4 ms over 500 ticks
+  (was 3.3 ms, because of the plan-support flood). SIM-P1 median 2.36 ms.
+- Screenshots (Forward+, seed 1, looked at): `artifacts/screens/m10t1_11000/monument.png` and
+  `artifacts/screens/m10t1_14000/monument.png`. The released tower shows as plain grey ghosts with no red outlined
+  cells. G5 had 3 red cells at 11,000 and 1 at 14,000.
+- Next: M10-T2 (material shortage while dragging).
