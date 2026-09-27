@@ -119,6 +119,12 @@ under a complete building other than the Great Hall may be dug (GRV-06).
 - **BLD-17** A prebuilt building with `removableWhenEmpty` may be deconstructed (BLD-09, half its cost back at its
   entrance) once it holds nothing; before that the command is rejected with `NotEmpty` and the tool says why.
 
+## Workshops and the trade wagon (M11, `crafting.md`)
+
+M11-T4 adds workshops, buildings with a `workshop` block (`sawmill`, `stonecutter`; CRF-03..05) that craft to orders
+(CRF-06..14). M11-T5 adds the `trader` building, a prebuilt trade wagon that visits the hall on a schedule
+(CRF-15..21). Both keep their output or bought goods in `Building.Stored`.
+
 ## Pump production (BLD-13..14)
 
 - **BLD-13** A complete pump with internal buffer < 10 keeps one OperatePump job open. The worker stands at the

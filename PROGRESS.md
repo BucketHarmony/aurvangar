@@ -3630,3 +3630,67 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   drawn slab, and stands on a pillar's full cell.
 - Next: M11-T3 (economy and crafting spec). `BlockTool.FormLabel` names a block in a shape. `ShapeMesher.EmitAlone`
   draws a shape anywhere (for example a future workshop preview).
+
+## M11-T3 — Economy and crafting spec and ADR (2026-09-27)
+- Done: M11 economy design, docs and placeholder tests only. No code or data changed.
+  - New `docs/specs/crafting.md`, rules CRF-01..24 and CRF-P1:
+    - Items `planks` (id 6) and `cutstone` (7) are appended after water. The hall and warehouse store them. The
+      starting wagon gains 20 of each.
+    - Refined blocks: Wood planks costs 1 planks, Polished stone 2 cut stone and Slate 3 cut stone. Stone wall,
+      Rough stone and Wood beam keep their raw costs. The counts do not change.
+    - Workshops: a `workshop` block in `buildings.json` (recipes inline, one input and one output item each,
+      `outputBuffer`, `haulAt`). Sawmill: 16 log, 1 log → 2 planks in 40 ticks. Stonecutter: 8 log and 8 stone,
+      1 stone → 1 cut stone in 50 ticks.
+    - Orders: one per recipe, Make N (counts outputs, then removes itself) or Keep N (colony stock: storages,
+      workshop outputs and carried items, not piles). `SetWorkshopOrder` with 6 rejections. Active order and the
+      `k`-cycle rule.
+    - Jobs:
+      - `Craft` (30): fetch k cycles of input, then Work and Craft at the entrance. There is no input stock; the
+        output goes to the workshop's `Stored`.
+      - `Unload` (30): output to storage.
+      - Status is derived (NotBuilt, NoOrders, Working, OutputFull, NoInput, Waiting, Done).
+    - Trade wagon: a `trader` building with a `trader` block. There are 4 offers ("10 log → 10 stone" x4 and
+      others). It arrives at tick 3000 and every 7200 ticks after, and stays 1800. It is placed at the Great Hall by
+      the BLD-15 site search, and a visit with no site is skipped. It is anchored.
+    - Trading: `AcceptOffer(offer, lots)` has 5 rejections and checks free stock. Deals are pay-first: `Trade` jobs
+      (35) carry payment and a `Pay` step records it, and each fully paid lot adds its goods to the wagon's
+      `receives: false` storage, which is then unloaded. On departure the wagon cancels its jobs, refunds partial
+      payment, and drops goods not yet unloaded as piles.
+    - Save: v8 (T4, orders and jobs) and v9 (T5, the current visit). Hashes for both are conditional, so worlds
+      without them hash as before. Plus determinism notes and new events.
+  - `view-ui.md`: VIEW-28 (workshop panel), VIEW-29 (trade panel), VIEW-30 (HUD items and alerts, trader drawn as a
+    wagon).
+  - Forward notes: 01-architecture (step 7 order: Pumps → Workshops → Traders), buildings, jobs-agents (3 kinds),
+    needs-economy (item table), save-load (v8, v9), construction (CON-01 refined costs).
+  - `docs/00-overview.md`: the M11 paragraph, DoD step 12 (EconomyScript), and the Jobs, Buildings and Economy rows.
+    The out-of-scope list now says "beyond the M11 workshops / trade wagon", and money and prices stay out.
+  - BACKLOG: M11-T4..T7 list their CRF and VIEW ids.
+- Tests: new `PendingAcceptanceTests.cs` with 30 placeholders:
+  - M11-T4: 16 (`CraftContentTests` 4, `WorkshopOrderTests` 5, `Scenarios/WorkshopScenarioTests` 7).
+  - M11-T5: 7 (`Scenarios/TradeScenarioTests`).
+  - M11-T6: 3 (`View/WorkshopPanelTests`, `View/TradePanelTests`).
+  - M11-T7: 4 (`Scenarios/EconomyScenarioTests` 3 and `Perf/EconomyPerfTests` 1).
+
+  check.sh: 711 passed, 29 skipped (the Perf placeholder is filtered out), 0 failed, 0 warnings.
+- Decisions: ADR-082 covers:
+  - inline data, so `ContentDb.Load` keeps its signature;
+  - which blocks are refined;
+  - the wagon's refined start stock, so the screenshot scripts keep working;
+  - carried inputs, with no input stock;
+  - both order modes, run in recipe order, with a bounded overshoot;
+  - job priorities, and `Unload` as its own kind so `Pumps.IsBufferHaul` is not fooled;
+  - arrival at the hall, not the map edge;
+  - a schedule that is a pure function of the tick;
+  - pay first, then goods;
+  - two save bumps.
+- Golden: unchanged (no code or data change).
+- Perf: n/a.
+- Next: M11-T4.
+  - Add the items after water (ids 6 and 7) and the palette colours.
+  - Change the hub, warehouse and wagon `accepts` and the wagon `startStock`.
+  - Move blocks 9, 10 and 13 to refined costs. This regenerates the goldens; record why.
+  - About 19 test files and 4 screenshot scripts use Planks, PolishedStone or Slate (grep `BlockId.Planks|
+    PolishedStone|Slate`). Tests may stock storage directly. The paint, wall, blocks, shapes and materials scripts
+    should fit in the wagon's 20 + 20, or build a workshop.
+  - The ContentDb building count becomes 7.
+  - `Unload` must be a new `JobKind`: `Pumps.IsBufferHaul` matches any `Haul` with the pickup-from-building shape.

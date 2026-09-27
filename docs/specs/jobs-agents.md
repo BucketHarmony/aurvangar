@@ -34,6 +34,9 @@
 
   Exception: the pump buffer's Haul (BLD-14) is posted at the OperatePump priority, 40 (ADR-066).
 
+  M11 (`crafting.md`) adds three kinds: `Craft` 30 (CRF-10, with the new `Craft` step), `Unload` 30 (workshop output
+  to storage, CRF-12) and `Trade` 35 (loading payment with the new `Pay` step, and unloading bought goods, CRF-19..20).
+
 - **JOB-06** Job selection (idle agent, every tick while idle, max 1 attempt per agent per 5 ticks): among open
   unclaimed jobs, filter by region reachability (PTH-13) and preconditions (e.g. a storage has the item),
   then choose max `Priority`, then min Manhattan distance from agent to target, then min `JobId`.

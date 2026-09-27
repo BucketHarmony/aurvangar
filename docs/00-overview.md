@@ -28,6 +28,11 @@ M8 (after gate G3, ADR-061) adds **free-form construction**. The player paints w
 by block, or lays out a monument as a plan and releases it. Dwarves quarry, fetch and build it (`specs/construction.md`).
 Prefab buildings stay for functional buildings.
 
+M11 (after gate G6, ADR-082) adds a small **economy** (`specs/crafting.md`). A Sawmill and a Stonecutter refine logs
+and stone into planks and cut stone, to orders ("make N" or "keep N in stock"). Three construction blocks cost the
+refined items. A trade wagon visits the Great Hall on a schedule and offers fixed-rate swaps, for example logs for
+stone. The trader is a visiting wagon, not a faction: there is no money, diplomacy or world map.
+
 The POC is done when the **definition-of-done session** below plays end to end on seed `1` and all tests are green.
 
 ## Definition-of-done session (seed 1)
@@ -49,6 +54,9 @@ The POC is done when the **definition-of-done session** below plays end to end o
 11. (M8) The player plans a stone tower (at least 7×7, 8 high, hollow, with a door) and a walled courtyard, and
     releases the plan. Dwarves quarry stone from the hill and build it by day 10. No dwarf is walled in and no block
     floats (`MonumentScript`, M8-T6).
+12. (M11) The player builds a Sawmill and a Stonecutter and sets orders that keep planks and cut stone stocked. When
+    the trade wagon comes, the player buys stone with logs. Dwarves load and unload it before it leaves, and build a
+    small hall from refined blocks by day 10 with all 5 alive (`EconomyScript`, M11-T7).
 
 ## In scope
 
@@ -58,13 +66,13 @@ The POC is done when the **definition-of-done session** below plays end to end o
 | View | RTS orbit camera, z-level slicing, greedy-meshed chunks, water surface mesh, placeholder building meshes |
 | Agents | 5 colonists, no births. Needs: hunger, thirst. Death at zero after a grace period |
 | Movement | A* on voxel grid, 1-block step up/down, 8-way with no corner cutting, deep water impassable |
-| Jobs | Dig, Chop, Haul, Deliver, Construct, Deconstruct, Plant, Harvest, OperatePump, Eat, Drink, Build (M8) |
-| Buildings (prefab) | Great Hall `hub` (pre-placed), Warehouse, Water Pump, Levee |
+| Jobs | Dig, Chop, Haul, Deliver, Construct, Deconstruct, Plant, Harvest, OperatePump, Eat, Drink, Build (M8), Craft, Unload, Trade (M11) |
+| Buildings (prefab) | Great Hall `hub` (pre-placed), Wagon (pre-placed), Warehouse, Water Pump, Levee, Sawmill and Stonecutter (M11), visiting Trade wagon (M11) |
 | Designations | Dig (box), Chop (area), Farm field (area), Cancel, Deconstruct, Build blocks (shapes), Deconstruct blocks (M8) |
 | Construction (M8) | Stone wall, wood planks, polished stone. Shapes: single, line, wall, floor, hollow box, stair. Support rule (no floating blocks), bottom-up build order, no walling a dwarf in, plan layer with release and material totals |
 | Water | Fixed-point CA, active-cell update, sources and drains at map edges, drought schedule |
 | Farming | Moisture map from nearby water; potatoes grow only when moist; wither when dry too long |
-| Economy | Items: log, stone, berries, potato, water. Storage in Hub and Warehouse. Items on ground get hauled |
+| Economy | Items: log, stone, berries, potato, water, and (M11) planks and cut stone. Storage in Hub and Warehouse. Items on ground get hauled. Workshops craft to orders (one input, one output per recipe); a trade wagon offers fixed-rate swaps on a schedule (`specs/crafting.md`) |
 | Time | 10 Hz fixed tick. Pause / 1× / 3× / 6×. Day = 2400 ticks (4 min at 1×) |
 | Persistence | Save/load of complete sim state; replay-equal after load |
 | UI | Toolbar, resource bar, colonist panel, day/weather readout, debug overlay (F3), "Colony lost" screen |
@@ -72,7 +80,8 @@ The POC is done when the **definition-of-done session** below plays end to end o
 ## Explicitly out of scope
 
 Combat, hostile mobs, animals, births and population growth, housing and sleep, moods, skills, research,
-mechanical power, processing chains (sawmill, cooking), trade, multiplayer, modding API, lighting simulation,
+mechanical power, processing chains beyond the M11 workshops (cooking, multi-input recipes), money, prices and
+trade beyond the M11 trade wagon's fixed swaps, multiplayer, modding API, lighting simulation,
 temperature, water pressure and currents, paths/roads as buildings, stairs and ladders as movement features (a
 staircase built from blocks is fine: dwarves climb it one step at a time), tree regrowth, audio beyond placeholder
 clicks, Steam integration, settings menu, localization, save-format migration.

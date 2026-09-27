@@ -1993,3 +1993,63 @@ Consequences: MESH-P1 has a second case with every top cell of the busiest seed-
 5,800 quads, median about 3.8 ms Release against 6 ms). The sim is unchanged: every shape is still a full solid cell
 (CON-21), so a dwarf stands on the cell's top, 0.5 above a drawn slab. No golden changes.
 
+## ADR-082: Economy and crafting: inline recipes, carried inputs, make/keep orders, a trade wagon at the hall (2026-09-27, M11-T3)
+Context: at G6 the human picked **economy and crafting** as the missing gameplay element: workshops that refine
+materials (sawmill, stonecutter) and trade wagons. M11-T3 writes the spec (`docs/specs/crafting.md`, CRF-01..24,
+CRF-P1). M11-T4..T7 build it, and the scope must fit those four tasks.
+Decision:
+- **Data placement.** Recipes live in a `workshop` block on their building, and offers and the schedule in a `trader`
+  block on the `trader` building, both in `buildings.json`. `ContentDb.Load` keeps its four-file signature, as the
+  shapes did (ADR-080). The two new items are appended after `water`, so existing item ids and hashes do not move.
+- **Refined blocks.** Wood planks (1 planks), Polished stone (2 cut stone) and Slate (3 cut stone) move to refined items,
+  as the backlog asked. Masonry, Rough stone and Wood beam keep raw costs; a beam is a hewn log. The counts do not
+  change, so CON-20 shaped costs, batches and view totals keep working unchanged. A Sawmill makes 2 planks per log, a
+  reason to build it. The Stonecutter is 1:1, so refined stone costs labour, not extra stone.
+- **Starting refined stock.** The starting wagon gains 20 planks and 20 cut stone. Without it, every refined block
+  would need a workshop first, and each screenshot script that paints Wood planks, Polished stone or Slate (paint,
+  wall, blocks, shapes, materials) would have to build workshops and wait for orders. The stock is small enough that
+  any real build still needs a workshop or a trade.
+- **Workshops have no input stock.** The crafter fetches one batch of input from storage, carries it to the entrance
+  and works its cycles there. Each `Craft` step turns carried input into output in the workshop's `Stored` (the output
+  buffer, like a pump's). This is one new step and no new container. A preempted crafter drops the input as a pile,
+  and it is hauled back by the existing rules. One recipe has one input and one output item, and a workshop has 1
+  worker and at most one Craft job.
+- **Orders: both modes, one per recipe.** "Make N" counts outputs made and removes itself when done. "Keep N" compares
+  the colony stock (complete storages, workshop outputs and carried items; piles excluded) with N each time a job is
+  planned. Orders run in recipe order, not insertion order, so there is no reordering UI and no list to save beyond the
+  entries. Two workshops keeping the same item may each start one batch past N. That overshoot is bounded (one batch
+  per workshop) and accepted.
+- **Job kinds.**
+  - `Craft` (30) and `Unload` (30) sit above Dig, Chop and Build (25), so workshops run in a busy colony, and below
+    the pump (40), Harvest (35) and construction (45, 50).
+  - `Trade` (35) covers loading payment and unloading goods. It is above crafting because the wagon leaves on time.
+  - `Unload` is its own kind, so `Pumps.IsBufferHaul`, which identifies a pump haul by its step shape, is not fooled.
+  - Craft and Unload are not JOB-12 sources; the region filter and the workshop status cover the unreachable case.
+- **The trade wagon arrives at the Great Hall**, not at the map edge.
+  - An edge arrival needs a long path that may cross the river or the drought bed, and a travel state. The hall is
+    where the storage is.
+  - The trader is placed complete by the BLD-15 start-site search, the same code that placed the starting wagon. With
+    no site, the visit is skipped with an event.
+  - It is anchored like the hall (no collapse, no undermining, no deconstruct), so a visit cannot end mid-deal by
+    gravity.
+- **Schedule** is a pure function of the tick (first arrival 3000, every 7200, stay 1800), like the weather. Only the
+  current visit is state.
+- **Pay first, then goods.**
+  - A deal is `(offer, lots, paid, granted)`. Dwarves carry the give item from storage onto the wagon (`Pay` step).
+    Each fully paid lot adds its goods to the wagon's storage at once.
+  - That storage is `receives: false`: a source like the starting wagon (BLD-16), counted in the totals, and emptied
+    by `Trade` unload jobs.
+  - At departure, the colony keeps what it paid for: unloaded goods and partial payments are dropped as piles at the
+    entrance. Granted payments leave with the wagon.
+  - `AcceptOffer` checks the free stock, minus what earlier deals still owe, so a deal can always be paid unless the
+    player spends the stock meanwhile.
+- **Save** bumps twice, v8 in M11-T4 (orders, new jobs) and v9 in M11-T5 (the trader section). Each task owns its
+  format change.
+- **Hash.** Orders are hashed only for workshops, and the trader section only while a trader is here.
+Consequences:
+- M11-T4 regenerates the goldens: the wagon's start stock and the block costs are in the start state.
+- Tests that build Wood planks, Polished stone or Slate need the refined items. Unit and scenario tests may stock
+  storage directly, and scripts use the wagon's stock or build a workshop.
+- M11-T5 changes the seed-1 hashes from tick 3000 on, because the trader writes BuildingSolid beside the hall.
+- Out of scope: money, prices, multi-input recipes, worker assignment, skills, quality, factions, a travelling trader,
+  selling anything outside the offers, and more than one trader definition.

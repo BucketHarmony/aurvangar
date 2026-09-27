@@ -31,6 +31,9 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   Each construction block has its own palette colour, different from every other block's (M9-T4). They use only
   the existing items (stone, log): each material is a trade of cost against build and dig time.
 
+  M11-T4 (CRF-02, ADR-082): Planks cost 1 `planks`, PolishedStone 2 `cutstone` and Slate 3 `cutstone`, refined
+  items made in workshops. Masonry, Rubble and Beam keep their raw costs. The counts do not change.
+
   All of them are `solid: true`, `diggable: true`, `drop: null` (CON-17 refunds the cost instead). `BlockDef` gets
   three optional fields: `Label` (string, default null), `Cost` (`Dictionary<string,int>`, default null) and
   `BuildTicks` (int, default 0). A block is a construction block if and only if `Cost` is not null.

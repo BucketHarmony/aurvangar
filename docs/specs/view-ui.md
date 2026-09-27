@@ -146,6 +146,25 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   - Limitation: the sim treats every shape as a full solid cell (CON-21). A dwarf walks on the top of the cell, so it
     stands 0.5 above a drawn slab and floats beside a pillar.
 
+- **VIEW-28** Workshop panel (M11-T6, CRF-06..13). Clicking a complete or planned workshop opens a panel:
+  - its name and status (CRF-13), for example "Sawmill: needs log";
+  - one row per recipe ("Saw planks: 1 log -> 2 planks"), with its order: mode (Make or Keep), count (- and +, steps
+    of 1, 5 with Shift), and `done/count` for Make. Setting, changing or clearing a row sends one `SetWorkshopOrder`
+    (count 0 removes).
+  - Model and texts in ViewCore (`WorkshopPanelModel`), tested.
+- **VIEW-29** Trade panel (M11-T6, CRF-15..21). While a trader is here, a toolbar button and a toast on arrival open a
+  panel:
+  - "Trade wagon: leaves in 3h" (game hours, 100 ticks each);
+  - one row per offer: "10 log -> 10 stone", the lots left, what the colony has of the give item (free stock,
+    CRF-18), and Accept 1 or Accept all buttons, disabled with the CRF-18 reason as tooltip;
+  - the open deals with their paid and granted lots.
+
+  With no trader in, the button's tooltip gives the next arrival ("Trade wagon in 1 day 4h"). Model and texts in
+  ViewCore (`TradePanelModel`), tested.
+- **VIEW-30** HUD (M11-T6): the top bar totals include every item in data order (planks and cut stone after water);
+  workshop `NoInput` and `OutputFull` statuses join the VIEW-15 alerts; the trader is drawn as a wagon (the M11-T2
+  wheels and cover) in its own palette colour.
+
 ## HUD
 
 - **VIEW-15** Top bar: day, season + days left ("Wet season, 4 days left", orange in a drought, toast on change;

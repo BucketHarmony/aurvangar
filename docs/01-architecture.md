@@ -39,7 +39,9 @@
 4. `MoistureMap.Tick` — recompute every 50 ticks (tick % 50 == 0).
 5. `PlantSystem.Tick` — bush regrowth, crop growth / wither.
 6. `NeedsSystem.Tick` — decay hunger/thirst, damage, death.
-7. `BuildingSystem.Tick` — production (pump), construction completion, post jobs.
+7. `BuildingSystem.Tick` — production (pump), construction completion, post jobs. M11 adds, in order after the
+   pumps, `Workshops.Tick` (craft and unload jobs, CRF-10..12) and `Traders.Tick` (arrival, deals, departure,
+   CRF-16..21; it may write blocks, which step 10 applies like any other change).
 8. `DesignationSystem.Tick` — post jobs for new/changed designations.
 9. `HaulSystem.Tick` — post haul jobs for loose item piles and full producers.
 10. `AgentSystem.Tick` — each agent in ascending id order: pick job if idle, advance current job step.

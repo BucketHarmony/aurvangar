@@ -29,6 +29,8 @@
 | `berries` | 2500 | hub, warehouse |
 | `potato` | 4000 | hub, warehouse |
 | `water` | drink 5000 | hub, pump buffer |
+| `planks` (M11-T4) | – | hub, warehouse, wagon, sawmill output (CRF-01) |
+| `cutstone` (M11-T4) | – | hub, warehouse, wagon, trader, stonecutter output (CRF-01) |
 
 - **ECO-08** Item piles: at most one item type per cell, unlimited count. Dropping a different type onto an
   occupied pile cell uses the nearest free standable cell within radius 3 (deterministic spiral order).

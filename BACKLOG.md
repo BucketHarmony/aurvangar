@@ -395,7 +395,7 @@ starting wagon answers "I dont know where to get stone from".
   - The block tool has a shape picker and R to rotate. The ghost shows the shape.
   - Keep the logic in ViewCore with tests. Render screenshots (a stair, slabs and pillars in a small build) and
     look at them.
-- [ ] **M11-T3** Economy and crafting spec and ADR · deps: M11-T11
+- [x] **M11-T3** Economy and crafting spec and ADR · deps: M11-T11
   - G6: the human picked economy and crafting as the missing gameplay element.
   - Write `docs/specs/crafting.md` with rule IDs (CRF-xx), and update docs/00-overview.md scope. The spec covers:
     - Workshops: buildings with a worker and a list of recipes in data. Include at least a Sawmill (log -> planks
@@ -410,18 +410,18 @@ starting wagon answers "I dont know where to get stone from".
       leaves.
     - Save, hash and determinism notes.
   - Add placeholder acceptance tests with `Skip = "M11-Tn"` for the tasks below.
-- [ ] **M11-T4** Workshops, recipes and craft jobs · specs: CRF-* · deps: M11-T3
+- [ ] **M11-T4** Workshops, recipes and craft jobs · specs: CRF-01..14, CRF-22 (v8), CRF-23 · deps: M11-T3
   - Sawmill and Stonecutter in data. Commands with CommandCodec entries set workshop orders. Craft jobs fetch the
     inputs, work and output a pile or haul it to storage. Refined items exist, and block costs move to them per
     the spec. Saved (bump FormatVersion) and hashed. Scenario tests.
-- [ ] **M11-T5** Trade wagon · specs: CRF-* · deps: M11-T4
+- [ ] **M11-T5** Trade wagon · specs: CRF-15..21, CRF-22 (v9), CRF-24 · deps: M11-T4
   - Trade wagons arrive on schedule with data-defined offers. A command accepts an offer. Dwarves haul the goods
     and the wagon leaves on time. Saved and hashed. Scenario test: stone can be bought with logs.
-- [ ] **M11-T6** Godot: workshop orders and trade panel · specs: CRF-*, VIEW-* · deps: M11-T5
+- [ ] **M11-T6** Godot: workshop orders and trade panel · specs: VIEW-28..30, CRF-13, CRF-18 · deps: M11-T5
   - Click a workshop to see its recipes and set orders (make N or keep N). A trade panel appears when a wagon is
     in, showing offers, what we have and accept buttons. The HUD shows refined items. Keep logic in ViewCore with
     tests. Render screenshots and look at them.
-- [ ] **M11-T7** Economy scenario · deps: M11-T6
+- [ ] **M11-T7** Economy scenario · specs: CRF-P1, crafting.md scenario 10 · deps: M11-T6
   - An EconomyScript for seed 1 builds a Sawmill and a Stonecutter, keeps planks and cut stone stocked, trades
     with one wagon and builds a small hall from refined blocks. Test: done by day 10 with all 5 alive. Run
     perf.sh; the full tick stays within budget. Headless and screenshot support for `--script economy`.
