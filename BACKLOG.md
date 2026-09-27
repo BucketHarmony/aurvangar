@@ -201,7 +201,7 @@ building-lookup optimisation) need no task.
   - G3 answer 3b: when the pump's entrance cell is blocked by the next bank step, the pump may use a stand cell one
     level up, the way levees stack. On seed 1 there must be wet pump sites that need no hand-dug notch (test it).
     Keep the SurvivalScript notch unless removing it is needed; if goldens change, record why. ADR.
-- [ ] **M7-T3** Survival session builds a levee reservoir for its pump and farm · specs: ECO-15, BLD-13 · deps: M7-T2
+- [x] **M7-T3** Survival session builds a levee reservoir for its pump and farm · specs: ECO-15, BLD-13 · deps: M7-T2
   - G3 answers 4 and 5: a planned colony can farm and drink through a drought. Moisture already counts any water
     at or above level 128 (ECO-15); confirm it with a test in which a field beside a levee reservoir keeps growing
     through the whole drought. Extend SurvivalScript so the pump draws from a levee-held reservoir (pump dry ticks

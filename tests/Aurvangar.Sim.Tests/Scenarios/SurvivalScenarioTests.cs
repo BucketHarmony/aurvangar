@@ -2,8 +2,10 @@ using Aurvangar.Sim.Agents;
 using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Events;
+using Aurvangar.Sim.Farming;
 using Aurvangar.Sim.Save;
 using Aurvangar.Sim.Tests.Support;
+using Aurvangar.Sim.Water;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Scripts;
 using Xunit;
@@ -38,6 +40,37 @@ public class SurvivalScenarioTests
         public readonly List<(long Tick, SimEvent Event)> Events = new();
         /// <summary>Agents that stood in a deep tunnel cell at some tick after the breach.</summary>
         public readonly SortedSet<int> CaughtInFlood = new();
+        /// <summary>M7-T3: ticks in the drought on which a complete pump flagged NoWater.</summary>
+        public long PumpDryTicksInDrought;
+        /// <summary>M7-T3: farm tile-ticks in the drought whose column was not moist (ECO-15).</summary>
+        public long DryFieldTileTicksInDrought;
+        /// <summary>M7-T3: Mature tiles that became Empty (harvests), by tile, with the tick of each harvest.</summary>
+        public readonly Dictionary<Int3, List<long>> Harvests = new();
+        /// <summary>Growing tiles that became Empty (ECO-13 withers), with their ticks.</summary>
+        public readonly List<long> Withers = new();
+        private readonly Dictionary<Int3, CropState> _crops = new();
+
+        public void Observe(Simulation sim)
+        {
+            long t = sim.Clock.Tick;
+            bool drought = WeatherSystem.SeasonAt(t) == Season.Drought;
+            if (drought && sim.Buildings.All.Any(b => b.Def.Id == "pump" && b.State == BuildingState.Complete && b.NoWater))
+                PumpDryTicksInDrought++;
+            foreach (var f in sim.Farms.All)
+            {
+                if (drought && !sim.Moisture.IsMoist(f.Cell.X, f.Cell.Z)) DryFieldTileTicksInDrought++;
+                if (_crops.TryGetValue(f.Cell, out var before) && before != f.State && f.State == CropState.Empty)
+                {
+                    if (before == CropState.Mature)
+                    {
+                        if (!Harvests.TryGetValue(f.Cell, out var list)) Harvests[f.Cell] = list = new List<long>();
+                        list.Add(t);
+                    }
+                    else Withers.Add(t);
+                }
+                _crops[f.Cell] = f.State;
+            }
+        }
     }
 
     private static void RunTo(Simulation sim, long tick, Watch w)
@@ -49,6 +82,7 @@ public class SurvivalScenarioTests
             sim.Tick();
             foreach (var e in sim.Events.Drain())
                 if (e is CommandRejected or AgentDied or ColonyLost or BuildingCompleted) w.Events.Add((sim.Clock.Tick, e));
+            w.Observe(sim);
             if (sim.Clock.Tick > SurvivalScript.BreachTick)
                 foreach (var a in sim.Agents.All)
                     if (a.IsAlive && tunnel.Contains(a.Cell) && sim.Water.IsDeep(a.Cell)) w.CaughtInFlood.Add(a.Id.Value);
@@ -63,7 +97,7 @@ public class SurvivalScenarioTests
 
         // DoD 3, 6: the field is planted and the tunnel is dug into stone, which ends in storage before the breach.
         RunTo(sim, SurvivalScript.BreachTick, w);
-        Assert.True(sim.Farms.All.Count() == 36, $"farm tiles: {sim.Farms.All.Count()}");
+        Assert.True(sim.Farms.All.Count() == 30, $"farm tiles: {sim.Farms.All.Count()}");
         Assert.All(TunnelFloor(), c => Assert.Equal(BlockId.Air, sim.World.GetBlock(c)));
         Assert.Empty(sim.Designations.All);
         Assert.True(Stored(sim, "stone") >= 10, $"stone stored before the breach: {Stored(sim, "stone")}");
@@ -96,6 +130,71 @@ public class SurvivalScenarioTests
         // Dwarves caught in the flooded tunnel got out (WAT-14 flee) and lived.
         Assert.NotEmpty(w.CaughtInFlood);
     }
+
+    /// <summary>M7-T3 (G3 answers 4 and 5, DoD step 8 in the session itself): the script's levee reservoir. The trench is
+    /// dug dry before its dam is opened; the river fills it and the pump, whose intake is in it, starts; a levee seals
+    /// the mouth before the drought. Through the whole drought the river beside the mouth runs dry, but the reservoir
+    /// holds its water: the pump never flags NoWater and the field beside it stays moist on every tick, so nothing
+    /// withers and every tile is harvested a second time before day 10.</summary>
+    [Fact]
+    public void Seed1_SurvivalScript_LeveeReservoirCarriesPumpAndFieldThroughDrought()
+    {
+        var sim = WorldFactory.Create(SurvivalScript.Seed, TestContent.Db);
+        var w = new Watch();
+        var pool = SurvivalScript.ReservoirWaterCells().ToList();
+        var riverBesideMouth = SurvivalScript.ReservoirMouth + new Int3(0, 0, 1);
+
+        // The trench is dug and still dry; the pump on its bank is complete, intake in the trench, and has no water yet.
+        RunTo(sim, SurvivalScript.ReservoirFillTick, w);
+        var a = SurvivalScript.ReservoirA; var b = SurvivalScript.ReservoirB;
+        for (int z = a.Z; z <= b.Z; z++)
+            for (int y = a.Y; y <= b.Y; y++)
+                Assert.Equal(BlockId.Air, sim.World.GetBlock(new Int3(a.X, y, z)));
+        Assert.All(pool, c => Assert.Equal(0, sim.Water.GetLevel(c)));
+        Assert.NotEqual(BlockId.Air, sim.World.GetBlock(SurvivalScript.ReservoirMouth));
+        var pump = sim.Buildings.All.Single(x => x.Def.Id == "pump");
+        Assert.Equal(BuildingState.Complete, pump.State);
+        var intake = BuildingShape.Intake(pump.Def, pump.Origin, pump.Rotation);
+        Assert.Contains(intake, pool);
+        Assert.True(pump.NoWater);
+
+        // The dam is dug and the river fills the reservoir: the pump has water.
+        RunTo(sim, SurvivalScript.FarmTick, w);
+        Assert.Equal(BlockId.Air, sim.World.GetBlock(SurvivalScript.ReservoirMouth));
+        Assert.All(pool, c => Assert.True(sim.Water.GetLevel(c) >= 256, $"{c}: {sim.Water.GetLevel(c)}"));
+        Assert.False(pump.NoWater);
+
+        // Sealed before the drought.
+        RunTo(sim, 5 * Day, w);
+        var seal = sim.Buildings.BuildingAt(SurvivalScript.ReservoirMouth);
+        Assert.NotNull(seal);
+        Assert.Equal("levee", seal!.Def.Id);
+        Assert.Equal(BuildingState.Complete, seal.State);
+        var growing = sim.Farms.All.Count(f => f.State == CropState.Growing);
+        Assert.True(growing > 0, "nothing replanted before the drought");
+        Assert.Equal(0L, w.PumpDryTicksInDrought);
+
+        // Mid-drought: the river beside the mouth is dry, the reservoir is not.
+        RunTo(sim, 6 * Day, w);
+        Assert.Equal(0, sim.Water.GetLevel(riverBesideMouth));
+        Assert.All(pool, c => Assert.True(sim.Water.GetLevel(c) >= 256, $"{c}: {sim.Water.GetLevel(c)}"));
+
+        RunTo(sim, 7 * Day, w);
+        Assert.True(w.PumpDryTicksInDrought <= MaxPumpDryTicksInDrought, $"pump dry for {w.PumpDryTicksInDrought} drought ticks");
+        Assert.Equal(0L, w.DryFieldTileTicksInDrought);
+
+        RunTo(sim, 10 * Day, w);
+        Assert.Empty(w.Withers);
+        Assert.Equal(30, sim.Farms.Count);
+        Assert.All(sim.Farms.All, f => Assert.True(w.Harvests.TryGetValue(f.Cell, out var h) && h.Count >= 2,
+            $"{f.Cell} harvested {(w.Harvests.TryGetValue(f.Cell, out var n) ? n.Count : 0)} times by day 10"));
+        Assert.All(w.Harvests.Values, h => Assert.True(h[1] > 5 * Day, $"second harvest at {h[1]}, before the drought"));
+        Assert.DoesNotContain(w.Events, e => e.Event is CommandRejected or AgentDied or ColonyLost);
+        Assert.Equal(5, sim.Agents.All.Count(x => x.IsAlive));
+    }
+
+    /// <summary>"Pump dry ticks in the drought near 0" (M7-T3): at most one pump work cycle (BLD-13).</summary>
+    private const long MaxPumpDryTicksInDrought = 30;
 
     /// <summary>Control: with no commands the 30 starting water runs out and the colony dies of thirst before the end
     /// of day 7 (tick 15,009 on seed 1, M5-T5).</summary>

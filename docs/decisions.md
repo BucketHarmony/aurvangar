@@ -1175,3 +1175,28 @@ Consequences: on seed 1 (pre-settled river, no digging) 354 wet pump sites with 
 exist, all using the raised cell; the nearest is the survival script's own site (40,18,80). No new state, no save or
 hash change. The stand cell is not stored, so if the bank step is dug the pump's worker simply moves down to the
 entrance.
+
+
+## ADR-056: Survival reservoir: a dammed trench beside the farm, filled on day 1, sealed before the drought (2026-09-26, M7-T3)
+Context: G3 answer 4 / M7-T3. In the survival session the pump drew straight from the river and the farm relied on the
+river for moisture, so the drought (ADR-049) left the pump dry for ~4,700 ticks and withered 41 crops. The task asks
+for a levee-held reservoir that carries the pump (dry ticks "near 0") and one field (a second harvest before day 10).
+Decision:
+- Reservoir: a one-wide trench at x = 67, z 61..70, dug from the bank top down to y = 17 (floor y = 16, water layer
+  y = 17, the river surface). Its pump end (67,17..18,70) and the pump pad (68,18,70) are dug at tick 0, the rest at
+  tick 600. The bank cell (67,17,71) is a dam until tick 1200 (the trench is dug by ~tick 900), then dug so the river
+  fills the trench (~1,000 per cell), and at tick 9600 a levee (rotation 0, entrance in the trench) seals it. It is
+  complete at ~tick 11,700, before the drought (tick 12,000).
+- Pump: moved from (40,18,80) to the pad (68,18,70), rotation 90, with its intake in the trench at (67,17,70). Its entrance
+  (69,18,70) is bank, so the worker uses the raised stand (69,19,70) (ADR-055). The tick-0 notch of ADR-044 is dropped.
+- Farm: the old 6x6 field (62,67)..(67,72) lost its east column (x = 67 is the reservoir): 5x6 = 30 tiles, all within
+  5 columns of the held water (ECO-15). Moisture already counts water >= 128, so no sim change was needed.
+- "Pump dry ticks in the drought near 0" is tested as <= 30 (one pump cycle); measured 0. "A second harvest before
+  day 10" is tested strictly: every one of the 30 tiles is harvested at least twice, the second after day 5.
+- `SurvivalScriptTests` day-1 hub water assertion drops from > 50 to > 30: the pump now starts at ~1,300 (after the fill),
+  not ~800, so less water is stored by tick 3000 (measured 36). The intent (the pump delivers water on day 1) holds.
+- The generic `ReservoirScenarioTests` field control asserts that the field beside the open pool dries out (every tile
+  dry at drought end), not that it withers: the 20-wide pool drains through its 2-wide mouth slowly, so the dry spell
+  (~460 ticks per tile) is shorter than the 2,400 ticks a crop needs to wither (ECO-13).
+Consequences: golden hashes after tick 0 change (regenerated). In the 24,000-tick headless session: 60 crops harvested
+(was 35), 0 withered (was 41), pump dry ticks 855 (all before the fill on day 1; 0 in the drought, was 4,712).

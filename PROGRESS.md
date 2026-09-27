@@ -1933,3 +1933,60 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   after the ViewCore edit came out stale (identical to the old pump); a second run rendered the change.
 - Next: M7-T3 (levee reservoir for the survival pump and farm). The pump may now be placed on any stepped bank edge
   without a notch; `ScreenshotScripts.FindSite(..., wet: true)` finds wet sites.
+
+## M7-T3 — Survival session builds a levee reservoir for its pump and farm (2026-09-26)
+- Done: `SurvivalScript` now digs a one-wide reservoir trench beside the farm (x = 67, z 61..70, water layer y = 17),
+  dammed from the river until tick 1200. It then opens the dam to fill the trench and seals the mouth (67,17,71) with a
+  levee at tick 9600, which completes at ~11,700, before the drought. The pump moved to the reservoir's south end
+  (pad (68,18,70), rot 90, raised stand per ADR-055), and the tick-0 notch is gone. The farm narrowed to 5×6 = 30 tiles
+  (x = 67 is now the reservoir). No sim change: ECO-15 moisture already counts held water >= 128. The docs/testing.md
+  "Scripted play" table was updated.
+- Tests: `ReservoirScenarioTests` gains a dirt field beside the pool.
+  - New `FieldBesideLeveeReservoir_GrowsThroughDrought`: 0 dry tile-ticks and 0 withers in the drought, every tile
+    Growing or Mature at its end, harvests during it, and the pump never NoWater.
+  - New control `FieldBesideOpenPool_DriesOutInDrought`: every tile is dry by the drought's end.
+  - New `SurvivalScenarioTests.Seed1_SurvivalScript_LeveeReservoirCarriesPumpAndFieldThroughDrought`, checked at
+    several points:
+    - Tick 1200: the trench is dry and dammed, and the pump is complete but NoWater.
+    - Tick 2400: the pool is full and the pump has water.
+    - Day 5: the seal is complete.
+    - Day 6: the river is empty and the pool still holds water.
+    - Day 7: pump dry ticks in the drought <= 30 (measured 0), and 0 dry field tile-ticks.
+    - Day 10: 0 withers, and all 30 tiles harvested at least twice, with the second harvest after day 5. All 5
+      dwarves are alive, and there are no rejects.
+  - Adjusted assertions:
+    - Farm tile count 36 -> 30 (the column is now the reservoir).
+    - `SurvivalScriptTests` hub water at tick 3000 changed from > 50 to > 30, measured 36. The pump starts after the
+      fill (~1,300), not at ~800 (ADR-056).
+  - check.sh: 527 passed, 0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-056.
+- Golden: regenerated. The survival command log changed (reservoir digs, pump site, farm box, seal levee), so every
+  checkpoint after tick 0 moves:
+
+  | Tick | Old | New |
+  |---|---|---|
+  | 1200 | 278032913bfc4cea | af96102eab104c7a |
+  | 3000 | 25f61178eeb2b39f | 8283dd6fdae77ad6 |
+  | 6000 | 01b5005c23875f6c | 8fdcd9964d3947f1 |
+
+  The tick-0 hash `2dce28cc9774b9be` is unchanged.
+- Headless `--seed 1 --script survival --ticks 24000`:
+  - Hash `b8ecd61909bad882` (was `7344b913cc2909c9`), 5,225 ticks/s. 5/5 alive.
+  - Jobs: 444 completed, 0 failed.
+  - Crops: 60 harvested (was 35), 0 withered (was 41).
+  - Pump dry ticks: 855, all on day 1 before the fill. 0 in the drought (was 4,712).
+  - Stored at the end: potato 180, water 110.
+- Perf: perf.sh 8/8 passed.
+
+  | Test | Measured |
+  |---|---|
+  | WAT-P1 | 1.30 ms (23,048 active); 0.88 ms at 128×128 |
+  | WAT-P2 | 699 active |
+  | ECO-16 | 0.873 ms |
+  | SIM-P1 | median 2.338 ms, p95 2.563 ms |
+  | PTH-P1 | p95 0.745 ms |
+  | PTH-P2 | 3.19 / 3.48 ms |
+  | MESH-P1 | 0.641 ms |
+- Screenshots: none (no rendering or Godot change).
+- Next: M7-T4 (eat the most plentiful food first; potatoes now pile up to 180). M7-T7's timed screenshot scripts
+  should include a shot of the reservoir (x = 67, z 61..71) and the farm beside it.

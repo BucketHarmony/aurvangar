@@ -45,9 +45,11 @@ public class SurvivalScriptTests
         Assert.Equal(SurvivalScript.Commands, sim.Commands.Log);
     }
 
-    /// <summary>Every command is accepted: the notch is dug before the pump goes down, and within day 1 the pump, the
-    /// warehouse and the levee line are complete. The pump draws from the river and the hub's water rises above its
-    /// starting 30.</summary>
+    /// <summary>Every command is accepted: the pump's pad and the reservoir's pump end are dug before the pump goes down,
+    /// and within day 1 the pump, the warehouse and the levee line are complete. The pump draws from the reservoir, which
+    /// the river fills once its dam is dug (M7-T3), and the hub's water rises above its starting 30. (Before M7-T3 the
+    /// pump stood on the open river from tick ~800 and the hub held more than 50 by now; the reservoir pump starts at
+    /// ~1,300, after its trench is dug and filled.)</summary>
     [Fact]
     public void Seed1_BuildsPumpWarehouseAndLevees_AllAccepted()
     {
@@ -69,7 +71,7 @@ public class SurvivalScriptTests
         Assert.True(sim.Water.GetLevel(BuildingShape.Intake(pump.Def, pump.Origin, pump.Rotation)) >= pump.Def.Producer!.MinIntakeLevel);
 
         int water = HubWater(sim);
-        Assert.True(water > 50, $"hub water at tick {sim.Clock.Tick}: {water}");
+        Assert.True(water > 30, $"hub water at tick {sim.Clock.Tick}: {water}");
         Assert.True(sim.Water.Stats.Pumped >= 64L * (water - 30), $"pumped {sim.Water.Stats.Pumped}");
         Assert.Equal(0, sim.Counters.JobsFailed);
     }

@@ -91,14 +91,15 @@ the survival scenario (`SurvivalScenarioTests`), and `run-headless.sh --script s
 
 | Tick | Command |
 |---|---|
-| 0 | dig the pump-entrance notch `(40,18,79)` |
-| 600 | pump at `(40,18,80)`; chop the 48×48 area around the Great Hall |
-| 1200 | warehouse at `(34,24,54)` |
+| 0 | dig the reservoir's pump end `(67,17..18,70)` and the pump pad `(68,18,70)` (ADR-056) |
+| 600 | pump at `(68,18,70)` rot 90, intake in the reservoir, raised stand (ADR-055); chop the 48×48 area around the Great Hall; dig the reservoir trench `(67,17..19,61..70)` |
+| 1200 | dig the dam `(67,17,71)`: the river fills the reservoir; warehouse at `(34,24,54)` |
 | 1800 | five levees `(33..37,23,76)` on the bank between the hall and the river |
-| 2400 | 6×6 farm field `(62,67)..(67,72)` on moist ground |
+| 2400 | 5×6 farm field `(62,67)..(66,72)` beside the reservoir |
 | 3000 | tunnel into the hill's south slope `(84,17,56)..(85,18,65)`; its north half is stone |
 | 7200 | breach (N): dig the bank cells `(84..85,17,66)` between the tunnel mouth and the river; the tunnel floods |
 | 7500 | levee repair (N+300): a levee on each breach cell; the flood is walled off |
+| 9600 | seal levee on the reservoir mouth `(67,17,71)`; the reservoir holds through the drought (M7-T3) |
 
 `run-headless.sh --script digchop` (also `none`, `build`, `farm` and `survival`) runs the screenshot harness's `ScreenshotScripts` command list
 (ViewCore, Godot-free) so the same dig + chop work can be measured without Godot (ADR-036). With a script it adds a
