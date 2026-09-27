@@ -7,6 +7,7 @@ using Xunit.Abstractions;
 namespace Aurvangar.Sim.Tests.Perf;
 
 [Trait("Category", "Perf")]
+[Collection(PerfCollection.Name)]
 public class MesherPerfTests
 {
     private readonly ITestOutputHelper _out;

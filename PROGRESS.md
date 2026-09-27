@@ -1595,3 +1595,46 @@ Next after approval: M5-T1 (building definitions, rotation, placement validation
   exist then. M6-T8: the headless `summary:` dig/chop counts are measured against the marks after tick 1, so with
   `--script survival` they report only the tick-0 notch (1 cell dug, 0 trees); use the stored stone (22) and the tests
   as evidence, or fix the summary for timed scripts.
+
+## M6-T7 — Full perf pass (2026-09-26)
+- Done: the last two skipped tests have bodies, and every budget is green with room to spare (ADR-052).
+  - SIM-P1 `OtherPerfTests.FullTick_Seed1_Day5`: seed 1 + `SurvivalScript` to tick 12,000 (first drought tick), then
+    times 500 `Tick()` calls (script enqueue and event drain outside the timer). Prints the water and region phase
+    totals from a test `ITickProfiler` (`PhaseTimer`).
+  - SAV-05 `SaveLoadTests.SaveSize_Day5_Under3MB`: same run, save ≤ 3 MB, and it loads back to the same hash.
+  - PTH-P1 kept failing now and then in `perf.sh` (p95 1.50-1.60 ms vs ~0.8 ms alone). The perf-auditor traced this
+    to Windows parking the windowless testhost on E-cores (EcoQoS) on this i9-12900KF, made worse by perf classes
+    running in parallel. Fixes: (1) harness: one non-parallel `Perf` collection; `PerfHelpers.SettleGc()` (full GC,
+    plus a Windows-only opt-out of power throttling) before timed sections. (2) A*: packed `ulong` heap key
+    (f/h/index = 20/16/28 bits, same order), one `Node[]` for per-cell search state, direct heuristic when there is
+    one goal. `EnsureArrays` throws if a world would overflow the key. Paths are identical: the survival hash is
+    unchanged, and so are the goldens. The auditor also hashed 20,000 random FindPath/FindFlee results and got the
+    same hash before and after.
+- Tests: un-skipped/implemented `FullTick_Seed1_Day5` and `SaveSize_Day5_Under3MB`. They passed on first run: the
+  code was already within budget, so there was no failing implementation to fix. check.sh: 510 passed,
+  0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-052.
+- Golden: unchanged.
+- Perf (perf.sh, Release, 9 of 9 incl. SAV-05; 6 back-to-back suite runs all green):
+
+  | ID | Budget | Measured |
+  |---|---|---|
+  | WAT-P1 | ≤ 4 ms @ 20k | 1.28 ms median (23,048 active); 0.86 ms at 128×128 |
+  | WAT-P2 | ≤ 3,000 active | 699 |
+  | PTH-P1 | p95 ≤ 1.5 ms | p95 0.60-0.62 ms (median 0.24), was 0.8-1.6 |
+  | PTH-P2 | ≤ 25 ms | warm 2.1 / cold 2.4 ms (up to 4.2 / 6.2 in some runs) |
+  | ECO-16 | ≤ 3 ms | 0.87 ms |
+  | SIM-P1 | median ≤ 8 ms | 2.34 ms median, p95 2.57, max 3.6 |
+  | MESH-P1 | ≤ 6 ms | 0.65 ms |
+  | SAV-05 | ≤ 3 MB | 31,781 bytes |
+
+  SIM-P1 breakdown over ticks 12,000-12,499: region rebuilds are ~77% of the tick (407 full rebuilds in 500 ticks,
+  about 2.2 ms each), because the draining river changes walkability every tick. Water is 0.12 ms/tick; everything
+  else (moisture, plants, farms, needs, buildings, designations, haul, agents) adds up to under 0.1 ms/tick. Before the
+  QoS fix, the same test measured 4.3-4.9 ms median whenever it landed on E-cores.
+- Headless seed 1, `--script survival`, 24,000 ticks: hash `7344b913cc2909c9` (same as M6-T6), 3,783 ticks/s, all
+  5 alive, 0 failed jobs, 978 region rebuilds.
+- Screenshots: none (no rendering or Godot code changed).
+- Next: M6-T8 (DoD walkthrough). If the tick cost ever matters, the next lever is incremental region updates, or
+  skipping rebuilds when the changed cells do not change connectivity, during river drain and refill. The headless
+  `summary:` dig/chop counts still cover only the tick-0 marks for timed scripts (see the M6-T6 note).

@@ -1092,3 +1092,22 @@ Decision (seed-1 coordinates, fixed like the rest of the script):
 Consequences: golden hashes at 3000 and 6000 change (farm at 2400). Headless seed 1 with the script: all 5 alive at
 day 10, 0 failed jobs, 105 potatoes, 22 stone stored. The headless `summary:` dig/chop counts are measured against
 the marks present after tick 1, so for `--script survival` they cover only the tick-0 notch (1 cell) and no trees.
+
+## ADR-052: Perf runs are serialized, GC-settled and opted out of EcoQoS; packed A* heap key (2026-09-26, M6-T7)
+Context: PTH-P1 (p95 ≤ 1.5 ms) failed intermittently in `perf.sh` (p95 up to 1.6 ms) while the same test alone gave
+p95 ~0.8 ms. The perf-auditor found two harness artifacts: the perf classes ran in parallel (xUnit default), and on
+this hybrid CPU (i9-12900KF) Windows 11 intermittently schedules the windowless `testhost` on efficiency cores
+(EcoQoS). Every slow run had all timed searches on E-cores; pinning to E-cores reproduced the slow numbers exactly.
+The game runs as a foreground window and is not throttled.
+Decision:
+- All perf classes share one xUnit collection `Perf` with `DisableParallelization = true`.
+- `PerfHelpers.SettleGc()` runs a full blocking GC before each timed section (after warmup in `Measure`, before the
+  PTH-P1 and SIM-P1 loops), and once per process opts it out of power throttling
+  (`SetProcessInformation(ProcessPowerThrottling, execution speed control on, state off)`, Windows only, no package).
+- A* speedup (same paths, same tie-breaks, PTH-09): `PathHeap` packs `(f, h, index)` into one `ulong`
+  (20/16/28 bits; ordering by the packed value is the lexicographic order), per-cell search state is one `Node[]`
+  array of 16-byte structs, and a single-goal search calls the heuristic directly. `EnsureArrays` throws for a
+  world whose cell count or maximum heuristic would not fit the key (128×64×128 uses 2^20 cells and h ≤ 1,920).
+- No budget changes.
+Consequences: in-suite PTH-P1 p95 ~0.60 ms (6/6 runs), SIM-P1 median ~2.3 ms. Seed-1 survival hash is unchanged
+(`7344b913cc2909c9`); goldens unchanged. On a non-hybrid or non-Windows CI runner the QoS call is a no-op.

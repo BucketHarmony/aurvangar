@@ -52,6 +52,11 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
 - Run in Release: `dotnet test -c Release --filter Category=Perf`.
 - Each perf test warms up, runs N iterations, asserts the budget on the median (and p95 where specified).
 - Budgets assume a mid-range desktop. On a slower CI runner set `PERF_SCALE=2.0` (budgets multiplied).
+- Perf classes run in one non-parallel xUnit collection (`PerfCollection`). Timed sections call
+  `PerfHelpers.SettleGc()` first (full GC; on Windows it also opts the process out of EcoQoS so hybrid CPUs do not
+  park the test on efficiency cores). ADR-052.
+- SIM-P1 runs seed 1 with `SurvivalScript` to tick 12,000 and times 500 `Tick()` calls. It prints the water and
+  region phase totals; during the day-5 drought, region rebuilds are most of the tick.
 
 | ID | Budget |
 |---|---|

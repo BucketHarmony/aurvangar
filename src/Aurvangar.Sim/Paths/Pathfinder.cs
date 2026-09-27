@@ -33,11 +33,9 @@ public sealed class Pathfinder
     private readonly PathStep[] _steps = new PathStep[PathMoves.MaxMoves];
     private readonly PathMove[] _moves = new PathMove[PathMoves.MaxMoves];
 
-    // Pooled per-cell search state (PTH-09). _seen[i] == _gen: _g and _cameFrom are valid; _closed[i] == _gen: expanded.
-    private int[] _g = Array.Empty<int>();
-    private int[] _cameFrom = Array.Empty<int>();
-    private int[] _seen = Array.Empty<int>();
-    private int[] _closed = Array.Empty<int>();
+    // Pooled per-cell search state (PTH-09). Seen == _gen: G and CameFrom are valid; Closed == _gen: expanded.
+    private struct Node { public int Seen, G, CameFrom, Closed; }   // 16 bytes: one cache line access per cell
+    private Node[] _nodes = Array.Empty<Node>();
     private int[] _goalMark = Array.Empty<int>();
     private int _gen;
 
@@ -74,12 +72,15 @@ public sealed class Pathfinder
             _goals.Add(g);
         }
         if (_goals.Count == 0) return PathResult.None;
+        bool oneGoal = _goals.Count == 1;
+        Int3 goal0 = _goals[0];
 
         _open.Clear();
         _grid.SyncWorldChanges();                   // once per search; the fast flag reads below do not sync
         int sizeX = world.SizeX, layer = world.SizeX * world.SizeZ;
         int si = world.Index(start);
-        _seen[si] = _gen; _g[si] = 0; _cameFrom[si] = -1;
+        var nodes = _nodes;
+        nodes[si].Seen = _gen; nodes[si].G = 0; nodes[si].CameFrom = -1;
         int h0 = Heuristic(start.X, start.Y, start.Z);
         _open.Push(h0, h0, si);
 
@@ -87,28 +88,30 @@ public sealed class Pathfinder
         while (_open.Count > 0)
         {
             int ci = _open.PopIndex();
-            if (_closed[ci] == _gen) continue;              // stale heap entry
+            ref var cn = ref nodes[ci];
+            if (cn.Closed == _gen) continue;                // stale heap entry
             if (_goalMark[ci] == _gen)
             {
                 LastExpanded = expanded;
-                return Build(ci, _g[ci]);
+                return Build(ci, cn.G);
             }
             if (expanded >= MaxExpanded) { LastExpanded = expanded; return TooFarResult; }  // PTH-10
-            _closed[ci] = _gen;
+            cn.Closed = _gen;
             expanded++;
 
             int cy = ci / layer, rem = ci - cy * layer, cz = rem / sizeX, cx = rem - cz * sizeX;
-            int gc = _g[ci];
+            int gc = cn.G;
             int n = PathMoves.Steps(_grid, cx, cy, cz, _steps);
             for (int m = 0; m < n; m++)
             {
                 ref readonly var st = ref _steps[m];
                 int ni = st.X + st.Z * sizeX + st.Y * layer;
-                if (_closed[ni] == _gen) continue;
+                ref var nn = ref nodes[ni];
+                if (nn.Closed == _gen) continue;
                 int ng = gc + st.Cost;
-                if (_seen[ni] == _gen && ng >= _g[ni]) continue;
-                _seen[ni] = _gen; _g[ni] = ng; _cameFrom[ni] = ci;
-                int h = Heuristic(st.X, st.Y, st.Z);
+                if (nn.Seen == _gen && ng >= nn.G) continue;
+                nn.Seen = _gen; nn.G = ng; nn.CameFrom = ci;
+                int h = oneGoal ? PathMoves.Heuristic(st.X, st.Y, st.Z, goal0) : Heuristic(st.X, st.Y, st.Z);
                 _open.Push(ng + h, h, ni);
             }
         }
@@ -132,12 +135,12 @@ public sealed class Pathfinder
         NextGeneration();
         _queue.Clear();
         int si = world.Index(start);
-        _seen[si] = _gen; _g[si] = 0; _cameFrom[si] = -1;
+        _nodes[si].Seen = _gen; _nodes[si].G = 0; _nodes[si].CameFrom = -1;
         _queue.Add(si);
         for (int head = 0; head < _queue.Count; head++)
         {
             int ci = _queue[head];
-            int depth = _g[ci];
+            int depth = _nodes[ci].G;
             if (depth >= maxSteps) continue;
             LastExpanded++;
             int n = PathMoves.From(_grid, world.CellOf(ci), _moves, swim: true);
@@ -145,8 +148,9 @@ public sealed class Pathfinder
             {
                 var to = _moves[m].To;
                 int ni = world.Index(to);
-                if (_seen[ni] == _gen) continue;
-                _seen[ni] = _gen; _g[ni] = depth + 1; _cameFrom[ni] = ci;
+                ref var nn = ref _nodes[ni];
+                if (nn.Seen == _gen) continue;
+                nn.Seen = _gen; nn.G = depth + 1; nn.CameFrom = ci;
                 if (_grid.IsWalkable(to)) return Build(ni, depth + 1);
                 _queue.Add(ni);
             }
@@ -170,20 +174,21 @@ public sealed class Pathfinder
     {
         var world = _grid.World;
         int len = 0;
-        for (int i = endIndex; i >= 0; i = _cameFrom[i]) len++;
+        for (int i = endIndex; i >= 0; i = _nodes[i].CameFrom) len++;
         var path = new Int3[len];
         int p = len;
-        for (int i = endIndex; i >= 0; i = _cameFrom[i]) path[--p] = world.CellOf(i);
+        for (int i = endIndex; i >= 0; i = _nodes[i].CameFrom) path[--p] = world.CellOf(i);
         return new PathResult(PathStatus.Found, path, cost);
     }
 
     private void EnsureArrays(int cells)
     {
-        if (_g.Length == cells) return;
-        _g = new int[cells];
-        _cameFrom = new int[cells];
-        _seen = new int[cells];
-        _closed = new int[cells];
+        if (_nodes.Length == cells) return;
+        // The packed heap key (PathHeap) holds the cell index in 28 bits and h in 16 bits.
+        var w = _grid.World;
+        if (cells > PathHeap.MaxIndex + 1 || 14 * Math.Max(w.SizeX, w.SizeZ) + 2 * w.SizeY > PathHeap.MaxH)
+            throw new InvalidOperationException($"world {w.SizeX}x{w.SizeY}x{w.SizeZ} is too large for the A* heap key");
+        _nodes = new Node[cells];
         _goalMark = new int[cells];
         _gen = 0;
     }
@@ -192,7 +197,7 @@ public sealed class Pathfinder
     {
         if (_gen == int.MaxValue)
         {
-            Array.Clear(_seen); Array.Clear(_closed); Array.Clear(_goalMark);
+            Array.Clear(_nodes); Array.Clear(_goalMark);
             _gen = 0;
         }
         _gen++;

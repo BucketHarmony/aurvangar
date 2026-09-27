@@ -6,13 +6,19 @@ using Aurvangar.Sim.Save;
 using Aurvangar.Sim.Tests.Support;
 using Aurvangar.Sim.Water;
 using Aurvangar.Sim.World;
+using Aurvangar.ViewCore.Scripts;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Aurvangar.Sim.Tests;
 
 /// <summary>M4-T10: binary save/load (SAV-01..06).</summary>
 public class SaveLoadTests
 {
+    private readonly ITestOutputHelper _out;
+
+    public SaveLoadTests(ITestOutputHelper output) => _out = output;
+
     private static byte[] SaveBytes(Simulation sim)
     {
         using var ms = new MemoryStream();
@@ -240,5 +246,17 @@ public class SaveLoadTests
         Assert.Contains("TestOnlyUnknown", ex.Message);
     }
 
-    [Fact(Skip = "M6-T7")] public void SaveSize_Day5_Under3MB() => Placeholder.Write("SAV-05");
+    /// <summary>SAV-05: seed 1 with the full <see cref="SurvivalScript"/> at day 5 (tick 12,000) saves to at most
+    /// 3 MB, and that save loads back to the same hash.</summary>
+    [Fact]
+    public void SaveSize_Day5_Under3MB()
+    {
+        var sim = WorldFactory.Create(SurvivalScript.Seed, TestContent.Db);
+        SurvivalScript.Run(sim, 12_000);
+        sim.Events.Drain();
+        var bytes = SaveBytes(sim);
+        _out.WriteLine($"SAV-05: day-5 save {bytes.Length:N0} bytes ({bytes.Length / 1048576.0:F2} MB)");
+        Assert.True(bytes.Length <= 3 * 1024 * 1024, $"day-5 save is {bytes.Length:N0} bytes");
+        Assert.Equal(sim.StateHash(), LoadBytes(bytes).StateHash());
+    }
 }

@@ -1,15 +1,16 @@
 namespace Aurvangar.Sim.Paths;
 
 /// <summary>Binary min-heap of open A* nodes keyed by (f, h, index) for deterministic tie-breaks (PTH-09).
-/// Stale entries are allowed (lazy decrease-key); the search skips them when popped.</summary>
+/// Stale entries are allowed (lazy decrease-key); the search skips them when popped.
+/// The key is packed into one ulong (f: 20 bits, h: 16 bits, index: 28 bits), so ordering by the packed value is
+/// exactly the lexicographic (f, h, index) order and each sift step is a single compare.</summary>
 internal sealed class PathHeap
 {
-    private struct Entry
-    {
-        public int F, H, Index;
-    }
+    public const int IndexBits = 28, HBits = 16, FBits = 20;
+    public const int MaxIndex = (1 << IndexBits) - 1, MaxH = (1 << HBits) - 1, MaxF = (1 << FBits) - 1;
+    private const ulong IndexMask = MaxIndex;
 
-    private Entry[] _items = new Entry[256];
+    private ulong[] _items = new ulong[256];
 
     public int Count { get; private set; }
 
@@ -17,41 +18,40 @@ internal sealed class PathHeap
 
     public void Push(int f, int h, int index)
     {
+        System.Diagnostics.Debug.Assert((uint)f <= MaxF && (uint)h <= MaxH && (uint)index <= MaxIndex);
         if (Count == _items.Length) Array.Resize(ref _items, _items.Length * 2);
-        var e = new Entry { F = f, H = h, Index = index };
+        ulong e = ((ulong)(uint)f << (HBits + IndexBits)) | ((ulong)(uint)h << IndexBits) | (uint)index;
+        var items = _items;
         int i = Count++;
         while (i > 0)
         {
             int parent = (i - 1) >> 1;
-            if (!Less(e, _items[parent])) break;
-            _items[i] = _items[parent];
+            ulong p = items[parent];
+            if (e >= p) break;
+            items[i] = p;
             i = parent;
         }
-        _items[i] = e;
+        items[i] = e;
     }
 
     public int PopIndex()
     {
-        int top = _items[0].Index;
-        var last = _items[--Count];
+        var items = _items;
+        int top = (int)(items[0] & IndexMask);
+        int count = --Count;
+        ulong last = items[count];
         int i = 0;
-        int half = Count >> 1;
+        int half = count >> 1;
         while (i < half)
         {
             int child = 2 * i + 1;
-            if (child + 1 < Count && Less(_items[child + 1], _items[child])) child++;
-            if (!Less(_items[child], last)) break;
-            _items[i] = _items[child];
+            ulong c = items[child];
+            if (child + 1 < count && items[child + 1] < c) c = items[++child];
+            if (c >= last) break;
+            items[i] = c;
             i = child;
         }
-        if (Count > 0) _items[i] = last;
+        if (count > 0) items[i] = last;
         return top;
-    }
-
-    private static bool Less(in Entry a, in Entry b)
-    {
-        if (a.F != b.F) return a.F < b.F;
-        if (a.H != b.H) return a.H < b.H;
-        return a.Index < b.Index;
     }
 }

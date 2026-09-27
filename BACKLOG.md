@@ -181,7 +181,7 @@ Milestone order is by risk: world and water before anything that depends on them
 - [x] **M6-T6** Complete SurvivalScript (farms, hill dig, breach, levee repair); survival scenario: all 5 alive
   at day 10 on seed 1 · deps: M6-T5
   - Un-skip `Scenarios/SurvivalScenarioTests.*`. Regenerate golden.
-- [ ] **M6-T7** Full perf pass · specs: all `*-P*`, SIM-P1 · deps: M6-T6
+- [x] **M6-T7** Full perf pass · specs: all `*-P*`, SIM-P1 · deps: M6-T6
 - [ ] **M6-T8** Definition-of-done walkthrough, headless · deps: M6-T7
   - `run-headless.sh --seed 1 --script survival --ticks 24000` and a checklist in PROGRESS.md mapping each
     step of the DoD session (docs/00-overview.md) to evidence (test name, stat, or screenshot).

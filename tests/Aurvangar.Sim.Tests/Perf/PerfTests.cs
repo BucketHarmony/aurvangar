@@ -1,13 +1,16 @@
+using System.Diagnostics;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Tests.Support;
 using Aurvangar.Sim.Water;
 using Aurvangar.Sim.World;
+using Aurvangar.ViewCore.Scripts;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Aurvangar.Sim.Tests.Perf;
 
 [Trait("Category", "Perf")]
+[Collection(PerfCollection.Name)]
 public class WaterPerfTests
 {
     private readonly ITestOutputHelper _out;
@@ -68,6 +71,7 @@ public class WaterPerfTests
 }
 
 [Trait("Category", "Perf")]
+[Collection(PerfCollection.Name)]
 public class OtherPerfTests
 {
     private readonly ITestOutputHelper _out;
@@ -85,6 +89,50 @@ public class OtherPerfTests
         Assert.True(median <= 3.0 * PerfHelpers.Scale, $"moisture recompute median {median:F2} ms");
     }
 
-    [Fact(Skip = "M6-T7")]
-    public void FullTick_Seed1_Day5() => Placeholder.Write("SIM-P1: seed 1 + SurvivalScript to day 5, then median Tick() over 500 ticks <= 8 ms * PERF_SCALE");
+    /// <summary>SIM-P1: seed 1 with the full <see cref="SurvivalScript"/> to day 5 (tick 12,000, the first drought
+    /// tick: the river drains, the flooded tunnel and its levees exist), then the median of 500 <c>Tick()</c> calls.
+    /// Only <c>Tick()</c> is timed; the script's enqueue and the event drain (the view's job) are outside the timer.</summary>
+    [Fact]
+    public void FullTick_Seed1_Day5() // SIM-P1
+    {
+        var sim = WorldFactory.Create(SurvivalScript.Seed, TestContent.Db);
+        for (long t = 0; t < 12_000; t++)
+        {
+            SurvivalScript.EnqueueDue(sim);
+            sim.Tick();
+            sim.Events.Drain();
+        }
+        Assert.Equal(5, sim.Agents.All.Count(a => a.IsAlive));
+        var phases = new PhaseTimer();
+        sim.Profiler = phases;
+        long rebuilds0 = sim.Counters.RegionRebuilds;
+        PerfHelpers.SettleGc();
+        var times = new double[500];
+        for (int i = 0; i < times.Length; i++)
+        {
+            SurvivalScript.EnqueueDue(sim);
+            long t0 = Stopwatch.GetTimestamp();
+            sim.Tick();
+            times[i] = Stopwatch.GetElapsedTime(t0).TotalMilliseconds;
+            sim.Events.Drain();
+        }
+        Array.Sort(times);
+        double median = PerfHelpers.Median(times);
+        _out.WriteLine($"SIM-P1: full tick median {median:F3} ms, p95 {PerfHelpers.P95(times):F3} ms, max {times[^1]:F2} ms " +
+                       $"(ticks 12000-12499, active water {sim.Water.ActiveCount}); phase totals over 500 ticks: " +
+                       $"water {phases.Total(TickPhase.Water):F0} ms, regions {phases.Total(TickPhase.Regions):F0} ms " +
+                       $"({sim.Counters.RegionRebuilds - rebuilds0} rebuilds)");
+        Assert.True(median <= 8.0 * PerfHelpers.Scale, $"full tick median {median:F2} ms");
+    }
+}
+
+/// <summary>Accumulates wall time per <see cref="TickPhase"/> for perf-test breakdowns.</summary>
+internal sealed class PhaseTimer : ITickProfiler
+{
+    private readonly long[] _start = new long[8];
+    private readonly double[] _total = new double[8];
+
+    public void Begin(TickPhase phase) => _start[(int)phase] = Stopwatch.GetTimestamp();
+    public void End(TickPhase phase) => _total[(int)phase] += Stopwatch.GetElapsedTime(_start[(int)phase]).TotalMilliseconds;
+    public double Total(TickPhase phase) => _total[(int)phase];
 }

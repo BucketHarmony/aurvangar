@@ -9,6 +9,7 @@ namespace Aurvangar.Sim.Tests.Perf;
 
 /// <summary>PTH-P1 and PTH-P2 on seed 1 (ADR-034 defines the sampling).</summary>
 [Trait("Category", "Perf")]
+[Collection(PerfCollection.Name)]
 public class PathPerfTests
 {
     public const int PairCount = 200, MinPathCells = 90, MaxPathCells = 110, MaxAttempts = 20_000;
@@ -66,6 +67,7 @@ public class PathPerfTests
 
         var times = new double[pairs.Count];
         int maxExpanded = 0;
+        PerfHelpers.SettleGc();
         for (int k = 0; k < pairs.Count; k++)
         {
             long t = System.Diagnostics.Stopwatch.GetTimestamp();
