@@ -3029,3 +3029,36 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Next: M10-T3 (vertical painting from a side face). The shortage uses paint order, so the vertical drag's cells are
   short in the order it paints them; if M10-T3 reorders cells bottom-up for sending, the ghost still follows
   `Cells` order.
+
+## M10-T3 — Vertical painting from a side face (2026-09-27)
+- Done: G5 Q2 (ADR-073, amends ADR-067 and ADR-072).
+  - **`PaintDrag` planes:** a new `vertical` option. A block-tool drag from a side face keeps the first cell's X (east
+    or west face) or Z (north or south face) and paints the other two axes. The mouse ray is cut with the picked
+    face's own plane; the pick is the fallback. `Line4(a, b, fixedAxis)` walks 4-connected in any grid plane (the old
+    `Line4(a, b)` is the XZ case). A drag from a top or bottom face is unchanged. Deconstruct stays horizontal.
+  - **Send order:** `BlockTool.SendOrder` = bottom-up (stable by Y), then `SupportOrder`. A wall face painted from the
+    top down is sent from the bottom.
+  - **Amber (ADR-072 amended):** the free stock is taken in the same bottom-up order, so on a wall face the top cells
+    are short (the ones sent last). Horizontal drags keep paint order.
+  - Text: the tooltip's controls line is "Click a face: one block. Drag from a top face: a course; from a side face: a
+    wall. P plan"; the HUD hint names both drags.
+  - Screenshots: new `wall` script and preset (the `paint` drags; the harness holds a 4 x 6 vertical Wood planks drag
+    beside the L's short arm, `PaintScript.WallDrag`).
+  - Docs: view-ui.md VIEW-21, docs/testing.md, screenshot.sh comment.
+- Tests: new `View/VerticalPaintTests` (5): a side-face drag paints the face's plane (east: a 2 x 4 wall with the
+  cursor's X ignored; north: an XY staircase, one face step each), a top-face drag stays on its layer; the mouse ray on
+  the face plane with the parallel and away fallbacks, and a west face's plane at x = 5; a column painted top-down
+  under a cap is sent bottom-up and all planned, while paint order is rejected by the sim; with 2 stone a top-down
+  column of 4 has its top 2 cells short, and they are sent last; the hint and the `wall` script (24 cells, 6 layers,
+  one X, all valid on seed 1). With the vertical option off, all 5 failed on the painted plane.
+  - check.sh: 629 passed, 0 skipped, 0 failed. 0 warnings.
+- sim-reviewer: not run (no Aurvangar.Sim change). Golden: unchanged. perf.sh: not run (view-only; no water, path or
+  sim change). Headless `--script paint --ticks 1500`: hash `fea5d0cffabc5ca6` (same as G5).
+- Screenshot (Forward+, seed 1, looked at): `artifacts/screens/m10t3_1500/wall.png` (`SCRIPT=wall SHOTS=wall
+  TICKS=1500`, yaw 130 chosen after 60, 110 and 150). The built planks L with its planned second course, and at the
+  end of the short arm a 4-wide, 6-high ghost planks wall standing in one vertical plane; the top row is amber. The
+  label reads "Build Wood planks (24 blocks, 24 log) / Only 20 log free: 4 blocks short (amber) / Click a face: one
+  block. Drag from a top face: a course; from a side face: a wall. P plan". The longer HUD hint fits left of "Plan (P)".
+- Decisions: ADR-073.
+- Next: M10-T4 (idle builders between courses). For G6, the vertical-painting shot is `SCRIPT=wall SHOTS=wall
+  TICKS=1500`. Open question for G6: should Deconstruct's drag also go vertical from a side face?

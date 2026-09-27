@@ -316,7 +316,7 @@ Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is de
   - While dragging, the tool ghost and the tooltip show the drag's cost against free stock (stock minus what
     released blocks will use). Cells beyond the stock are drawn amber (short, not invalid).
   - Put the logic in ViewCore with tests. Render screenshots and look at them.
-- [ ] **M10-T3** Vertical painting from a side face · specs: VIEW-21 · deps: M9-GATE
+- [x] **M10-T3** Vertical painting from a side face · specs: VIEW-21 · deps: M9-GATE
   - G5 Q2 (the recommendation was taken): a drag that starts on a side face paints in that face's vertical plane,
     so a wall face (a column or a rectangle of cells the cursor passes) can be painted in one drag. A drag from a
     top face stays horizontal. Cells are sent bottom-up, so each has support.

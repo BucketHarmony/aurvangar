@@ -37,10 +37,12 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// <item><c>paint</c> (M9-T1): the timed <see cref="PaintScript"/>: single blocks painted along drags with the player's
 /// block tool (a released planks L, a planned second course), and a stone drag held in progress. The <c>paint</c>
 /// preset looks at it.</item>
+/// <item><c>wall</c> (M10-T3): the same drags as <c>paint</c>; the harness holds a vertical Wood planks drag up a wall
+/// face (<see cref="PaintScript.WallDrag"/>). The <c>wall</c> preset looks at it.</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -62,6 +64,7 @@ public static class ScreenshotScripts
             case "survival":   // timed: its commands are enqueued at their ticks by Run
             case "monument":
             case "paint":
+            case "wall":
                 return Array.Empty<ICommand>();
             case "digchop":
                 return new ICommand[] { PitDig(sim), ChopNearHub(sim) };
@@ -99,14 +102,14 @@ public static class ScreenshotScripts
     }
 
     /// <summary>True for a script whose commands have their own ticks (<c>survival</c>, <c>monument</c>, <c>paint</c>).</summary>
-    public static bool IsTimed(string name) => name is "survival" or "monument" or "paint";
+    public static bool IsTimed(string name) => name is "survival" or "monument" or "paint" or "wall";
 
     /// <summary>Enqueues the commands of timed script <paramref name="name"/> due at the sim's current tick.</summary>
     public static void EnqueueDue(string name, Simulation sim)
     {
         if (name == "monument") MonumentScript.EnqueueDue(sim);
         else if (name == "survival") SurvivalScript.EnqueueDue(sim);
-        else if (name == "paint") PaintScript.EnqueueDue(sim);
+        else if (name is "paint" or "wall") PaintScript.EnqueueDue(sim);
     }
 
     /// <summary>Runs <paramref name="ticks"/> ticks of script <paramref name="name"/> the way the harness does: an

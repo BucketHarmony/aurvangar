@@ -15,7 +15,7 @@ public partial class Hud : CanvasLayer
     public const double ToastSeconds = 3.0;
 
     /// <summary>The block options row's controls text (M9-T1).</summary>
-    public const string BlockToolHint = "· click a face for one block, drag to paint a course ·";
+    public const string BlockToolHint = "· click a face for one block, drag from a top face for a course, from a side face for a wall ·";
 
     public event System.Action<ToolKind>? ToolChosen;
 

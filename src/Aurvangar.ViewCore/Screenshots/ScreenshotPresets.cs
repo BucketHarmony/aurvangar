@@ -31,12 +31,13 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// plan line; the hub when there is no site.</item>
 /// <item><c>materials</c> (M9-T4): the <see cref="MaterialsScript"/> row, one sample of every construction block.</item>
 /// <item><c>paint</c> (M9-T1): the <see cref="PaintScript"/> site (single blocks painted along drags, a drag held).</item>
+/// <item><c>wall</c> (M10-T3): the <c>wall</c> script's vertical drag held up a wall face beside the painted L.</item>
 /// <item><c>monument</c> (M8-T6): the <see cref="MonumentScript"/> tower and courtyard, with the hill quarry behind.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -49,6 +50,7 @@ public static class ScreenshotPresets
     public const float BlocksYaw = 30f;
     public const float MonumentYaw = 30f;
     public const float MaterialsYaw = 0f;
+    public const float WallYaw = 130f;
 
     public static CameraShot For(string name, Simulation sim)
     {
@@ -103,6 +105,13 @@ public static class ScreenshotPresets
                 if (PaintScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
                 var focus = new Vector3(s.X + BlocksScript.SiteW / 2f, s.Y + 1, s.Z + BlocksScript.SiteD / 2f);
                 return new CameraShot(name, focus, BlocksYaw, 50f, 12f, top);
+            }
+            case "wall":
+            {
+                if (PaintScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
+                var focus = new Vector3(s.X + PaintScript.WallDx, s.Y + PaintScript.WallHeight / 2f,
+                    s.Z + PaintScript.WallZ0 - PaintScript.WallWidth / 2f + 1);
+                return new CameraShot(name, focus, WallYaw, 30f, 14f, top);
             }
             case "materials":
             {

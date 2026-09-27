@@ -93,6 +93,8 @@ the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the 
 `TICKS=3000 SHOTS=reservoir` (full reservoir), `TICKS=14400 SHOTS=reservoir,tunnel,river` (drought: the river is
 empty, the reservoir and the tunnel still hold water). `SCRIPT=monument` (the timed `MonumentScript`, M8-T6):
 `TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 14000 (tower half built), 17400 (complete).
+`SCRIPT=wall SHOTS=wall` (M10-T3) runs the same drags as `paint`, and the harness holds a vertical Wood planks drag
+up a wall face beside the L instead (`TICKS=1500`: the built L, and the 4x6 ghost wall with its top row amber).
 `SCRIPT=paint` (the timed `PaintScript`, M9-T1): single blocks painted with the player's block tool along drags, a
 planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
 `TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag

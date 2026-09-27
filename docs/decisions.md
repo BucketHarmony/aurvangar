@@ -1722,3 +1722,30 @@ Decision:
   stock (scripts, `Release`) have no shortage.
 Consequences: a released drag's ghost can show amber for up to 10 frames after the release changed the free stock;
 harmless. The paint screenshot's held stone drag (0 stone stored) is now amber, with red where it crosses the L.
+
+## ADR-073: A block-tool drag from a side face paints that face's vertical plane (amends ADR-067) (2026-09-27, M10-T3)
+Context: G5 Q2 (the recommendation was taken): a wall face should be paintable in one drag. ADR-067 kept every drag
+horizontal, so a 7x7 tower of 8 courses took 8 drags per face.
+Decision:
+- **Which plane.** A block-tool drag that starts on a top or bottom face stays on the first cell's layer, as before.
+  One that starts on a side face stays in the vertical plane of its first cell, parallel to the picked face: X is
+  fixed for an east or west face, Z for a north or south face. The first cell is still the cell the face looks into,
+  so the wall face grows beside the picked block (that block supports the first cell).
+- **Cursor.** The mouse ray is cut with the picked face's own plane (the block's surface), so the painted cell is the
+  one under the cursor on that face. The pick stays the fallback (its cell projected onto the plane) when the ray is
+  parallel or points away. The path between cursor cells is the same 4-connected walk, in the plane (ties step
+  along Y). "A rectangle" means the cells the cursor sweeps over, not a box between two corners: painting stays
+  painting (ADR-067).
+- **Send order.** The valid cells are sorted bottom-up (a stable sort, so a horizontal drag keeps its paint order),
+  then `SupportOrder`. A wall painted from the top down is sent from the bottom, and each command is applied with
+  support. No new sim command.
+- **Shortage (ADR-072 amended).** The free stock is taken in the same bottom-up order, so on a wall face the top cells
+  are amber: the ones sent last, which wait as `NoMaterial` last. On a horizontal drag nothing changes (the tail of
+  the drag is amber).
+- **Deconstruct stays horizontal.** The task names the block tool. Deconstruct by block still paints the first
+  block's layer; `PaintDrag` takes the vertical mode as an option, so it can follow later if the human wants it.
+- **Reach.** Dwarves reach one level up, so the upper cells of a tall painted wall wait (`BelowFirst`,
+  `WaitSupport`) until there is a stand cell. That is the same as a course-by-course wall.
+- **Screenshots.** A new `wall` script and preset: the `paint` drags, with the harness holding a vertical Wood planks
+  drag (4 wide, 6 high) beside the L. It needs 24 logs with 20 free, so its top row is amber.
+Consequences: the controls text and the HUD hint name both drags. Goldens are unchanged (no sim change).

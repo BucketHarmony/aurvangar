@@ -7,7 +7,7 @@
 # build = chop plus a warehouse, a pump and a levee line near the hub, use TICKS=500 to catch them mid-build, TICKS=1600 to see them complete;
 # farm = a 5x5 field on moist ground near the hub, TICKS=4000 for growing crops, 9000 for mature ones; add ",farm" to SHOTS for its close-up;
 # survival = the timed SurvivalScript (commands at their ticks): TICKS=7700 SHOTS=tunnel flooded tunnel, 14400 SHOTS=reservoir,tunnel drought;
-# paint = single blocks painted with the block tool, TICKS=1500 SHOTS=paint; materials = one sample of every
+# paint = single blocks painted with the block tool, TICKS=1500 SHOTS=paint; wall = the same with a vertical drag held, SHOTS=wall; materials = one sample of every
 # construction block, TICKS=12000 SHOTS=materials; blocks, monument: see docs/testing.md).
 # Run `dotnet build src/Aurvangar.Godot` first after code changes (--build-solutions may not rebuild).
 set -euo pipefail

@@ -46,10 +46,11 @@ public readonly record struct BlockClick(IReadOnlyList<DesignateBuild> Commands,
 /// <list type="bullet">
 /// <item>A click plans or places one block in the cell the picked face looks into (<see cref="Anchor"/>): a top face
 /// stacks upward, a side face places beside.</item>
-/// <item>A drag paints one block into each new cell the cursor passes over, on the layer of the first cell
-/// (<see cref="PaintDrag"/>), so a wall is painted course by course.</item>
-/// <item>The release sends one <c>DesignateBuild(Single)</c> per valid cell, in support order
-/// (<see cref="SupportOrder"/>), so every cell is supported when its command is applied.</item>
+/// <item>A drag paints one block into each new cell the cursor passes over (<see cref="PaintDrag"/>). From a top or
+/// bottom face it stays on the layer of the first cell (a course); from a side face it stays in that face's vertical
+/// plane (a wall face, M10-T3).</item>
+/// <item>The release sends one <c>DesignateBuild(Single)</c> per valid cell, bottom-up and then in support order
+/// (<see cref="SendOrder"/>), so every cell is supported when its command is applied.</item>
 /// <item>The ghost's verdicts come from one batched sim query (<see cref="BlockPlans.CanPlanAll"/>) with the painted
 /// cells as pending, recomputed when the cells change or every <see cref="GhostRecheckTicks"/> ticks.</item>
 /// <item>The tool stays active after a release; Esc leaves it and a right click drops the drag.</item>
@@ -80,6 +81,9 @@ public sealed class BlockTool
     public bool Plan { get; private set; }
     public bool Dragging => _drag is not null;
 
+    /// <summary>The drag in progress paints a vertical plane (it started on a side face, M10-T3).</summary>
+    public bool Vertical => _drag?.Vertical ?? false;
+
     /// <summary>The cells painted by the drag in progress (empty when not dragging).</summary>
     public IReadOnlyList<Int3> Painted => _drag?.Cells ?? (IReadOnlyList<Int3>)Array.Empty<Int3>();
 
@@ -99,15 +103,16 @@ public sealed class BlockTool
     /// <summary>The cell a pick places into: the air cell the picked face looks into.</summary>
     public static Int3 Anchor(PickHit hit) => hit.Adjacent;
 
-    /// <summary>Left button down over a pick: paints its cell and starts a drag on that cell's layer.</summary>
+    /// <summary>Left button down over a pick: paints its cell and starts a drag, on that cell's layer for a top or
+    /// bottom face and in the face's vertical plane for a side face (M10-T3).</summary>
     public void Press(PickHit? hit)
     {
         if (hit is not { } h) return;
-        _drag = new PaintDrag(h, Anchor(h));
+        _drag = new PaintDrag(h, Anchor(h), vertical: true);
     }
 
-    /// <summary>The cursor ray moved during a drag (the preferred input: it stays on the drag's layer). Falls back to
-    /// <paramref name="hover"/> when the ray misses the layer's plane.</summary>
+    /// <summary>The cursor ray moved during a drag (the preferred input: it stays in the drag's plane). Falls back to
+    /// <paramref name="hover"/> when the ray misses the plane.</summary>
     public void MoveRay(Vector3 origin, Vector3 direction, PickHit? hover)
     {
         if (_drag is null) return;
@@ -115,14 +120,15 @@ public sealed class BlockTool
         else Move(hover);
     }
 
-    /// <summary>A pick moved during a drag: paints toward the cell it looks into, kept on the drag's layer. A null pick
+    /// <summary>A pick moved during a drag: paints toward the cell it looks into, kept in the drag's plane. A null pick
     /// keeps the drag as it is.</summary>
     public void Move(PickHit? hit)
     {
         if (_drag is not null && hit is { } h) _drag.MoveTo(Anchor(h));
     }
 
-    /// <summary>Paints toward <paramref name="cell"/> (its Y is ignored). For scripts and the screenshot harness.</summary>
+    /// <summary>Paints toward <paramref name="cell"/> (its coordinate across the drag's plane is ignored). For scripts
+    /// and the screenshot harness.</summary>
     public void DragTo(Int3 cell) => _drag?.MoveTo(cell);
 
     /// <summary>The ghost cells: the painted cells during a drag, else the one cell a click on <paramref name="hover"/>
@@ -150,8 +156,10 @@ public sealed class BlockTool
     }
 
     /// <summary>The ghost of a set of cells: one batched CON-08 query, with the cells as each other's pending set.
-    /// With <paramref name="stock"/> (M10-T2), the valid cells in paint order take the free units of the block's cost
-    /// item; the valid cells after the stock runs out are <see cref="GhostCell.Short"/>. Invalid cells take nothing.</summary>
+    /// With <paramref name="stock"/> (M10-T2), the valid cells take the free units of the block's cost item bottom-up
+    /// and then in paint order (<see cref="BottomUp"/>, the order they are sent in, M10-T3); the valid cells after the
+    /// stock runs out are <see cref="GhostCell.Short"/>, so on a wall face the top cells are short. Invalid cells take
+    /// nothing.</summary>
     public static BlockGhost GhostFor(Simulation sim, BlockId block, bool plan, IReadOnlyList<Int3> cells, FreeStock? stock = null)
     {
         var results = BlockPlans.CanPlanAll(sim, cells);
@@ -160,7 +168,7 @@ public sealed class BlockTool
         int affordable = cost is { } gc ? gc.Free / gc.PerBlock : int.MaxValue;
         var list = new GhostCell[cells.Count];
         int valid = 0;
-        for (int k = 0; k < cells.Count; k++)
+        foreach (int k in BottomUp(cells))
         {
             bool ok = results[k] == PlanResult.Ok;
             list[k] = new GhostCell(cells[k], results[k], ok && valid >= affordable);
@@ -170,7 +178,7 @@ public sealed class BlockTool
     }
 
     /// <summary>Left button up: ends the drag and returns one <c>DesignateBuild(Single)</c> per valid painted cell, in
-    /// <see cref="SupportOrder"/>. Nothing is sent when no cell is valid (the message says why).</summary>
+    /// <see cref="SendOrder"/>. Nothing is sent when no cell is valid (the message says why).</summary>
     public BlockClick Release(Simulation sim)
     {
         if (_drag is not { } drag) return new BlockClick(Array.Empty<DesignateBuild>(), null);
@@ -180,11 +188,21 @@ public sealed class BlockTool
         if (valid.Count == 0)
             return new BlockClick(Array.Empty<DesignateBuild>(),
                 $"Can't build here: {ReasonText(ghost.Cells.FirstOrDefault().Result) ?? "nothing to build"}");
-        var commands = SupportOrder(sim, valid)
+        var commands = SendOrder(sim, valid)
             .Select(c => new DesignateBuild(BuildShape.Single, c, c, 1, Block, Plan))
             .ToList();
         return new BlockClick(commands, null);
     }
+
+    /// <summary>The indices of <paramref name="cells"/> from the lowest layer up, in paint order within a layer (a
+    /// stable sort; a horizontal drag keeps its paint order).</summary>
+    public static IEnumerable<int> BottomUp(IReadOnlyList<Int3> cells) =>
+        Enumerable.Range(0, cells.Count).OrderBy(k => cells[k].Y);
+
+    /// <summary>The order a release sends cells in (M10-T3): bottom-up (<see cref="BottomUp"/>), then
+    /// <see cref="SupportOrder"/>, so a wall face painted from the top down is still sent from the bottom.</summary>
+    public static IReadOnlyList<Int3> SendOrder(Simulation sim, IReadOnlyList<Int3> cells) =>
+        SupportOrder(sim, BottomUp(cells).Select(k => cells[k]).ToList());
 
     /// <summary>The cells in an order in which each one has a supporting neighbour (CON-09: below or beside) that is
     /// solid, has a plan entry, or comes earlier in the order. Cells are taken in paint order, pass after pass; a cell
@@ -257,7 +275,7 @@ public sealed class BlockTool
     }
 
     /// <summary>The controls line of the tooltip.</summary>
-    public const string ControlsHint = "Click a face: one block. Drag: paint a course. P plan";
+    public const string ControlsHint = "Click a face: one block. Drag from a top face: a course; from a side face: a wall. P plan";
 
     /// <summary>Player-facing text for a CON-08 result (null for Ok).</summary>
     public static string? ReasonText(PlanResult r) => r switch

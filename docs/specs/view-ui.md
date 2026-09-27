@@ -67,11 +67,12 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
     height control in the player's tool; the sim keeps the `DesignateBuild` shapes for scripts and tests (CON-07).
   - A click on a block face plans or places one block in the cell that face looks into (`PickHit.Adjacent`): a top
     face stacks upward, a side face places beside.
-  - A drag paints one block into each new cell the cursor passes over (`PaintDrag`). The cells stay on the layer of
-    the first cell: the cursor ray is cut with the horizontal plane of the first picked face (the face's own plane
-    for a top or bottom face, mid-layer for a side face). Between two cursor cells the path is 4-connected, so
-    painted neighbours share a face. A wall is painted course by course. At most 1,024 cells per drag; a cursor
-    jump of more than 64 cells is ignored.
+  - A drag paints one block into each new cell the cursor passes over (`PaintDrag`). A drag that starts on a top or
+    bottom face stays on the layer of the first cell: the cursor ray is cut with the face's own horizontal plane. A
+    drag that starts on a side face (M10-T3, ADR-073) stays in that face's vertical plane (the plane of the first
+    cell, parallel to the face): the cursor ray is cut with the picked face's own plane, so a column, or a wall face
+    the cursor sweeps over, is painted in one drag. Between two cursor cells the path is 4-connected in the plane, so
+    painted neighbours share a face. At most 1,024 cells per drag; a cursor jump of more than 64 cells is ignored.
   - The ghost shows the painted cells (or, with no drag, the one cell a click would place) in the block's palette
     colour. A cell that fails `BlockPlans.CanPlan` (with the painted cells as `pending`) is red, and its reason is in
     the mouse label (`LabelLayout.PlaceTooltip`). Red cells use `InvalidCellStyle` (M9-T3, ADR-069): a strong red
@@ -80,12 +81,13 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   - Material shortage while dragging (M10-T2, ADR-072): the ghost is compared with the free stock (`FreeStock`:
     storage totals minus the Released entries' need; in plan mode also minus the Planned need, never below 0). The
     valid cells in paint order take the free units; valid cells beyond them are amber with a darker outline
-    (`ShortCellStyle`, `designations.short`), depth-tested. They are short, not invalid, and are still sent. The mouse
+    (`ShortCellStyle`, `designations.short`), depth-tested. The valid cells take the stock bottom-up, then in paint
+    order (the order they are sent in), so on a painted wall face the top cells are the short ones (M10-T3). They are short, not invalid, and are still sent. The mouse
     label adds "40 stone free" or "Only 3 stone free: 2 blocks short (amber)" ("free after the plan" in plan mode). The
     view takes the free stock with the VIEW-23 line, at most every 10 frames (CON-06).
   - P toggles plan mode. The tool label then shows "Plan", and the commands are sent with `Plan = true`.
-  - Releasing the drag sends one `DesignateBuild(Single, c, c, 1, block, plan)` per valid cell, in support order
-    (each cell after a neighbour below or beside it that is solid, planned or earlier in the order). With no valid
+  - Releasing the drag sends one `DesignateBuild(Single, c, c, 1, block, plan)` per valid cell, bottom-up and then in
+    support order (each cell after a neighbour below or beside it that is solid, planned or earlier in the order). With no valid
     cell nothing is sent and the reason is shown. The tool stays active after a release (Esc leaves it; a right
     click drops the drag).
   - A "Release plan" tool (hotkey L) sends `ReleasePlan` for a dragged box. Its "Release all" button sends one over
