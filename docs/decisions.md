@@ -19,7 +19,8 @@ Context: The references split between direct-control (Minecraft) and indirect-co
 Decision: Indirect control only. Buildings are prefabs placed as blueprints; terrain is shaped by dig designations
 (DF style) and levees. Players and colonists share the WorldActions API so a player avatar can be added later as an
 Agent driven by input.
-Consequences: No avatar, no freeform block placement except levees in the POC.
+Consequences: No avatar, no freeform block placement except levees in the POC. (Amended by ADR-061: M8 adds free-form
+block construction; prefabs stay for functional buildings.)
 
 ## ADR-002: Godot 4.6 .NET, C# only, sim as a Godot-free library (2026-09-25, scaffold)
 Context: Carried over from the project's earlier decisions. Godot 4.7 exists; 4.6 is kept for stability of the
@@ -1324,3 +1325,67 @@ Decision:
   hold water).
 Consequences: view-only; no sim change, no save or hash change. The harness runs survival shots in a few seconds
 (14,400 ticks). The headless tool's script list now comes straight from `ScreenshotScripts.Names`.
+
+## ADR-061: Free-form block construction amends ADR-001: construction blocks, plan entries, support and build rules (2026-09-27, M8-T1)
+Context: G3 play feedback ("not much for me to do ... I want to plan monuments"). The human chose free-form block
+building: paint structure block by block, and dwarves haul the material and build it. ADR-001 allowed prefab
+buildings only. M8-T1 asks for a spec (`docs/specs/construction.md`, CON-01..18) sized for a POC.
+Decision:
+- **ADR-001 is amended.** Prefab buildings stay for functional buildings (hall, warehouse, pump, levee). Structure is
+  free-form, from construction blocks. Control stays indirect: the player designates, dwarves build through
+  `WorldActions.PlaceBlock`.
+- **Blocks.** There are three construction block types, ids 8..10, as new `BlockId` values: `Masonry` (1 stone),
+  `Planks` (1 log) and `PolishedStone` (2 stone, decorative).
+  - They are ordinary block bytes, so the world, water, paths, mesher, save and hash need no per-cell side state. A
+    block is "built" because of its type.
+  - Natural stone stays `Stone` (terrain). A player cannot build terrain types.
+  - `blocks.json` gets optional `label`, `cost` and `buildTicks` fields. `ContentDb` now also checks that no json id
+    lacks an enum value.
+  - The cost is one item type of at most 10, so a carried stack and a refund pile always hold it.
+- **Plan entries** are one store with two states: `Planned` (the plan layer, M8-T4) and `Released` (built by
+  dwarves).
+  - They are saved from M8-T2 with the state byte, so there is one format bump (v6).
+  - They are hashed only when present, so the goldens stay put.
+  - Statuses (why an entry waits) are derived, never stored.
+- **Shapes** are axis-aligned only: Single, Line, Wall, Floor, HollowBox (an open-topped ring) and Stair.
+  - `Stair` is added beyond the task's list. Dwarves climb only 1-block steps, and reach is +-1 level, so a wall
+    taller than 2 needs a way up. The plan provides one; there is no scaffolding.
+  - A staircase built of blocks is not the out-of-scope "stairs and ladders" feature, which means new movement
+    rules; the overview now says so.
+  - Diagonal lines are left out to keep shapes trivial and deterministic.
+- **Support.** A built block needs a solid block below it or beside it. Ground is terrain, Bedrock and BuildingSolid.
+  "Grounded" means a path down or sideways through built blocks to ground; nothing hangs from above.
+  - Placement checks only the local rule. That is enough, because every solid neighbour is already ground or
+    grounded (the invariant).
+  - Removal (any dig, or a building deconstruction) waits or is rejected when it would unground a built block. That
+    is checked by a capped BFS from the removed block's upper and side neighbours.
+  - Terrain never collapses.
+  - Overhangs and bridges of any length are allowed. This is simple, and monuments want arches.
+- **Order.** Bottom-up by a local rule: an entry waits while the cell below it has an entry. Reachable-first comes
+  from posting only `Ready` entries (a stand cell in a living dwarf's region, material reachable) plus the JOB-06
+  distance tie-break.
+- **Build jobs** are trips, not single blocks.
+  - One job fetches up to 10 units from storage (ADR-041 source rule; piles are not a source) and places up to
+    `10 / cost` nearby entries.
+  - Without batching, a 300-block monument would cost one storage round trip per block, too slow to finish by
+    day 10 (M8-T6).
+  - Priority 25, equal to Dig and Chop.
+- **No walling in.** This is the ADR-059 rule with a new what-if view: placing a block removes a cell and headroom,
+  where digging removes a floor.
+  - The code mirrors `DigTrial`/`DigStrand` (`PlaceTrial`/`PlaceStrand`: a local `MaySplit`, then a cached cut set)
+    so the cost profile is the same.
+  - Only dwarves are protected. Sealing an empty room is allowed.
+- **Water.** A built block is just a solid, so a built wall holds water like a levee (WAT-12 push on placement).
+- **Refund.** Digging a built block refunds 100% of its cost (BLD-09 refunds 50%), so redesigning is cheap.
+  `DesignateDeconstructBlocks` marks only built blocks, so a drag over a monument does not dig its ground.
+- **Give-up.** Build jobs are recurring, so they get a JOB-12 source (`GiveUpSource.Build`, keyed by the seed cell),
+  as ADR-058 requires for new recurring job kinds.
+- **Placeholder tests** for M8-T2..T6 are in `tests/Aurvangar.Sim.Tests/PendingAcceptanceTests.cs`.
+Consequences:
+- A tall structure needs a way up planned into it (a stair or a stepped design). If none is planned, its upper
+  entries wait with status `NoAccess` or `WouldStrand`. The HUD and ghosts show that (VIEW-22).
+- Entries blocked by a pile wait until the pile is hauled. Entries on cells that hold a plant are rejected when
+  designated.
+- The existing `PlaceBlock` natural-block path (free, no support check) is kept for tests only.
+- `ContentDbTests` asserts 8 block types; M8-T2 changes it to 11.
+- The seed-1 goldens should be unchanged by M8-T2..T5, since no plan exists in `SurvivalScript`.

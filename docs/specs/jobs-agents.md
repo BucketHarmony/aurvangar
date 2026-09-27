@@ -30,6 +30,7 @@
 | Chop | 25 | DesignationSystem | GoTo(adjacent) → Work(80) → Chop |
 | Haul | 20 | HaulSystem (loose pile / carried produce) | GoTo(pile) → PickUp → GoTo(storage) → DeliverTo |
 | Deconstruct | 25 | Deconstruct command | GoTo → Work(half build ticks) → refund pile |
+| Build (M8-T2) | 25 | BlockBuildSystem (CON-12) | GoTo(storage) → PickUpFromStorage → (GoTo(stand) → Work(buildTicks) → Place) per cell |
 
 - **JOB-06** Job selection (idle agent, every tick while idle, max 1 attempt per agent per 5 ticks): among open
   unclaimed jobs, filter by region reachability (PTH-13) and preconditions (e.g. a storage has the item),

@@ -54,6 +54,9 @@ materials, are built by colonists, then operate. Definitions live in `data/build
   A stacked building whose entrance cell is not standable may use the standable cell one level below it
   (ADR-040), so levees stack two high from open ground.
 
+M8-T2 adds a BLD-02 failure, `PlannedBlocks`: a footprint, entrance or stand cell holds a block plan entry. It is
+checked right after `Overlaps` (CON-08).
+
 ## Construction (BLD-05..09)
 
 - **BLD-05** `PlaceBuilding` creates a `Building` in state `Blueprint` with `delivered = {}`, `progress = 0`.
@@ -74,7 +77,8 @@ materials, are built by colonists, then operate. Definitions live in `data/build
   materials are refunded as piles at the entrance. On a complete building it starts deconstruction: one
   Deconstruct job (half build ticks), then footprint cells revert to Air and 50% of cost (rounded down), plus
   anything stored, is dropped as piles at the entrance. Rejected (`CommandRejected`) for an unknown id, a
-  prebuilt-only building, one already being deconstructed, or one with another building on top (ADR-041).
+  prebuilt-only building, one already being deconstructed, or one with another building on top (ADR-041). M8-T3 adds `SupportsBlocks`:
+  a footprint cell holds up a built block (CON-10).
 
 ## Storage (BLD-10..12)
 

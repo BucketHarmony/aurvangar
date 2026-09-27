@@ -26,6 +26,9 @@
 | 6 | Farmland | yes | yes | 25 | – |
 | 7 | BuildingSolid | yes | no | – | – |
 
+Ids 8..10 (`Masonry`, `Planks`, `PolishedStone`) are construction blocks the player builds. They are added in
+M8-T2 and specified in `construction.md` (CON-01).
+
 - **WLD-06** `BuildingSolid` is written into every footprint cell of a completed building (and Levee). It is solid
   for water and pathing. It is removed only by `BuildingSystem` on deconstruction.
 - **WLD-07** Trees and bushes are **not** blocks. They are plant entities anchored to a cell (see

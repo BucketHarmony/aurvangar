@@ -2186,3 +2186,50 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     water and crops; the tunnel is still flooded.
   - `survival7400/tunnel` is superseded (taken before the breach flooded).
 - Next: M8-T1 (construction spec and ADR). Save format stays at v5.
+
+## M8-T1 — Construction spec and ADR (2026-09-27)
+- Done: M8 design, docs and placeholder tests only. No code changed.
+  - New `docs/specs/construction.md`, with rules CON-01..18 and CON-P1:
+    - Blocks: three construction blocks (`Masonry` 1 stone, `Planks` 1 log, `PolishedStone` 2 stone), ids 8..10,
+      with new `blocks.json` fields `label`, `cost` and `buildTicks`, and ContentDb validation.
+    - Plan entries: one store with `Planned` and `Released` states. Statuses are derived. Entries are saved (v6) and
+      hashed only when present.
+    - Shapes: Single, Line, Wall, Floor, HollowBox, and Stair (added: dwarves need a way up).
+    - Support: down or sideways to ground; nothing hangs. A removal must not unground a built block.
+    - Build order: bottom-up by the cell-below rule, and reachable-first by posting only Ready entries.
+    - Build jobs are batched trips from storage (up to 10 units).
+    - `PlaceTrial`/`PlaceStrand`: a what-if view for placement that mirrors `DigTrial`/`DigStrand`.
+    - `GiveUpSource.Build` (JOB-12).
+    - Water: a built block is a plain solid (WAT-12), so a built wall holds water like a levee.
+    - Refunds: 100% on dig; `DesignateDeconstructBlocks` marks only built blocks.
+  - Other specs: VIEW-21..23 (block tool, plan ghosts, material totals) in `view-ui.md`, and forward notes (tagged
+    with their M8 task) in world, designations, jobs-agents, save-load, buildings (BLD-02 `PlannedBlocks`, BLD-09
+    `SupportsBlocks`) and needs-economy (ECO-11 skip).
+  - `docs/00-overview.md`: M8 scope, DoD step 11 (the monument), construction row and out-of-scope list, glossary.
+    "Stairs and ladders" is clarified to mean movement features; a block staircase is fine.
+  - BACKLOG: M8-T2..T6 now list their CON/VIEW ids (task map at the end of construction.md).
+- Tests: new `PendingAcceptanceTests.cs` holds 36 placeholders:
+
+  | Task | Placeholders |
+  |---|---|
+  | M8-T2 | 16: `BlockContentTests`, `BuildShapeTests`, `BlockPlacementTests`, `Scenarios/BlockBuildScenarioTests` |
+  | M8-T3 | 5: `BlockDeconstructScenarioTests` |
+  | M8-T4 | 4: `BlockPlanScenarioTests` |
+  | M8-T5 | 6: `View/BlockToolTests` |
+  | M8-T6 | 4: `MonumentScenarioTests`, plus 1 `Perf/MonumentPerfTests` |
+
+  check.sh: 555 passed, 35 skipped (the perf placeholder is filtered out), 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-061 (amends ADR-001, which is annotated).
+- sim-reviewer: not run (no Aurvangar.Sim change).
+- Golden: unchanged.
+- Perf: n/a (no code change). Headless: not run (no code change; the M7-T7 hash `4caa8837b195f900` stands).
+- Screenshots: none.
+- Next: M8-T2. Notes for it:
+  - `ContentDbTests` asserts `Blocks.Count == 8`; change it to 11 and say why.
+  - `ContentDb.Validate` must also reject json ids without a `BlockId` value.
+  - `BlockColors` iterates `Enum.GetValues<BlockId>()`, so new enum values need palette colours or they draw magenta.
+  - Keep the existing natural-block `PlaceBlock` path (WorldActionsTests use it).
+  - Bump `SaveGame.FormatVersion` to 6 with the `BlockPlans` section after `GiveUps`. Hash plans only when there are
+    any.
+  - Add `GiveUpSource.Build` to `JobGiveUp.SourceOf`.
+  - The `DesignateBuild` record carries the `Plan` flag from the start, so the codec does not change in M8-T4.

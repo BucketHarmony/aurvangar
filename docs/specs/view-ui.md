@@ -49,7 +49,7 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 ## Tools and input
 
 - **VIEW-12** Toolbar buttons with hotkeys: Dig (G), Chop (C), Farm (F), Build ▸ Warehouse / Pump / Levee (B),
-  Deconstruct (X), Cancel (Z). Esc returns to Select.
+  Deconstruct (X), Cancel (Z). Esc returns to Select. M8-T5 adds Blocks (K) and Release plan (L) (VIEW-21).
 - **VIEW-13** Dig tool: drag defines a box from the first picked cell to the second, Y range from the first
   pick's cell down to `SliceY` level of the second pick (so dragging on a sliced layer digs that layer). Sends
   `DesignateDig(box)`.
@@ -58,6 +58,38 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   `PlaceBuilding`. Shift keeps the tool active (levee lines by dragging). The mouse label (this tooltip, pile counts,
   farm hints) never covers a building billboard and stays on screen; building labels that overlap each other are
   lifted apart (M7-T7, ADR-060).
+
+## Block construction (M8, `construction.md`)
+
+- **VIEW-21** Block tool (hotkey K, toolbar "Blocks"):
+  - A block picker lists the construction blocks from `ContentDb` by their `label`. Shape modes are Single, Line,
+    Wall, Floor, Box and Stair; Tab cycles them, and there are buttons too.
+  - The anchor `A` is the air cell on the picked face (the cell the face looks into). The drag sets `B` on the same
+    level.
+  - Height (Wall, Box):
+    - it starts at `SliceY - A.Y + 1` when the slice is active (`SliceY < SizeY - 1`), else at 3;
+    - `+`/`-` (or Ctrl + wheel) change it by 1, clamped to 1..32.
+  - The ghost shows `BuildShapes.Cells(...)` in the block's palette colour. A cell that fails
+    `BlockPlans.CanPlan` (with the drag's cells as `pending`) is red, and its reason is in the mouse label
+    (`LabelLayout.PlaceTooltip`).
+  - P toggles plan mode. The tool label then shows "Plan", and the command is sent with `Plan = true`.
+  - Releasing the drag sends `DesignateBuild`. Shift keeps the tool active.
+  - A "Release plan" tool (hotkey L) sends `ReleasePlan` for a dragged box. Its "Release all" button sends one over
+    the whole world.
+  - The Deconstruct tool (X), dragged over no building, sends `DesignateDeconstructBlocks` for the box.
+  - All of this logic (anchor, height, shape cells, reasons, command) lives in ViewCore with unit tests.
+- **VIEW-22** Plan entries render as translucent block-sized ghosts in the block's palette colour:
+  - `Released` entries at alpha 0.45;
+  - `Planned` entries at alpha 0.25, lightened;
+  - entries whose status is `GivenUp`, `NoAccess`, `WouldStrand` or `NoSupport` tinted red.
+
+  Ghosts above `SliceY` are hidden. Built blocks mesh as terrain (VIEW-03) with their palette colours. Hovering an
+  entry shows its label and status text ("Stone wall: waiting for the block below").
+- **VIEW-23** While any entry exists, the top bar shows the plan's material against stock.
+  - The format is "Building: stone 120/64 · Planned: stone 70, log 12". It uses `BlockPlans.Needed(Released)` and
+    `Needed(Planned)` against `Storage.Totals`.
+  - An item whose need exceeds its stock is orange.
+  - The text is built in ViewCore (`TopBarModel.PlanText`).
 
 ## HUD
 

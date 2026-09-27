@@ -24,6 +24,10 @@ A small voxel colony sim where water is the system the player plans around. Dwar
 (designations and prefab buildings, Timberborn style). Terrain is fully voxel and diggable (Dwarf Fortress
 style). Water is a cellular automaton that floods what you dig and dries up in droughts.
 
+M8 (after gate G3, ADR-061) adds **free-form construction**. The player paints walls, floors, boxes and stairs block
+by block, or lays out a monument as a plan and releases it. Dwarves quarry, fetch and build it (`specs/construction.md`).
+Prefab buildings stay for functional buildings.
+
 The POC is done when the **definition-of-done session** below plays end to end on seed `1` and all tests are green.
 
 ## Definition-of-done session (seed 1)
@@ -42,18 +46,22 @@ The POC is done when the **definition-of-done session** below plays end to end o
    that built a levee reservoir keep their pump running.
 9. If every colonist dies of hunger or thirst, the game shows "Colony lost". There is no win screen.
 10. The player can save at any point, quit, load, and continue with identical results.
+11. (M8) The player plans a stone tower (at least 7×7, 8 high, hollow, with a door) and a walled courtyard, and
+    releases the plan. Dwarves quarry stone from the hill and build it by day 10. No dwarf is walled in and no block
+    floats (`MonumentScript`, M8-T6).
 
 ## In scope
 
 | Area | MVP content |
 |---|---|
-| World | Fixed 128×128×64, 32³ chunks, 8 block types, seeded terrain with hill + river channel |
+| World | Fixed 128×128×64, 32³ chunks, 8 terrain/building block types plus 3 construction blocks (M8), seeded terrain with hill + river channel |
 | View | RTS orbit camera, z-level slicing, greedy-meshed chunks, water surface mesh, placeholder building meshes |
 | Agents | 5 colonists, no births. Needs: hunger, thirst. Death at zero after a grace period |
 | Movement | A* on voxel grid, 1-block step up/down, 8-way with no corner cutting, deep water impassable |
-| Jobs | Dig, Chop, Haul, Deliver, Construct, Deconstruct, Plant, Harvest, OperatePump, Eat, Drink |
+| Jobs | Dig, Chop, Haul, Deliver, Construct, Deconstruct, Plant, Harvest, OperatePump, Eat, Drink, Build (M8) |
 | Buildings (prefab) | Great Hall `hub` (pre-placed), Warehouse, Water Pump, Levee |
-| Designations | Dig (box), Chop (area), Farm field (area), Cancel, Deconstruct |
+| Designations | Dig (box), Chop (area), Farm field (area), Cancel, Deconstruct, Build blocks (shapes), Deconstruct blocks (M8) |
+| Construction (M8) | Stone wall, wood planks, polished stone. Shapes: single, line, wall, floor, hollow box, stair. Support rule (no floating blocks), bottom-up build order, no walling a dwarf in, plan layer with release and material totals |
 | Water | Fixed-point CA, active-cell update, sources and drains at map edges, drought schedule |
 | Farming | Moisture map from nearby water; potatoes grow only when moist; wither when dry too long |
 | Economy | Items: log, stone, berries, potato, water. Storage in Hub and Warehouse. Items on ground get hauled |
@@ -65,8 +73,13 @@ The POC is done when the **definition-of-done session** below plays end to end o
 
 Combat, hostile mobs, animals, births and population growth, housing and sleep, moods, skills, research,
 mechanical power, processing chains (sawmill, cooking), trade, multiplayer, modding API, lighting simulation,
-temperature, water pressure and currents, paths/roads as buildings, stairs and ladders, tree regrowth, audio
-beyond placeholder clicks, Steam integration, settings menu, localization, save-format migration.
+temperature, water pressure and currents, paths/roads as buildings, stairs and ladders as movement features (a
+staircase built from blocks is fine: dwarves climb it one step at a time), tree regrowth, audio beyond placeholder
+clicks, Steam integration, settings menu, localization, save-format migration.
+
+Construction (M8) is out of scope for these: scaffolding, doors as blocks (a door is a gap), slopes and half
+blocks, block rotation, structural collapse or cave-ins, copy/paste and plan import/export, and blocks placed without
+a dwarf.
 
 A task that needs any of these is out of scope. Record the gap in `docs/decisions.md` and move on.
 
@@ -81,5 +94,8 @@ Sim and view both use **Y up**. `Int3(X, Y, Z)`: X east, Y up, Z south. World ex
 - **Standable cell** — an air cell with a solid (or building-floor) cell below and air above; agents occupy these.
 - **Designation** — a player mark on cells that generates jobs (dig, chop, farm).
 - **Building** — a prefab with a footprint, placed as a blueprint, becomes a construction site, then complete.
+- **Built block** — a cell holding a construction block (stone wall, planks, polished stone) that dwarves placed.
+- **Plan entry** — a cell the player wants filled with a construction block, `Planned` (on paper) or `Released`
+  (dwarves build it).
 - **Tick** — one sim step (100 ms of game time at 1×).
 - **Water unit** — fixed-point water volume. 1 full cell = 1024 units.
