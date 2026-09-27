@@ -89,6 +89,7 @@ public partial class GameRoot : Node3D
         _hud = new Hud { Name = "Hud", Buildable = _build.Buildable.Select(d => (d.Id, d.Name)).ToList(), BlockTypes = BlockTypes() };
         AddChild(_hud);
         WireBlockHud();
+        ReadyDigTools();
         _hud.ToolChosen += SetTool;
         _hud.BuildChosen += ChooseBuilding;
         _hud.Colonists.Clicked += CenterOnAgent;
@@ -132,6 +133,7 @@ public partial class GameRoot : Node3D
         Hover = PickingEnabled ? PickUnderMouse() : PickOverride;
         _hoverMarker.SetHit(_tool.Tool == ToolKind.Select || !(_tool.Dragging || _blocks.Dragging || _deconPaint.Dragging) ? Hover : null);
         _tool.Move(Hover);
+        UpdateStairPreview();
         if (_tool.Tool is not (ToolKind.Blocks or ToolKind.Deconstruct)) ShowBlockGhost(null);
         if (_tool.Tool == ToolKind.Blocks) UpdateBlockPreview();
         else if (!ToolController.IsDragTool(_tool.Tool) && _tool.Tool != ToolKind.Select) UpdateClickToolPreview();
@@ -232,7 +234,8 @@ public partial class GameRoot : Node3D
         _hud.TopBar.Show(TopBarModel.Build(Sim, TickAccumulator.Speeds[SpeedIndex]));
         UpdatePlanText(now: false);
         SyncBlockHud();
-        string? label = ClickToolTooltip() ?? BlockTooltip();
+        _hud.SetSliceHint(SliceHint.Text(SliceY, Slice.MaxY));
+        string? label = ClickToolTooltip() ?? BlockTooltip() ?? DigTooltip();
         if (label == null && _tool.Tool == ToolKind.Farm) label = FarmTool.Tooltip(Sim, Hover, _tool.PreviewBox(SliceY));
         if (label == null && Hover is { } h && PileMesher.AtPick(Sim, h, SliceY) is { } pile)
             label = PileMesher.Label(Content, pile.Stack);

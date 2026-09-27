@@ -1865,3 +1865,26 @@ Decision:
 Consequences: goldens regenerated (the start world holds a new building and the stock moved). A colony can build a
 warehouse, the pump and some levees before the first chop, and has 60 stone for masonry from day 1. Starting stock is
 now changed in data only.
+
+## ADR-078: Stair-down dig mode and dig wait reasons (2026-09-27, M11-T8)
+Context: G6: "How do I dig down deeper than 1 tile?" A box dig deeper than one level leaves its lower cells waiting
+forever (DSG-09: a dwarf climbs only 1 level), with no word of why, and the slice keys were not shown anywhere. The
+backlog asks for a stair-down mode, hover reasons, and a slice hint, with the logic in ViewCore.
+Decision:
+- Stair geometry: each step is a column of 3 cells (the step's floor cell and two above it), because PTH-01/05 need
+  a stand cell plus headroom and a step down needs b+2 clear. Step k is one level down and one cell along the drag's
+  main XZ axis (X on a tie; +X when the drag does not move, so a click still digs somewhere defined). The bottom is
+  the second pick's cell clamped to the view level and never above the first cell, so "to the view level" works both
+  by lowering the slice and by dragging onto lower ground; with neither, the tool says to lower the view level.
+- The view sends one `DesignateDig` per column. No new sim command, codec change or sim rule: the existing
+  exposure, top-down and strand rules already dig a staircase in order, and replays of old logs are unchanged.
+- `DigStatus` (DSG-10) is a pure sim query (the view may not reimplement sim rules). A `DigUnreachable` mark that
+  `JobGoals.DigBlockedByStrand` still holds reports `WouldTrap`, not `Unreachable`: that is the case the player can
+  fix with a stair, and the message says so.
+- Hotkey T toggles the mode only while the dig tool is active (T is otherwise free); the mode is kept across tool
+  changes so a player digging several stairs does not re-pick it.
+- The `stairs` screenshot site is anchored on the hall only (not the terrain it digs), so the camera does not move
+  between tick counts; it heads north on flat ground because the seed-1 ground east of the hall slopes away and the
+  slice then hid the stair. The scenario test keeps the east site down the slope (a harder case for the strand rule).
+Consequences: no goldens change. Digging deep is a two-step habit (lower the view level, drag a stair) that the HUD
+now spells out. A stair is a covered tunnel after the first steps, so it is seen through the slice, not from above.

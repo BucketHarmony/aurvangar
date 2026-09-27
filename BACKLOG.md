@@ -357,7 +357,7 @@ starting wagon answers "I dont know where to get stone from".
   - The HUD shows it like other storage. Starting stock is data-driven (move `WorldFactory.StartStock` into data).
   - Update the scripts that depended on quarrying if the new stone lets them start sooner, but keep their tests.
     Regenerate goldens and record why. Render the wagon and look at it.
-- [ ] **M11-T8** Dig stairs and dig feedback · specs: DSG-*, VIEW-04, VIEW-* · deps: M11-T2
+- [x] **M11-T8** Dig stairs and dig feedback · specs: DSG-*, VIEW-04, VIEW-* · deps: M11-T2
   - G6 follow-up: "How do I dig down deeper than 1 tile? Is there a slice view? 3D building depends on it."
   - The dig tool gets a **Stair down** mode: a drag digs a 1-wide staircase from the first cell down to the view
     level (VIEW-04). Each step goes one level down and one cell along the drag, so every dug cell stays

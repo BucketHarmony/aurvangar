@@ -29,3 +29,10 @@
   M7-T6 (ADR-059): a dig is also not taken or finished while it would cut any other living dwarf (its cell or the
   cell it steps into) off from the hall. Such a dig waits (it is not given up for that), and an idle dwarf with
   nothing to do in the pocket walks out towards the hall.
+- **DSG-10** (M11-T8, ADR-078) `DigStatus.Of(sim, cell)` is a pure query that says why a dig mark waits
+  (`DigWait`): `None` (no mark, or the cell is not solid), `Digging` (a dwarf holds the job), `CellAbove` (not
+  exposed and the cell above is marked too), `Neighbour` (not exposed otherwise), `Plant` (a plant or a tree floor
+  holds it, DSG-03), `Support` (a built block rests on it, CON-10), `WouldTrap` (its open job is held by DSG-09: every
+  stand cell would be cut off, or it would cut another dwarf off; also a `DigUnreachable` mark given up for that),
+  `Unreachable` (no stand cell in a living dwarf's region, or a `DigUnreachable` mark given up for another reason),
+  else `Queued`. It changes no state; the caches it warms are derived and not hashed.

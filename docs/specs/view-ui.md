@@ -52,12 +52,27 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   Deconstruct (X), Cancel (Z). Esc returns to Select. M8-T5 adds Blocks (K) and Release plan (L) (VIEW-21).
 - **VIEW-13** Dig tool: drag defines a box from the first picked cell to the second, Y range from the first
   pick's cell down to `SliceY` level of the second pick (so dragging on a sliced layer digs that layer). Sends
-  `DesignateDig(box)`.
+  `DesignateDig(box)`. M11-T8: this is the Box mode; Stair down is VIEW-24.
 - **VIEW-14** Build tool: ghost follows the cursor snapped to the grid; R rotates; ghost is green when the sim's
   `BuildingSystem.CanPlace(def, origin, rot)` returns Ok, red otherwise with the reason in a tooltip. Click sends
   `PlaceBuilding`. Shift keeps the tool active (levee lines by dragging). The mouse label (this tooltip, pile counts,
   farm hints) never covers a building billboard and stays on screen; building labels that overlap each other are
   lifted apart (M7-T7, ADR-060).
+- **VIEW-24** (M11-T8, ADR-078) Dig tool modes: **Box** (VIEW-13) and **Stair down**, chosen with T while the dig
+  tool is active or with the dig options row (bottom left, shown only with the dig tool; the mode is kept when the
+  tool changes). A stair drag digs a 1-wide staircase: the direction is the drag's main XZ axis (X on a tie, +X when
+  the drag does not move), the bottom is the second pick's cell clamped to `SliceY` and never above the first cell,
+  and step k (k = 0..first.Y - bottom) is the cell `first + k*dir - k*Up` with the two cells above it (a column of 3,
+  so a dwarf climbs each step: PTH-01/05). Release sends one `DesignateDig` per column (no new command). While held,
+  the solid cells it would dig show as orange marks and the mouse label reads "Stair down N levels to level Y" (or
+  asks for a lower view level when N is 0). Logic: `StairDig` and `ToolController` (ViewCore).
+- **VIEW-25** (M11-T8) Hovering a dig mark at or below `SliceY` with any tool shows why it waits (DSG-10): "Dig:
+  would trap a dwarf (a dwarf climbs 1 level; dig a stair down, T)", "Dig: waiting for the cell above", "Dig:
+  unreachable, no dwarf can get to it", and the other `DigWait` reasons. It is computed at most once per hovered
+  cell, tick and slice. Logic: `DigHover` (ViewCore).
+- **VIEW-26** (M11-T8) A line at the bottom right shows the view level and its keys: "View level: top (63) ·
+  PageUp/PageDown or [ ] to slice", or "View level: S of 63 (N down) · PageUp/PageDown or [ ] to move". Logic:
+  `SliceHint` (ViewCore).
 
 ## Block construction (M8, `construction.md`)
 

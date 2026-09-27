@@ -32,12 +32,15 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// <item><c>materials</c> (M9-T4): the <see cref="MaterialsScript"/> row, one sample of every construction block.</item>
 /// <item><c>paint</c> (M9-T1): the <see cref="PaintScript"/> site (single blocks painted along drags, a drag held).</item>
 /// <item><c>wall</c> (M10-T3): the <c>wall</c> script's vertical drag held up a wall face beside the painted L.</item>
+/// <item><c>stairs</c> (M11-T8): the <see cref="StairScript"/> stair head and the pit beside it, sliced one level under
+/// the stair's top cell so the upper steps show as a slot in the cut; the dig tool in stair mode hovers a waiting pit
+/// cell.</item>
 /// <item><c>monument</c> (M8-T6): the <see cref="MonumentScript"/> tower and courtyard, with the hill quarry behind.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall", "stairs" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -50,6 +53,7 @@ public static class ScreenshotPresets
     public const float BlocksYaw = 30f;
     public const float MonumentYaw = 30f;
     public const float MaterialsYaw = 0f;
+    public const float StairsYaw = 180f;
     public const float WallYaw = 130f;
 
     public static CameraShot For(string name, Simulation sim)
@@ -126,6 +130,15 @@ public static class ScreenshotPresets
                 var b = MonumentScript.TowerB;
                 var focus = new Vector3((a.X + b.X + 1) / 2f, a.Y + MonumentScript.TowerHeight / 2f, (a.Z + MonumentScript.CourtyardFrontZ + 1) / 2f);
                 return new CameraShot(name, focus, MonumentYaw, 40f, 24f, top);
+            }
+            case "stairs":
+            {
+                // Over the stair head and the pit beside it, sliced one level under the stair's top cell (VIEW-04) so the
+                // trees and ground around are cut away and the upper steps show as a slot in the cut.
+                if (StairScript.Anchor(sim) is not { } a) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
+                int slice = Math.Min(a.Y - 1, top);
+                var focus = new Vector3(a.X - 0.5f, slice - 1, a.Z - 3.5f);
+                return new CameraShot(name, focus, StairsYaw, 55f, 16f, slice);
             }
             case "slice":
             {

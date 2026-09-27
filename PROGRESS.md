@@ -3419,3 +3419,47 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   about 64 times the cells and a near-rewrite. They chose **fine block shapes** on the 1 m grid (slab, stair,
   pillar, drawn at 0.25 m detail) instead. -> M11-T10 (sim) and M11-T11 (view).
 - **Order:** the human chose to do these before the economy work. M11-T3 now depends on M11-T11.
+
+## M11-T8 — Dig stairs and dig feedback (2026-09-27)
+- Done:
+  - The dig tool has a **Stair down** mode (VIEW-24). Choose it with T while digging, or with the new dig options
+    row at bottom left. A drag digs a 1-wide staircase from the first cell down to the view level: one level down
+    and one cell along the drag per step, each step a 3-high column. The held drag previews its cells in orange and
+    says "Stair down N levels to level Y". Logic is in ViewCore `StairDig` and `ToolController`
+    (`ReleaseCommands`). The view sends one `DesignateDig` per column; there is no new sim command.
+  - New pure sim query `DigStatus.Of` (DSG-10) says why a dig mark waits. Hovering a mark shows it (VIEW-25,
+    `DigHover`): "would trap a dwarf (a dwarf climbs 1 level; dig a stair down, T)", "waiting for the cell above",
+    "unreachable, no dwarf can get to it", plus the plant, support, neighbour, queued and being-dug reasons.
+  - The HUD's bottom-right line shows the view level and the slice keys (VIEW-26, `SliceHint`).
+  - New `stairs` screenshot script and preset (`StairScript`).
+- Tests: added `StairDigTests` (13 unit test cases: steps, direction, bottom, columns, solid cells, tool modes, drag text,
+  slice hint, hover texts, the stairs script) and `StairDigScenarioTests` (3):
+  - Seed 1: a stair from (45,23,60) runs 7 steps east down the slope to y 16, then a 3x3 room two high. That is 20
+    stair cells and 18 room cells, 12 of them stone. All are dug by tick 1286, stored stone goes 60 → 72, and all
+    5 dwarves can walk to the hall at every 20-tick check. There are no DigUnreachable marks, and a path runs from
+    the foot to the hall.
+  - A 3x3x3 straight pit: waiting cells report WouldTrap (never Unreachable or Queued), and an open dig reports it
+    before it is given up. Early on, the lower cells report CellAbove.
+  - A dig in a walled yard reports Unreachable.
+  - Tests were written alongside the implementation. They exercise new API, so they failed to compile first.
+  - check.sh green: 661 passed, 0 skipped.
+- Decisions: ADR-078 (stair geometry and direction; bottom = second pick clamped to the view level; one
+  DesignateDig per column, no new command; a given-up mark still held by the strand rule reports WouldTrap; T
+  hotkey; screenshot site anchored on the hall).
+- Golden: unchanged (no sim behaviour change; DigStatus only reads).
+- Perf: perf.sh (serial, Release) 9 of 9 pass.
+- Headless (seed 1, 24,000 ticks): hashes are unchanged.
+  - No commands: `2d55f196360b3034`.
+  - `--script survival`: `6a16f70cd54b1c0c`.
+- sim-reviewer: not run. The Sim diff is one new 70-line read-only file (`DigStatus.cs`), under the ~150-line bar.
+- Screenshots (Forward+, seed 1, looked at):
+  - `artifacts/screens/m11t8_stairs_700/stairs.png` (`SCRIPT=stairs TICKS=700 SHOTS=stairs`): the dig tool is in
+    stair mode, with "Stair down (T)" highlighted in the dig row and its hint. The view level line reads "View
+    level: 22 of 63 (41 down)". The stair head is a slot in the cut and the pit is beside it with dwarves in it. The
+    mouse label over a pit cell reads "Dig: would trap a dwarf (a dwarf climbs 1 level; dig a stair down, T)".
+  - `artifacts/screens/m11t8_stairs_2000/stairs.png`: stair and room dug (stone 60 → 81). The pit's lower cells are
+    still marked with the same label.
+  - Past the first steps a stair is a covered tunnel, so from above only the slot through the slice shows. A
+    lower slice shows the deeper steps.
+- Next: M11-T9 (gravity). `DigStatus` is a read-only query and can be reused for any "why is this waiting" UI.
+  `ToolController.Release` throws in stair mode; view code should call `ReleaseCommands`.

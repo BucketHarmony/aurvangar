@@ -6,7 +6,7 @@ using Godot;
 namespace Aurvangar.Client;
 
 /// <summary>Keyboard and mouse input of <see cref="GameRoot"/>: slice keys (VIEW-04), speed keys (VIEW-01), F3
-/// (VIEW-17), F5/F9 (VIEW-19), tool hotkeys and tool drags (VIEW-12, VIEW-13), B and R for the build tool (VIEW-14).
+/// (VIEW-17), F5/F9 (VIEW-19), tool hotkeys and tool drags (VIEW-12, VIEW-13; T toggles stair digging, VIEW-24), B and R for the build tool (VIEW-14).
 /// The drag logic is <see cref="ToolController"/> (ViewCore); this file only forwards events and enqueues the
 /// resulting command. A right click aborts a tool drag; a right-drag orbits the camera (CameraRig, M7-T1).</summary>
 public partial class GameRoot
@@ -27,7 +27,7 @@ public partial class GameRoot
                     _build.Release();
                     if (_tool.Tool == ToolKind.Blocks) BlockRelease();
                     else if (_tool.Tool == ToolKind.Deconstruct) DeconstructPaintRelease();
-                    else if (_tool.Release(Hover, SliceY) is { } command) Sim.Enqueue(command);
+                    else foreach (var command in _tool.ReleaseCommands(Hover, SliceY)) Sim.Enqueue(command);   // VIEW-24: a stair sends one per step
                 }
                 break;
             // A right click (no drag movement) aborts the tool drag: CameraRig.RightClicked, wired in _Ready (M7-T1).
@@ -43,6 +43,7 @@ public partial class GameRoot
             case Key.Pagedown or Key.Bracketleft: Slice.Step(-1, Remesh); return;
         }
         if (BlockKey(key)) return;   // P with the block tool
+        if (DigKey(key)) return;     // T with the dig tool (VIEW-24)
         if (key.Echo) return;
         switch (key.Keycode)
         {
@@ -70,6 +71,7 @@ public partial class GameRoot
         _deconPaint.Abort();
         _hud.SetTool(tool, _build.Def.Name);
         SyncBlockHud();
+        SyncDigHud();
     }
 
     /// <summary>VIEW-16: a click on a colonist row centers the camera on that dwarf.</summary>

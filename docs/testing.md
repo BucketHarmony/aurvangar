@@ -96,6 +96,9 @@ empty, the reservoir and the tunnel still hold water). `SCRIPT=monument` (the ti
 `TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 14000 (tower half built), 17400 (complete).
 `SCRIPT=wall SHOTS=wall` (M10-T3) runs the same drags as `paint`, and the harness holds a vertical Wood planks drag
 up a wall face beside the L instead (`TICKS=1500`: the built L, and the 4x6 ghost wall with its top row amber).
+`SCRIPT=stairs SHOTS=stairs` (M11-T8): a stair-down dig to stone north-east of the hall with a quarry room at its
+foot, and a straight-sided 3-cube pit beside it; the harness selects the dig tool in stair mode and hovers a waiting
+pit cell (`TICKS=700`: digging, the pit's lower cells "would trap a dwarf"; 2000: stair and room dug).
 `SCRIPT=paint` (the timed `PaintScript`, M9-T1): single blocks painted with the player's block tool along drags, a
 planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
 `TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag

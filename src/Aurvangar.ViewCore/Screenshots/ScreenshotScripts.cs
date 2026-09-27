@@ -40,10 +40,14 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// preset looks at it.</item>
 /// <item><c>wall</c> (M10-T3): the same drags as <c>paint</c>; the harness holds a vertical Wood planks drag up a wall
 /// face (<see cref="PaintScript.WallDrag"/>). The <c>wall</c> preset looks at it.</item>
+/// <item><c>stairs</c> (M11-T8): <see cref="StairScript"/>, a stair-down dig to stone with a quarry room and a
+/// straight-sided pit beside it. <c>--ticks 500</c> shows the stair being dug; later the pit's waiting cells say "would
+/// trap a dwarf". The harness holds the dig tool in stair mode and hovers a waiting cell. The <c>stairs</c> preset
+/// looks at it.</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall", "stairs" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -73,6 +77,8 @@ public static class ScreenshotScripts
                 return BlocksScript.Commands(sim);
             case "materials":
                 return MaterialsScript.Commands(sim);
+            case "stairs":
+                return StairScript.Commands(sim);
             case "build":
                 return BuildScript(sim);
             case "farm":

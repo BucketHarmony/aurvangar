@@ -25,6 +25,9 @@ public partial class Hud : CanvasLayer
     /// <summary>A construction block picked in the Blocks menu.</summary>
     public event System.Action<BlockId>? BlockChosen;
     public event System.Action? PlanToggled;
+
+    /// <summary>VIEW-24: a dig mode picked in the dig options row.</summary>
+    public event System.Action<DigMode>? DigModeChosen;
     public event System.Action? ReleaseAllPressed;
 
     public ColonistPanel Colonists { get; private set; } = null!;
@@ -46,6 +49,11 @@ public partial class Hud : CanvasLayer
     private Label _hintLabel = null!;
     private Label _toast = null!;
     private Label _hoverLabel = null!;
+    private HBoxContainer _digRow = null!;
+    private Button _digBoxButton = null!;
+    private Button _digStairButton = null!;
+    private Label _digHint = null!;
+    private Label _sliceLabel = null!;
     private double _toastLeft;
 
     public override void _Ready()
@@ -65,6 +73,11 @@ public partial class Hud : CanvasLayer
         _toolbar = bar;
         AddChild(bar);
         AddBlockRow();
+        AddDigRow();
+
+        _sliceLabel = OutlinedLabel("");
+        _sliceLabel.Name = "SliceHint";
+        AddChild(_sliceLabel);
 
         TopBar = new TopBarView();
         AddChild(TopBar);
@@ -92,6 +105,9 @@ public partial class Hud : CanvasLayer
         var tb = _toolbar.GetRect();
         TopBar.Arrange(new ScreenRect(tb.Position.X, tb.Position.Y, tb.Size.X, tb.Size.Y), view.X);
         if (_blockRow.Visible) _blockRow.Position = new Vector2(8, GetViewport().GetVisibleRect().Size.Y - 76);
+        if (_digRow.Visible) _digRow.Position = new Vector2(8, view.Y - 76);
+        var sliceSize = _sliceLabel.GetCombinedMinimumSize();
+        _sliceLabel.Position = new Vector2(view.X - sliceSize.X - 8, view.Y - sliceSize.Y - 8);
         if (!_toast.Visible) return;
         _toastLeft -= delta;
         if (_toastLeft <= 0) _toast.Visible = false;
@@ -116,6 +132,26 @@ public partial class Hud : CanvasLayer
         _planButton.Visible = blocks;
         _planButton.SetPressedNoSignal(plan);
     }
+
+    /// <summary>VIEW-24: the dig options row (Box, Stair down) shows while the dig tool is active.</summary>
+    public void SetDigOptions(ToolKind tool, DigMode mode)
+    {
+        _digRow.Visible = tool == ToolKind.Dig;
+        _digBoxButton.SetPressedNoSignal(mode == DigMode.Box);
+        _digStairButton.SetPressedNoSignal(mode == DigMode.StairDown);
+        _digHint.Text = mode == DigMode.StairDown ? DigStairHint : DigBoxHint;
+    }
+
+    /// <summary>VIEW-26: the view level and its keys at the bottom right (<see cref="SliceHint"/>).</summary>
+    public void SetSliceHint(string text)
+    {
+        if (_sliceLabel.Text == text) return;
+        _sliceLabel.Text = text;
+        _sliceLabel.ResetSize();
+    }
+
+    public const string DigBoxHint = "· drag a box; it goes down to the view level (lower it with PageDown or [ )";
+    public const string DigStairHint = "· drag from the top cell: one level down per cell, to the view level (lower it with PageDown or [ )";
 
     /// <summary>Shows a message at the bottom left for a few seconds.</summary>
     public void Toast(string text)
@@ -180,6 +216,25 @@ public partial class Hud : CanvasLayer
         releaseAll.Pressed += () => ReleaseAllPressed?.Invoke();
         _blockRow.AddChild(releaseAll);
         AddChild(_blockRow);
+    }
+
+    /// <summary>VIEW-24 dig options row at the bottom left: Box, Stair down (T), how the drag works.</summary>
+    private void AddDigRow()
+    {
+        _digRow = new HBoxContainer { Name = "DigOptions", Visible = false };
+        _digRow.AddThemeConstantOverride("separation", 4);
+        var label = OutlinedLabel("Dig:");
+        label.AddThemeFontSizeOverride("font_size", 16);
+        _digRow.AddChild(label);
+        _digBoxButton = new Button { Text = "Box", ToggleMode = true, FocusMode = Control.FocusModeEnum.None };
+        _digBoxButton.Pressed += () => DigModeChosen?.Invoke(DigMode.Box);
+        _digRow.AddChild(_digBoxButton);
+        _digStairButton = new Button { Text = "Stair down (T)", ToggleMode = true, FocusMode = Control.FocusModeEnum.None };
+        _digStairButton.Pressed += () => DigModeChosen?.Invoke(DigMode.StairDown);
+        _digRow.AddChild(_digStairButton);
+        _digHint = OutlinedLabel(DigBoxHint);
+        _digRow.AddChild(_digHint);
+        AddChild(_digRow);
     }
 
     private static Label OutlinedLabel(string text)
