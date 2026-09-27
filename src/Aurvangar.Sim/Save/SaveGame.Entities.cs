@@ -78,7 +78,12 @@ public static partial class SaveGame
         }
 
         w.Section(SaveSection.Storage);
-        foreach (var b in all) WriteItemCounts(w, b.Stored);
+        foreach (var b in all)
+        {
+            WriteItemCounts(w, b.Stored);
+            w.WriteCount(b.Orders.Count);   // CRF-22 (v8): recipe, mode, count, done in recipe order
+            foreach (var o in b.Orders) { w.Write(o.Recipe); w.Write((byte)o.Mode); w.Write(o.Count); w.Write(o.Done); }
+        }
     }
 
     private static void ReadBuildings(BinaryReader r, Simulation sim, ContentDb content)
@@ -100,7 +105,24 @@ public static partial class SaveGame
         }
 
         r.ExpectSection(SaveSection.Storage);
-        foreach (var b in all) ReadItemCounts(r, b.Stored, content, "stored item");
+        foreach (var b in all)
+        {
+            ReadItemCounts(r, b.Stored, content, "stored item");
+            int recipes = content.RecipesOf(b.Def).Count;
+            int orders = r.ReadCount(recipes, "workshop order");
+            for (int i = 0; i < orders; i++)
+            {
+                var o = new WorkshopOrder
+                {
+                    Recipe = r.ReadIndex(recipes, "order recipe"), Mode = r.ReadEnum<OrderMode>("order mode"), Count = r.ReadInt32(),
+                };
+                o.Done = r.ReadInt32();
+                if (o.Count is < 1 or > WorkshopOrder.MaxCount || o.Done < 0 || (o.Mode == OrderMode.Keep && o.Done != 0)
+                    || (o.Mode == OrderMode.Make && o.Done >= o.Count) || (b.Orders.Count > 0 && b.Orders[^1].Recipe >= o.Recipe))
+                    throw new InvalidDataException($"Save file is corrupt: workshop order {o.Recipe} of building {b.Id.Value}.");
+                b.Orders.Add(o);
+            }
+        }
     }
 
     private static void WriteItemCounts(BinaryWriter w, SortedDictionary<int, int> counts)

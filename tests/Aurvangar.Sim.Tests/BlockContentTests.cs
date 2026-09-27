@@ -23,11 +23,11 @@ public class BlockContentTests
         var expected = new (BlockId Id, string Label, string Item, int Cost, int Ticks, int Hardness)[]
         {
             (BlockId.Masonry, "Stone wall", "stone", 1, 20, 40),
-            (BlockId.Planks, "Wood planks", "log", 1, 15, 20),
-            (BlockId.PolishedStone, "Polished stone", "stone", 2, 40, 60),
+            (BlockId.Planks, "Wood planks", "planks", 1, 15, 20),   // M11-T4: refined costs (CRF-02)
+            (BlockId.PolishedStone, "Polished stone", "cutstone", 2, 40, 60),
             (BlockId.Rubble, "Rough stone", "stone", 1, 10, 30),
             (BlockId.Beam, "Wood beam", "log", 2, 25, 30),
-            (BlockId.Slate, "Slate tiles", "stone", 3, 50, 70),
+            (BlockId.Slate, "Slate tiles", "cutstone", 3, 50, 70),
         };
         foreach (var e in expected)
         {

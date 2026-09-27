@@ -21,7 +21,9 @@
     "stone": "#8c8c8c",
     "berries": "#b0304a",
     "potato": "#c9a55a",
-    "water": "#3f8fd0"
+    "water": "#3f8fd0",
+    "planks": "#c79a5e",
+    "cutstone": "#bdb6a8"
   },
   "buildings": {
     "hub": "#c28b4a",
@@ -29,6 +31,8 @@
     "warehouse": "#a07850",
     "pump": "#4f7fa0",
     "levee": "#8f8a70",
+    "sawmill": "#b07a3c",
+    "stonecutter": "#8a8f96",
     "blueprint": "#7fd0ff"
   },
   "agents": { "idle": "#b0b0b0", "working": "#f0f0f0", "dead": "#c03030", "trapped": "#f0c020" },

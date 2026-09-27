@@ -22,11 +22,11 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   | Id | Name (enum) | `label` (player text) | `cost` | `buildTicks` | `hardness` (dig ticks) | Palette colour |
   |---|---|---|---|---|---|---|
   | 8 | `Masonry` | Stone wall | `{ "stone": 1 }` | 20 | 40 | `#a39e94` |
-  | 9 | `Planks` | Wood planks | `{ "log": 1 }` | 15 | 20 | `#b98a52` |
-  | 10 | `PolishedStone` | Polished stone | `{ "stone": 2 }` | 40 | 60 | `#d8d2c4` |
+  | 9 | `Planks` | Wood planks | `{ "planks": 1 }` (M11-T4; `log` before) | 15 | 20 | `#b98a52` |
+  | 10 | `PolishedStone` | Polished stone | `{ "cutstone": 2 }` (M11-T4; `stone` before) | 40 | 60 | `#d8d2c4` |
   | 11 | `Rubble` | Rough stone | `{ "stone": 1 }` | 10 | 30 | `#5a4e40` |
   | 12 | `Beam` | Wood beam | `{ "log": 2 }` | 25 | 30 | `#94452b` |
-  | 13 | `Slate` | Slate tiles | `{ "stone": 3 }` | 50 | 70 | `#4f5f78` |
+  | 13 | `Slate` | Slate tiles | `{ "cutstone": 3 }` (M11-T4; `stone` before) | 50 | 70 | `#4f5f78` |
 
   Each construction block has its own palette colour, different from every other block's (M9-T4). They use only
   the existing items (stone, log): each material is a trade of cost against build and dig time.
@@ -325,8 +325,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 ## Deconstruction (CON-17..18)
 
 - **CON-17** Digging a built block takes its `hardness` in ticks. It drops the block's whole cost (the shaped cost,
-  CON-20) as one pile on the dug cell. For a Full block: 1 stone for Masonry, 1 log for Planks, 2 stone for PolishedStone, 1 stone for Rubble, 2 logs for Beam
-  and 3 stone for Slate. The refund is 100%, unlike BLD-09's
+  CON-20) as one pile on the dug cell. For a Full block: 1 stone for Masonry, 1 planks for Planks, 2 cut stone for PolishedStone, 1 stone for Rubble, 2 logs
+  for Beam and 3 cut stone for Slate (the refined costs since M11-T4, CRF-02). The refund is 100%, unlike BLD-09's
   50%: blocks are cheap, and redesigning a monument should not be punished. The cost is one item type of at most 10
   (CON-02), so it always fits one pile. Natural drops are unchanged.
 - **CON-18** `DesignateDeconstructBlocks(A, B)` sets Dig marks (DSG-01) on built blocks in the box, and only on them.

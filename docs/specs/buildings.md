@@ -33,10 +33,12 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 | id | Footprint | Cost | Build ticks | Function |
 |---|---|---|---|---|
 | `hub` | 3×2×3 | – (pre-placed, complete) | – | Storage: every item, 100 each. Spawn point. Eat/drink source |
-| `wagon` | 2×2×3 | 20 log (refund only) | 200 (teardown 100) | Pre-placed beside the hall (BLD-15) with 40 log and 60 stone. Takes no new stock (BLD-16); dwarves haul out of it. Torn down for 10 logs once empty (BLD-17) |
+| `wagon` | 2×2×3 | 20 log (refund only) | 200 (teardown 100) | Pre-placed beside the hall (BLD-15) with 40 log, 60 stone, 20 planks and 20 cut stone (M11-T4). Takes no new stock (BLD-16); dwarves haul out of it. Torn down for 10 logs once empty (BLD-17) |
 | `warehouse` | 2×2×2 | 20 log | 300 | Storage: 150 total, solid goods only |
 | `pump` | 2×1×1 | 12 log | 200 | `waterEdge`. 1 worker. Produces 1 water per 30 work ticks while intake level ≥ 256; output goes to its internal buffer (10), hauled to storage |
 | `levee` | 1×1×1 | 2 log | 40 | Becomes BuildingSolid. Blocks water. Stackable (can be placed on top of another levee). No entrance (ADR-076) |
+| `sawmill` | 2×2×2 | 16 log | 240 | Workshop (M11-T4, `crafting.md`): 1 worker; 1 log → 2 planks per 40 work ticks; output buffer 20, unloaded at 10 |
+| `stonecutter` | 2×2×2 | 8 log + 8 stone | 240 | Workshop: 1 worker; 1 stone → 1 cut stone per 50 work ticks; output buffer 20, unloaded at 10 |
 
 ## Placement (BLD-01..04)
 

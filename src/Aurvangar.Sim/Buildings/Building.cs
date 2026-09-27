@@ -40,6 +40,18 @@ public sealed class Building
 
     public bool NoWater { get; set; }
 
+    /// <summary>CRF-06 (M11-T4): a workshop's orders, at most one per recipe, in ascending recipe index. Empty for any
+    /// other building.</summary>
+    public List<WorkshopOrder> Orders { get; } = new();
+
+    /// <summary>The workshop's order for this recipe index, or null.</summary>
+    public WorkshopOrder? OrderFor(int recipe)
+    {
+        foreach (var o in Orders)
+            if (o.Recipe == recipe) return o;
+        return null;
+    }
+
     /// <summary>Footprint cells in world space, deterministic order (y, z, x).</summary>
     public IEnumerable<Int3> FootprintCells() => BuildingShape.Footprint(Def, Origin, Rotation);
 

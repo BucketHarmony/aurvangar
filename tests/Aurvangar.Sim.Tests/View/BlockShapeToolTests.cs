@@ -23,11 +23,11 @@ public class BlockShapeToolTests
     private const int G = 9;
     private static readonly BlockForm Slab = new(BlockShape.Slab, 0);
 
-    private static Simulation World(int stone = 0, int log = 0)
+    private static Simulation World(int stone = 0, int cutstone = 0)
     {
         var b = new ScenarioBuilder().Ground(G - 1).Hub(new Int3(20, G, 20));
         if (stone > 0) b.Stock("stone", stone);
-        if (log > 0) b.Stock("log", log);
+        if (cutstone > 0) b.Stock("cutstone", cutstone);   // M11-T4: Slate costs cut stone (CRF-02)
         return b.Agent(new Int3(12, G, 17)).Agent(new Int3(13, G, 17)).Build();
     }
 
@@ -87,24 +87,24 @@ public class BlockShapeToolTests
     [Fact]
     public void Ghost_PricesTheShape_AndShortageUsesTheShapedCost()
     {
-        var sim = World(stone: 5);
+        var sim = World(cutstone: 5);
         var tool = new BlockTool(TestContent.Db);
-        tool.Select(BlockId.Slate);                   // 3 stone full, 2 as a slab (CON-20)
+        tool.Select(BlockId.Slate);                   // 3 cut stone full, 2 as a slab (CON-20)
         tool.SelectShape(BlockShape.Slab);
         tool.Press(Top(4, 5));
         tool.DragTo(new Int3(6, G, 5));
         var ghost = tool.Ghost(sim, null, FreeStock.Of(sim))!;
         Assert.Equal(Slab, ghost.Form);
         Assert.Equal(2, ghost.Cost!.Value.PerBlock);
-        Assert.Equal(1, ghost.ShortCount);            // 5 stone: two slabs, the third is short
+        Assert.Equal(1, ghost.ShortCount);            // 5 cut stone: two slabs, the third is short
         string tip = BlockTool.Tooltip(sim, ghost);
-        Assert.Contains("Build Slate tiles slab (3 blocks, 6 stone)", tip);
+        Assert.Contains("Build Slate tiles slab (3 blocks, 6 cut stone)", tip);
         Assert.Contains("1 block short", tip);
 
-        tool.SelectShape(BlockShape.Pillar);          // 1 stone each: all three fit
+        tool.SelectShape(BlockShape.Pillar);          // 1 cut stone each: all three fit
         var pillars = tool.Ghost(sim, null, FreeStock.Of(sim))!;
         Assert.Equal(0, pillars.ShortCount);
-        Assert.Contains("3 stone", BlockTool.Tooltip(sim, pillars));
+        Assert.Contains("3 cut stone", BlockTool.Tooltip(sim, pillars));
     }
 
     [Fact]

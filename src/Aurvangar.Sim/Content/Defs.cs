@@ -54,7 +54,8 @@ public sealed record BuildingDef(
     bool PrebuiltOnly,
     bool Stackable = false,
     Dictionary<string, int>? StartStock = null,
-    bool RemovableWhenEmpty = false)
+    bool RemovableWhenEmpty = false,
+    WorkshopDef? Workshop = null)
 {
     /// <summary>False for a building with no entrance in data (the levee, ADR-076).</summary>
     public bool HasEntrance => Entrance is not null;
@@ -67,6 +68,16 @@ public sealed record StorageDef(int Capacity, int PerItemCapacity, string[] Acce
 
 /// <summary>Producer block (pump).</summary>
 public sealed record ProducerDef(string Output, int CycleTicks, int MinIntakeLevel, int UnitsPerCycle, int Buffer, int HaulAt);
+
+/// <summary>CRF-03 (M11-T4, ADR-082): the workshop block of a building. Its output sits in <c>Building.Stored</c>
+/// (at most <see cref="OutputBuffer"/> items, all outputs together); an Unload job is posted at <see cref="HaulAt"/>
+/// unpromised items (CRF-12). Recipes are indexed by their position in <see cref="Recipes"/>.</summary>
+public sealed record WorkshopDef(int OutputBuffer, int HaulAt, RecipeDef[] Recipes);
+
+/// <summary>CRF-04: a recipe, exactly one input item and one output item with their counts, and the work per cycle.
+/// Ids are unique over all workshops.</summary>
+public sealed record RecipeDef(string Id, string Name, Dictionary<string, int> Input, Dictionary<string, int> Output,
+    int WorkTicks);
 
 /// <summary>Colors for the view. Hex strings "#rrggbb".</summary>
 public sealed record PaletteDef(

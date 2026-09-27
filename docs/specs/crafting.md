@@ -138,8 +138,9 @@ the map, and more than one trader definition.
   - **Target:** the workshop's entrance.
 
   An unclaimed Craft job that no longer matches the plan is withdrawn and a new one is posted in the same tick. That
-  happens when the order, the source, `k`, or the workshop state changed. A workshop that is not complete withdraws
-  its unclaimed jobs; its claimed ones fail at their next Craft step.
+  happens when the order, the source, `k`, or the workshop state changed. A workshop that is not complete (torn down,
+  collapsing, gone) cancels its Craft jobs, claimed ones too: the crafter drops its input, which is hauled back
+  (CRF-14, ADR-083).
 - **CRF-11** `WorldActions.Craft(agent, workshop, recipe)` is a new StepKind, `Craft`.
   - **Checks**, in order, returning the first failure (JOB-08):
     - the workshop exists and is complete;
@@ -158,7 +159,8 @@ the map, and more than one trader definition.
   - **Kind** `Unload`, priority **30**.
   - **When:** its unpromised output reaches `haulAt`, or it has any unpromised output and no Craft job, claimed or
     open.
-  - **Steps:** `GoTo(entrance) → PickUpFromStorage(workshop, item, n) → GoToBuilding(storage) → DeliverTo(storage)`.
+  - **Steps:** `GoToBuilding(workshop) → PickUpFromStorage(workshop, item, n) → GoToBuilding(storage) →
+    DeliverTo(storage)` (GoToBuilding reaches the entrance's stand cell like a pump haul, ADR-083).
   - **What it carries:** the lowest item id held, up to `CarryCapacity`.
   - **Storage:** chosen as for JOB-10, reserving StorageIn at it and StorageOut at the workshop.
   - **No room:** nothing is posted, and the workshop's status says so (CRF-13).

@@ -9,7 +9,7 @@ namespace Aurvangar.Sim.Actions;
 public sealed partial class WorldActions
 {
     /// <summary>Takes <paramref name="count"/> of an item from a complete storage building, or of its output from a
-    /// complete producer's buffer (BLD-14), into the carried stack. Stock promised to other claimed jobs (BLD-10) is
+    /// complete producer's buffer (BLD-14) or a complete workshop's output buffer (CRF-12), into the carried stack. Stock promised to other claimed jobs (BLD-10) is
     /// not available; the actor's own job's reservation is.</summary>
     public ActionResult PickUpFromStorage(AgentId actor, BuildingId storage, ItemId item, int count)
     {
@@ -78,10 +78,12 @@ public sealed partial class WorldActions
         return b is { State: BuildingState.Complete, Def.Storage: not null } ? b : null;
     }
 
-    /// <summary>A complete producer whose output is <paramref name="item"/> (its buffer is <see cref="Building.Stored"/>), or null.</summary>
+    /// <summary>A complete producer whose output is <paramref name="item"/> (its buffer is <see cref="Building.Stored"/>),
+    /// or a complete workshop (its buffer holds only outputs, CRF-03), or null.</summary>
     private Building? OutputBuffer(BuildingId id, ItemId item)
     {
         var b = _sim.Buildings.Get(id);
+        if (b is { State: BuildingState.Complete, Def.Workshop: not null }) return item.IsValid ? b : null;
         if (b is not { State: BuildingState.Complete, Def.Producer: { } p } || !item.IsValid || item.Value >= _sim.Content.Items.Count)
             return null;
         return _sim.Content.ItemDef(item).Id == p.Output ? b : null;

@@ -54,8 +54,19 @@ public static class ColonistPanelModel
             JobKind.OperatePump => "Working the pump",
             JobKind.Harvest => "Harvesting",
             JobKind.Plant => "Planting",
+            JobKind.Craft => CraftLabel(sim, job),   // CRF-10
+            JobKind.Unload => HaulLabel(sim, job),   // CRF-12
             _ => job.Kind.ToString(),
         };
+    }
+
+    /// <summary>CRF-10: the recipe name ("Saw planks") of a Craft job, from its last step (the workshop and recipe).</summary>
+    private static string CraftLabel(Simulation sim, Job job)
+    {
+        var last = job.Steps[^1];
+        if (sim.Buildings.Get(new BuildingId(last.Target)) is { } b && last.Count < sim.Content.RecipesOf(b.Def).Count)
+            return sim.Content.RecipesOf(b.Def)[last.Count].Name;
+        return "Crafting";
     }
 
     private static string HaulLabel(Simulation sim, Job job)

@@ -21,14 +21,18 @@ public class BlockMaterialScenarioTests
     {
         (BlockId.Rubble, new Int3(8, GY, 8), "stone", 1, 10, 30),
         (BlockId.Beam, new Int3(12, GY, 8), "log", 2, 25, 30),
-        (BlockId.Slate, new Int3(16, GY, 8), "stone", 3, 50, 70),
+        (BlockId.Slate, new Int3(16, GY, 8), "cutstone", 3, 50, 70),   // M11-T4: refined cost (CRF-02)
     };
+
+    /// <summary>Stone, logs and cut stone carried or in piles.</summary>
+    private static int Loose(Simulation sim) =>
+        new[] { "stone", "log", "cutstone" }.Sum(i => CarriedTotal(sim, i) + PileTotal(sim, i));
 
     [Fact]
     public void NewMaterials_BuildForTheirCost_AndRefundItWhenDug()
     {
         var sim = new ScenarioBuilder().Ground(GY - 1)
-            .Hub(HubOrigin).Stock("stone", 20).Stock("log", 20)
+            .Hub(HubOrigin).Stock("stone", 20).Stock("log", 20).Stock("cutstone", 20)
             .Agent(new Int3(12, GY, 14)).Agent(new Int3(13, GY, 14)).Build();
 
         // Build: one released block of each; the Place step works buildTicks and takes the cost from the carried stack.
@@ -43,9 +47,10 @@ public class BlockMaterialScenarioTests
                         built[m.Id] = s.Ticks;
         });
         Assert.All(Materials, m => Assert.Equal(m.Id, sim.World.GetBlock(m.Cell)));
-        RunUntil(sim, () => CarriedTotal(sim, "stone") + CarriedTotal(sim, "log") + PileTotal(sim, "stone") + PileTotal(sim, "log") == 0, 2000);
-        Assert.Equal(20 - 1 - 3, Stored(Hub(sim), "stone"));
+        RunUntil(sim, () => Loose(sim) == 0, 2000);
+        Assert.Equal(20 - 1, Stored(Hub(sim), "stone"));
         Assert.Equal(20 - 2, Stored(Hub(sim), "log"));
+        Assert.Equal(20 - 3, Stored(Hub(sim), "cutstone"));
         foreach (var m in Materials) Assert.Equal(m.BuildTicks, built[m.Id]);
 
         // Take them down: each dig takes the hardness and drops the whole cost as one pile.
@@ -69,9 +74,10 @@ public class BlockMaterialScenarioTests
         foreach (var m in Materials) Assert.Equal((m.Item, m.Cost), dropped[m.Id]);
 
         // The refund comes back to storage in full.
-        RunUntil(sim, () => sim.Piles.Count == 0 && CarriedTotal(sim, "stone") + CarriedTotal(sim, "log") == 0, 2000);
+        RunUntil(sim, () => sim.Piles.Count == 0 && Loose(sim) == 0, 2000);
         Assert.Equal(20, Stored(Hub(sim), "stone"));
         Assert.Equal(20, Stored(Hub(sim), "log"));
+        Assert.Equal(20, Stored(Hub(sim), "cutstone"));
         Assert.Equal(0, sim.Counters.JobsFailed);
     }
 }

@@ -68,14 +68,16 @@ public class BlockDeconstructScenarioTests
                 }
         });
         Assert.Equal(("stone", 1), dropped[masonry]);
-        Assert.Equal(("log", 1), dropped[planks]);
-        Assert.Equal(("stone", 2), dropped[polished]);
+        Assert.Equal(("planks", 1), dropped[planks]);      // M11-T4: refined costs (CRF-02)
+        Assert.Equal(("cutstone", 2), dropped[polished]);
         foreach (var c in cells) Assert.True(worked[c] >= hardness[c], $"{c}: {worked[c]} work ticks");
 
         // The refund piles are hauled to storage like any other.
-        RunUntil(sim, () => sim.Piles.Count == 0 && CarriedTotal(sim, "stone") + CarriedTotal(sim, "log") == 0, 2000);
-        Assert.Equal(3, Stored(Hub(sim), "stone"));
-        Assert.Equal(1, Stored(Hub(sim), "log"));
+        RunUntil(sim, () => sim.Piles.Count == 0
+            && CarriedTotal(sim, "stone") + CarriedTotal(sim, "planks") + CarriedTotal(sim, "cutstone") == 0, 2000);
+        Assert.Equal(1, Stored(Hub(sim), "stone"));
+        Assert.Equal(1, Stored(Hub(sim), "planks"));
+        Assert.Equal(2, Stored(Hub(sim), "cutstone"));
         Assert.Equal(0, sim.Counters.JobsFailed);
         Assert.Empty(sim.Designations.All);
     }

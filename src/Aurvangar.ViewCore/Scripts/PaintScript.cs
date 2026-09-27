@@ -23,7 +23,7 @@ namespace Aurvangar.ViewCore.Scripts;
 /// The <c>paint</c> camera preset looks at the site.
 /// <para>The <c>wall</c> script (M10-T3) runs the same drags, and the harness holds a vertical Wood planks drag instead
 /// (<see cref="WallDrag"/>): from the east face of the L's short-arm end, a zigzag up and down that paints a wall face
-/// <see cref="WallWidth"/> wide and <see cref="WallHeight"/> high beside the short arm. It costs more logs than are
+/// <see cref="WallWidth"/> wide and <see cref="WallHeight"/> high beside the short arm. It costs more planks than are
 /// free, so its top cells are amber. The <c>wall</c> camera preset looks at it from the east.</para></summary>
 public static class PaintScript
 {

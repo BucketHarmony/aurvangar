@@ -11,7 +11,7 @@ namespace Aurvangar.ViewCore.Scripts;
 /// <summary>The screenshot harness's <c>blocks</c> script (M8-T5, VIEW-20): block construction in every state near
 /// the hub. On a flat, dry <see cref="SiteW"/> x <see cref="SiteD"/> site (x0.., z0..) at ground level y:
 /// <list type="bullet">
-/// <item>a released Wood planks wall (z0+2, x0..x0+5, 2 high; 12 logs from the starting stock), built first;</item>
+/// <item>a released Wood planks wall (z0+2, x0..x0+5, 2 high; 12 of the wagon's 20 planks, M11-T4), built first;</item>
 /// <item>a released Stone wall (z0+4, x0..x0+5, 3 high; 18 stone), built as the digchop pit's stone comes in;</item>
 /// <item>a planned Polished stone box (x0+8..x0+12, z0+2..z0+6, 4 high), never released: translucent ghosts and the
 /// "Planned" material in the top bar.</item>

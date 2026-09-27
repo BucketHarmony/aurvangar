@@ -6,7 +6,7 @@ using Aurvangar.Sim.World;
 namespace Aurvangar.Sim.Content;
 
 /// <summary>All data-driven game content, loaded from the embedded data/*.json files.</summary>
-public sealed class ContentDb
+public sealed partial class ContentDb
 {
     public IReadOnlyList<BlockDef> Blocks { get; }
     /// <summary>CON-19: the fine block shapes, indexed by <see cref="BlockShape"/>.</summary>
@@ -44,6 +44,7 @@ public sealed class ContentDb
             SolidTable[b.NumericId] = b.Solid;
         }
         Validate();
+        IndexRecipes();
         foreach (var b in blocks)
         {
             if (!b.IsConstruction) continue;
@@ -122,6 +123,7 @@ public sealed class ContentDb
     {
         ValidateBlocks();
         ValidateShapes();
+        ValidateWorkshops();   // CRF-04 first, so a workshop error names the workshop
         ValidateBuildings();
     }
 

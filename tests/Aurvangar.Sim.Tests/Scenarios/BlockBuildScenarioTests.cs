@@ -85,7 +85,7 @@ public partial class BlockBuildScenarioTests
         var waitSupport = new Int3(6, G + 1, 5);   // beside the entry (5,10,5), which the post supports
         var column = new Int3(10, G, 10);
         var belowFirst = column + Int3.Up;
-        var noMaterial = new Int3(8, G, 16);       // Planks: no log anywhere
+        var noMaterial = new Int3(8, G, 16);       // Planks: no planks anywhere (M11-T4: CRF-02)
         var occupied = new Int3(14, G, 14);        // a dwarf stands here
         var noAccess = new Int3(26, G + 3, 5);     // on the pillar; its stand cell (27,12,5) is cut off
         sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(5, G + 1, 5), new Int3(6, G + 1, 5), 1, BlockId.Masonry, false));
@@ -114,8 +114,10 @@ public partial class BlockBuildScenarioTests
         foreach (var c in new[] { waitSupport, belowFirst, noMaterial, occupied, noAccess })
             Assert.False(held.ContainsKey(sim.World.Index(c)), $"{c} is held by a Build job");
 
-        // Stone does not help a Planks entry; logs do.
+        // Stone (or logs) do not help a Planks entry; planks do.
         Hub(sim).Stored[TestContent.Db.Item("log").Value] = 3;
+        Assert.Equal(BuildStatus.NoMaterial, sim.Plans.StatusOf(sim, noMaterial));
+        Hub(sim).Stored[TestContent.Db.Item("planks").Value] = 3;
         Assert.Equal(BuildStatus.Ready, sim.Plans.StatusOf(sim, noMaterial));
         sim.Tick();
         Assert.Contains(Builds(sim), j => j.Steps.Any(s => s.Kind == StepKind.Place && s.Cell == noMaterial));

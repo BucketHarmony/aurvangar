@@ -12,7 +12,8 @@ namespace Aurvangar.ViewCore.Scripts;
 /// released wall <see cref="SampleW"/> wide and <see cref="SampleH"/> high at z0 + <see cref="RowDz"/>, starting at
 /// x0 + <see cref="SampleW"/> * i, with a planned (never released) course of the same block on top, so the shot shows
 /// each material built and as a plan ghost. The pit, dug <see cref="QuarryDepth"/> layers deeper than the <c>digchop</c> pit,
-/// brings in the stone (ADR-070). A Water Pump at the nearest wet site (M10-T5, ADR-075) keeps the colony alive through
+/// brings in the stone (ADR-070); the refined samples use the wagon's planks and cut stone (M11-T4: all 20 cut stone for
+/// Polished stone and Slate). A Water Pump at the nearest wet site (M10-T5, ADR-075) keeps the colony alive through
 /// the day-5 drought to day 10. The <c>materials</c> camera preset looks at the row.</summary>
 public static class MaterialsScript
 {

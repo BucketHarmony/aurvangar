@@ -28,9 +28,10 @@ public sealed class ScenarioBuilder
     private readonly List<(Int3 Cell, int Level)> _water = new();
     private Buildings.Building? _lastStorage;
 
-    public ScenarioBuilder(int sizeX = 32, int sizeY = 32, int sizeZ = 32, ulong seed = 1)
+    /// <param name="content">Changed game data (e.g. a test workshop); the shipped data by default.</param>
+    public ScenarioBuilder(int sizeX = 32, int sizeY = 32, int sizeZ = 32, ulong seed = 1, Content.ContentDb? content = null)
     {
-        _sim = new Simulation(TestContent.Db, sizeX, sizeY, sizeZ, seed);
+        _sim = new Simulation(content ?? TestContent.Db, sizeX, sizeY, sizeZ, seed);
     }
 
     public ScenarioBuilder FillBox(Int3 min, Int3 maxInclusive, BlockId block)
@@ -101,7 +102,7 @@ public sealed class ScenarioBuilder
     /// <summary>Place a complete storage building of the given definition (e.g. "warehouse") without construction.</summary>
     public ScenarioBuilder Storage(string def, Int3 origin)
     {
-        _lastStorage = _sim.Buildings.PlacePrebuilt(TestContent.Db.Building(def), origin, 0);
+        _lastStorage = _sim.Buildings.PlacePrebuilt(_sim.Content.Building(def), origin, 0);
         return this;
     }
 
@@ -109,7 +110,7 @@ public sealed class ScenarioBuilder
     public ScenarioBuilder Stock(string item, int count)
     {
         if (_lastStorage is null) throw new InvalidOperationException("ScenarioBuilder: Stock() needs Hub() first");
-        int id = TestContent.Db.Item(item).Value;
+        int id = _sim.Content.Item(item).Value;
         _lastStorage.Stored[id] = _lastStorage.Stored.GetValueOrDefault(id) + count;
         return this;
     }
@@ -117,7 +118,7 @@ public sealed class ScenarioBuilder
     /// <summary>A loose item pile on the cell (ECO-08: one item type per cell).</summary>
     public ScenarioBuilder Pile(Int3 cell, string item, int count)
     {
-        _sim.Piles.Add(cell, TestContent.Db.Item(item), count);
+        _sim.Piles.Add(cell, _sim.Content.Item(item), count);
         return this;
     }
 

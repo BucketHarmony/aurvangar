@@ -4,6 +4,8 @@
     { "id": "stone",   "name": "Stone",   "food": 0,    "drink": 0 },
     { "id": "berries", "name": "Berries", "food": 2500, "drink": 0 },
     { "id": "potato",  "name": "Potato",  "food": 4000, "drink": 0 },
-    { "id": "water",   "name": "Water",   "food": 0,    "drink": 5000 }
+    { "id": "water",   "name": "Water",   "food": 0,    "drink": 5000 },
+    { "id": "planks",  "name": "Planks",  "food": 0,    "drink": 0 },
+    { "id": "cutstone", "name": "Cut stone", "food": 0,  "drink": 0 }
   ]
 }

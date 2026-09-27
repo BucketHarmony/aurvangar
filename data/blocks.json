@@ -11,15 +11,15 @@
     { "id": 8, "name": "Masonry",       "solid": true,  "diggable": true,  "hardness": 40, "drop": null,
       "label": "Stone wall",     "cost": { "stone": 1 }, "buildTicks": 20 },
     { "id": 9, "name": "Planks",        "solid": true,  "diggable": true,  "hardness": 20, "drop": null,
-      "label": "Wood planks",    "cost": { "log": 1 },   "buildTicks": 15 },
+      "label": "Wood planks",    "cost": { "planks": 1 },   "buildTicks": 15 },
     { "id": 10, "name": "PolishedStone", "solid": true, "diggable": true,  "hardness": 60, "drop": null,
-      "label": "Polished stone", "cost": { "stone": 2 }, "buildTicks": 40 },
+      "label": "Polished stone", "cost": { "cutstone": 2 }, "buildTicks": 40 },
     { "id": 11, "name": "Rubble",       "solid": true,  "diggable": true,  "hardness": 30, "drop": null,
       "label": "Rough stone",    "cost": { "stone": 1 }, "buildTicks": 10 },
     { "id": 12, "name": "Beam",         "solid": true,  "diggable": true,  "hardness": 30, "drop": null,
       "label": "Wood beam",      "cost": { "log": 2 },   "buildTicks": 25 },
     { "id": 13, "name": "Slate",        "solid": true,  "diggable": true,  "hardness": 70, "drop": null,
-      "label": "Slate tiles",    "cost": { "stone": 3 }, "buildTicks": 50 }
+      "label": "Slate tiles",    "cost": { "cutstone": 3 }, "buildTicks": 50 }
   ],
   "shapes": [
     { "id": 0, "name": "Full",   "label": "Block",  "rotations": 1, "costPercent": 100 },

@@ -1,46 +1,16 @@
 using Aurvangar.Sim.Tests.Support;
 using Xunit;
 
-// Acceptance tests for M11-T4..T7 (economy and crafting, docs/specs/crafting.md, ADR-082). Each test is specified by
+// Acceptance tests for M11-T5..T7 (economy and crafting, docs/specs/crafting.md, ADR-082). Each test is specified by
 // its name and its Placeholder text. To start a task, move its tests into their own file, write the bodies, then
 // un-skip. A placeholder that is un-skipped without a body fails, by design. Delete this file when it is empty.
 
 namespace Aurvangar.Sim.Tests
 {
-    [Trait("Category", "Unit")]
-    public class CraftContentTests
-    {
-        [Fact(Skip = "M11-T4")] public void RefinedItems_AppendedAfterWater_StoredInHallWarehouseWagon() => Placeholder.Write("CRF-01: items.json gains planks (ItemId 6) and cutstone (7) after water, so ids 1..5 keep their values; each has a palette colour; hub and warehouse accept both; the wagon accepts both and its startStock is 40 log, 60 stone, 20 planks, 20 cutstone");
-        [Fact(Skip = "M11-T4")] public void RefinedBlocks_CostRefinedItems_RoughKeepRaw() => Placeholder.Write("CRF-02: CostOf(Planks) = (planks, 1), PolishedStone (cutstone, 2), Slate (cutstone, 3); Masonry and Rubble stay (stone, 1), Beam (log, 2); CON-20 shaped costs follow (Slate slab 2, stair 3, pillar 1)");
-        [Fact(Skip = "M11-T4")] public void Workshops_LoadWithRecipes() => Placeholder.Write("CRF-03..05: sawmill and stonecutter load with Workshop set (outputBuffer 20, haulAt 10, 1 worker, entrance [0,0,-1], 2x2x2); ContentDb.Recipe(\"planks\") is 1 log -> 2 planks at 40 work ticks in the sawmill, \"cutstone\" 1 stone -> 1 cutstone at 50 in the stonecutter; stonecutter costs 8 log + 8 stone");
-        [Fact(Skip = "M11-T4")] public void Workshop_BadData_ThrowsNamingBuildingAndRecipe() => Placeholder.Write("CRF-04: each throws naming the file, building and recipe: workers 0 or 2, no entrance, a storage, a producer, waterEdge, no recipes, outputBuffer 0, haulAt 0 or > outputBuffer, two input items, an unknown output, input count 11, output count > outputBuffer, workTicks 0, a recipe id used twice across workshops");
-    }
-
-    [Trait("Category", "Unit")]
-    public class WorkshopOrderTests
-    {
-        [Fact(Skip = "M11-T4")] public void SetWorkshopOrder_SetsReplacesRemoves_InRecipeOrder() => Placeholder.Write("CRF-06/07: on a two-recipe test workshop, setting recipe 1 then recipe 0 keeps the orders in recipe order; replacing an order resets done to 0; count 0 removes; orders may be set on a blueprint");
-        [Fact(Skip = "M11-T4")] public void SetWorkshopOrder_Rejections_InOrder() => Placeholder.Write("CRF-07: NoSuchBuilding, NotAWorkshop (a warehouse), BadRecipe (index 1 on the sawmill), BadMode (byte 9), BadCount (-1 and 1000), NothingToRemove (count 0 with no order); each emits CommandRejected with that reason and changes nothing");
-        [Fact(Skip = "M11-T4")] public void ColonyStock_CountsStorageWorkshopOutputAndCarried_NotPiles() => Placeholder.Write("CRF-08: Economy.Stock(planks) sums complete storages (a blueprint warehouse does not count), the sawmill's Stored output and a dwarf's carried planks, and ignores a loose planks pile");
-        [Fact(Skip = "M11-T4")] public void ActiveOrder_AndCycleCount() => Placeholder.Write("CRF-09: Make 20 planks with 30 logs stored -> k = min(10, 10, 10, 30) = 10; Keep 10 planks with 6 in stock -> k = 2; with 3 logs unreserved k = 3 capped by input; with 18 planks in the output buffer k = 1; an order with no input anywhere is skipped for the next one in recipe order");
-        [Fact(Skip = "M11-T4")] public void WorkshopOrders_SavedAndHashed_FormatVersion8() => Placeholder.Write("CRF-22: an order changes StateHash (mode, count and done each count); a building without a workshop block hashes as before; save/load keeps orders and hash equal; SaveGame.FormatVersion == 8 and a v7 file is refused (SAV-04); SetWorkshopOrder round-trips through CommandCodec, a rejected one replays as rejected");
-    }
 }
 
 namespace Aurvangar.Sim.Tests.Scenarios
 {
-    [Trait("Category", "Scenario")]
-    public class WorkshopScenarioTests
-    {
-        [Fact(Skip = "M11-T4")] public void Sawmill_Make20_Exactly20PlanksToStorage_OrderRemoved() => Placeholder.Write("crafting.md scenario 1, CRF-10..12: a complete sawmill with Make 20 planks and logs in the hall: exactly 20 planks are made, all end in storage via Unload jobs, 10 logs are taken, the order is removed with WorkshopOrderDone, and no job fails");
-        [Fact(Skip = "M11-T4")] public void Stonecutter_Keep10_RefillsAfterUse() => Placeholder.Write("crafting.md scenario 2, CRF-08/09: Keep 10 cutstone crafts until Stock(cutstone) == 10 (at most one batch over), status Done; building Polished stone blocks uses some and crafting starts again until 10 are back");
-        [Fact(Skip = "M11-T4")] public void NoInput_StatusAndNoJob_ThenStarts() => Placeholder.Write("crafting.md scenario 3, CRF-13: a stonecutter with an order and no stone anywhere reads NoInput (naming stone) and posts no Craft job; putting stone in the hall starts it; a sawmill with no orders reads NoOrders and a blueprint NotBuilt");
-        [Fact(Skip = "M11-T4")] public void Crafter_PreemptedByThirst_InputHauledBack_OrderCompletes() => Placeholder.Write("crafting.md scenario 4, CRF-14/JOB-07: a crafter made thirsty mid-job drops its logs as a pile, drinks, the logs are hauled back, and the Make order still completes with the expected count");
-        [Fact(Skip = "M11-T4")] public void RefinedBlocks_BuiltFromRefinedItems_DigRefundsThem() => Placeholder.Write("crafting.md scenario 5, CRF-02/CON-17: Wood planks, Polished stone and Slate walls take planks and cutstone from storage (and no log or stone); digging them drops planks and cutstone piles that are hauled to storage");
-        [Fact(Skip = "M11-T4")] public void Workshop_TornDownOrCollapsed_DropsOutput_CancelsJobs() => Placeholder.Write("CRF-14/BLD-09/GRV-07: deconstructing a sawmill holding 6 planks drops them with the refund; a collapsed stonecutter drops its output as falling piles; its Craft and Unload jobs are cancelled; nothing floats (Grounding)");
-        [Fact(Skip = "M11-T4")] public void SaveLoad_MidCraftCycle_ContinuesIdentically() => Placeholder.Write("crafting.md scenario 9, SAV-03: save while a Craft job is claimed mid-Work with input carried; the loaded game matches the hash every 100 ticks for 1000 ticks");
-    }
-
     [Trait("Category", "Scenario")]
     public class TradeScenarioTests
     {

@@ -23,6 +23,9 @@ internal static class CommandCodec
                 w.Write((byte)c.Form.Shape); w.Write(c.Form.Rotation);   // save v7 (M11-T10): raw, so a rejected form replays as rejected
                 break;
             case ReleasePlan c: w.Write(c.A); w.Write(c.B); break;
+            case SetWorkshopOrder c:   // save v8 (M11-T4): the mode byte raw, so a bad mode replays as rejected
+                w.Write(c.Workshop.Value); w.Write(c.Recipe); w.Write((byte)c.Mode); w.Write(c.Count);
+                break;
             default:
                 throw new NotSupportedException(
                     $"SaveGame: command '{command.Tag}' ({command.GetType().Name}) has no save codec; add it to CommandCodec.");
@@ -45,6 +48,8 @@ internal static class CommandCodec
                 r.ReadInt32(), (World.BlockId)r.ReadByte(), r.ReadBoolean(),
                 new World.BlockForm((World.BlockShape)r.ReadByte(), r.ReadByte())),
             nameof(ReleasePlan) => new ReleasePlan(r.ReadInt3(), r.ReadInt3()),
+            nameof(SetWorkshopOrder) => new SetWorkshopOrder(new Core.BuildingId(r.ReadInt32()), r.ReadInt32(),
+                (Buildings.OrderMode)r.ReadByte(), r.ReadInt32()),
             _ => throw new InvalidDataException($"Save file contains unknown command tag '{tag}'."),
         };
     }

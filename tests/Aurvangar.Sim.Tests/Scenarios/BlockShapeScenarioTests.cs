@@ -24,10 +24,10 @@ public class BlockShapeScenarioTests
     private static List<Job> Builds(Simulation sim) => sim.Jobs.All.Where(j => j.Kind == JobKind.Build).ToList();
 
     /// <summary>5 Slate slabs at z = 12 (x 10..14), 3 Slate stairs at z = 8 (x 10..12, rotation 1), 2 Masonry pillars
-    /// at z = 15 (x 10 and 12). Stone: 5 x 2 + 3 x 3 + 2 x 1 = 21.</summary>
+    /// at z = 15 (x 10 and 12). Cut stone (M11-T4: Slate costs cut stone): 5 x 2 + 3 x 3 = 19; stone: 2 x 1 = 2.</summary>
     private static Simulation ShapeWorld(int stone, out Dictionary<Int3, (BlockId Block, BlockForm Form)> want)
     {
-        var sim = new ScenarioBuilder().Ground(G - 1).Hub(HubOrigin).Stock("stone", stone)
+        var sim = new ScenarioBuilder().Ground(G - 1).Hub(HubOrigin).Stock("stone", stone).Stock("cutstone", stone)
             .Agent(new Int3(12, G, 17)).Agent(new Int3(13, G, 17)).Build();
         var cells = new Dictionary<Int3, (BlockId Block, BlockForm Form)>();
         void Paint(Int3 a, Int3 b, BlockId block, BlockForm form)
@@ -49,7 +49,7 @@ public class BlockShapeScenarioTests
     public void Shapes_BuiltWithTheirFormAndShapedCost_ThenRefunded()
     {
         var sim = ShapeWorld(30, out var want);
-        Assert.Equal(new[] { (Stone, 21) }, sim.Plans.Needed(null));
+        Assert.Equal(new[] { (Stone, 2), (Cut, 19) }, sim.Plans.Needed(null));
         var shapesSeen = new HashSet<BlockShape>();
         RunUntil(sim, () => sim.Plans.Count == 0, 6000, () =>
         {
@@ -73,20 +73,28 @@ public class BlockShapeScenarioTests
             Assert.Equal(form, sim.World.FormAt(c));
         }
         Assert.Equal(10, sim.World.FormCount);
-        RunUntil(sim, () => CarriedTotal(sim, "stone") == 0 && PileTotal(sim, "stone") == 0, 2000);
-        Assert.Equal(30 - 21, Stored(Hub(sim), "stone"));
+        RunUntil(sim, () => Loose(sim) == 0, 2000);
+        Assert.Equal(30 - 2, Stored(Hub(sim), "stone"));
+        Assert.Equal(30 - 19, Stored(Hub(sim), "cutstone"));
         Assert.Equal(0, sim.Counters.JobsFailed);
 
         // CON-17 with CON-20: digging a shaped block refunds its shaped cost, and the cell is Full air again.
         sim.Enqueue(new DesignateDeconstructBlocks(new Int3(8, G, 6), new Int3(16, G, 16)));
         RunUntil(sim, () => want.Keys.All(c => sim.World.GetBlock(c) == BlockId.Air)
-            && sim.Piles.Count == 0 && CarriedTotal(sim, "stone") == 0, 6000);
+            && sim.Piles.Count == 0 && Loose(sim) == 0, 6000);
         Assert.Equal(0, sim.World.FormCount);
         Assert.Equal(30, Stored(Hub(sim), "stone"));
+        Assert.Equal(30, Stored(Hub(sim), "cutstone"));
         Assert.Equal(0, sim.Counters.JobsFailed);
     }
 
     private static Core.ItemId Stone => TestContent.Db.Item("stone");
+
+    private static Core.ItemId Cut => TestContent.Db.Item("cutstone");
+
+    /// <summary>Stone and cut stone carried or in piles.</summary>
+    private static int Loose(Simulation sim) =>
+        CarriedTotal(sim, "stone") + PileTotal(sim, "stone") + CarriedTotal(sim, "cutstone") + PileTotal(sim, "cutstone");
 
     /// <summary>CON-21 (ADR-080): every shape is one solid cell. A slab is a floor to stand on, holds up a pile (GRV-02)
     /// and a block on it (CON-09).</summary>
@@ -140,7 +148,7 @@ public class BlockShapeScenarioTests
     {
         var sim = ShapeWorld(30, out var want);
         RunUntil(sim, () => sim.World.FormCount >= 2 && Builds(sim).Any(j => j.IsClaimed)
-            && CarriedTotal(sim, "stone") > 0, 3000);
+            && CarriedTotal(sim, "cutstone") > 0, 3000);
 
         using var ms = new MemoryStream();
         SaveGame.Save(sim, ms);

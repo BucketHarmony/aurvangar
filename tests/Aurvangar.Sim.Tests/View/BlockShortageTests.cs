@@ -20,37 +20,38 @@ public class BlockShortageTests
     private const int G = 9;
     private static readonly Int3 HubOrigin = new(20, G, 20);
 
-    private static Simulation World(int stone = 0, int log = 0)
+    private static Simulation World(int stone = 0, int planks = 0, int cutstone = 0)
     {
         var b = new ScenarioBuilder().Ground(G - 1).Hub(HubOrigin);
         if (stone > 0) b.Stock("stone", stone);
-        if (log > 0) b.Stock("log", log);
+        if (planks > 0) b.Stock("planks", planks);       // M11-T4: Wood planks cost planks (CRF-02)
+        if (cutstone > 0) b.Stock("cutstone", cutstone);   // and Polished stone cut stone
         return b.Agent(new Int3(12, G, 17)).Agent(new Int3(13, G, 17)).Build();
     }
 
     private static PickHit Top(int x, int z) => new(new Int3(x, G - 1, z), Int3.Up);
 
     private static ItemId Stone => TestContent.Db.CostOf(BlockId.Masonry).Item;
-    private static ItemId Log => TestContent.Db.CostOf(BlockId.Planks).Item;
+    private static ItemId Planks => TestContent.Db.CostOf(BlockId.Planks).Item;
 
     [Fact]
     public void FreeStock_IsStockMinusReleasedNeed_PlanModeAlsoMinusPlanned()
     {
-        var sim = World(stone: 10, log: 4);
+        var sim = World(stone: 10, planks: 4);
         var none = FreeStock.Of(sim);
         Assert.Equal(10, none.Of(Stone, plan: false));
         Assert.Equal(10, none.Of(Stone, plan: true));
-        Assert.Equal(4, none.Of(Log, plan: false));
+        Assert.Equal(4, none.Of(Planks, plan: false));
 
         sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 12), new Int3(7, G, 12), 1, BlockId.Masonry, false));   // 4 stone released
         sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 14), new Int3(6, G, 14), 1, BlockId.Masonry, true));    // 3 stone planned
-        sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 16), new Int3(9, G, 16), 1, BlockId.Planks, false));    // 6 log released
+        sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 16), new Int3(9, G, 16), 1, BlockId.Planks, false));    // 6 planks released
         sim.Tick();
         var free = FreeStock.Of(sim);
         Assert.Equal(6, free.Of(Stone, plan: false));
         Assert.Equal(3, free.Of(Stone, plan: true));
-        Assert.Equal(0, free.Of(Log, plan: false));   // 4 - 6: never below zero
-        Assert.Equal(0, free.Of(Log, plan: true));
+        Assert.Equal(0, free.Of(Planks, plan: false));   // 4 - 6: never below zero
+        Assert.Equal(0, free.Of(Planks, plan: true));
     }
 
     [Fact]
@@ -91,8 +92,8 @@ public class BlockShortageTests
         Assert.All(none.Cells, c => Assert.True(c.Short));
         Assert.Contains("No stone free: 2 blocks short", BlockTool.Tooltip(empty, none));
 
-        // Polished stone costs 2: 3 stone pays for one block.
-        var three = World(stone: 3);
+        // Polished stone costs 2 cut stone: 3 pay for one block.
+        var three = World(cutstone: 3);
         var polished = BlockTool.GhostFor(three, BlockId.PolishedStone, false, new[] { new Int3(5, G, 5), new Int3(6, G, 5) }, FreeStock.Of(three));
         Assert.Equal(new[] { false, true }, polished.Cells.Select(c => c.Short));
 

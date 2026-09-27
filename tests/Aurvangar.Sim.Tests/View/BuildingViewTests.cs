@@ -53,9 +53,10 @@ public class BuildToolTests
     public void Buildable_LeavesOutTheHub_BCycles_RRotates()
     {
         var b = new BuildTool(TestContent.Db);
-        Assert.Equal(new[] { "warehouse", "pump", "levee" }, b.Buildable.Select(d => d.Id));
+        Assert.Equal(new[] { "warehouse", "pump", "levee", "sawmill", "stonecutter" }, b.Buildable.Select(d => d.Id));   // M11-T4: workshops
         Assert.Equal("warehouse", b.Def.Id);
         b.Cycle(); Assert.Equal("pump", b.Def.Id);
+        b.Cycle(); b.Cycle(); Assert.Equal("sawmill", b.Def.Id);
         b.Cycle(); b.Cycle(); Assert.Equal("warehouse", b.Def.Id);
         b.Select("levee"); Assert.Equal("levee", b.Def.Id);
         b.Select("hub"); Assert.Equal("levee", b.Def.Id);   // not buildable: ignored
@@ -306,8 +307,8 @@ public class TopBarTests
         Assert.Equal("3x", bar.Speed);
         Assert.Equal("Paused", TopBarModel.SpeedText(0));
         Assert.Equal(new[] { new ItemTotal("Log", 45), new ItemTotal("Stone", 0), new ItemTotal("Berries", 7),
-            new ItemTotal("Potato", 0), new ItemTotal("Water", 0) }, bar.Totals);
-        Assert.Equal("Log 45   Stone 0   Berries 7   Potato 0   Water 0", bar.TotalsText);
+            new ItemTotal("Potato", 0), new ItemTotal("Water", 0), new ItemTotal("Planks", 0), new ItemTotal("Cut stone", 0) }, bar.Totals);
+        Assert.Equal("Log 45   Stone 0   Berries 7   Potato 0   Water 0   Planks 0   Cut stone 0", bar.TotalsText);
         Assert.Empty(bar.Alerts);
         Assert.False(bar.ColonyLost);
 

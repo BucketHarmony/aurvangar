@@ -2053,3 +2053,37 @@ Consequences:
 - M11-T5 changes the seed-1 hashes from tick 3000 on, because the trader writes BuildingSolid beside the hall.
 - Out of scope: money, prices, multi-input recipes, worker assignment, skills, quality, factions, a travelling trader,
   selling anything outside the offers, and more than one trader definition.
+
+## ADR-083: Workshop jobs: GoToBuilding for unloads, cancel on teardown, a stand-cell craft check (2026-09-27, M11-T4)
+Context: M11-T4 builds CRF-01..14. A few points in the spec were loose or clashed with existing mechanics.
+Decision:
+- **Unload goes by GoToBuilding.** CRF-12 wrote `GoTo(entrance)` as the first Unload step. The job uses
+  `GoToBuilding(workshop)`, as the pump buffer haul does (BLD-14), so the dwarf stands where `PickUpFromStorage` can
+  reach the workshop (its stand cell, which may be one below or above a blocked entrance). crafting.md is updated.
+- **Teardown cancels, it does not fail.** CRF-10 said a claimed Craft job on a workshop that is no longer complete
+  fails at its next Craft step; CRF-14 said the workshop's jobs are cancelled. `Workshops.Tick` cancels every Craft
+  job of a workshop that is not complete (claimed ones too: the crafter drops its input, which is hauled back), and
+  the Unload jobs that have not picked up yet. An Unload already carrying the output finishes its delivery. Collapse
+  cancels them as well (GRV-07 `CancelJobsNaming`), including an Unload already carrying the output (its first step
+  names the workshop, as a pump haul's does): that dwarf drops the output as a pile, which is hauled to storage.
+  No job counts as failed. crafting.md CRF-10 is updated.
+- **Preemption withdraws.** A Craft or Unload job released by JOB-07 preemption is removed, like a need job, not
+  returned to the board. Its pick-up is spent and a Flee preempts during the agents step, after `Workshops.Tick`, so
+  a stale copy with steps back at 0 could be claimed by another dwarf in the same tick and craft its cycles again
+  (sim-reviewer). `Workshops.Tick` posts a fresh plan next tick. A save that holds a Keep order with done > 0 or a
+  Make order with done >= count is refused as corrupt.
+- **The craft check is the stand cell.** CRF-11 "the agent is on its entrance" is checked as `a.Cell ==
+  Construction.StandCell(workshop)`, which is the entrance on flat ground and the step the Craft job walks to.
+- **Regions.** The CRF-09 source must be in the region of the workshop's stand cell; before the first region build
+  (region None) any source counts, as elsewhere.
+- **Plan changes re-post.** An unclaimed Craft job is compared with the current plan (steps and reservations) every
+  tick and withdrawn and re-posted on any difference. An unclaimed Unload job is re-planned in place, like a pump haul.
+- **Status.** `Waiting` is returned when an order wants output, has input and no Craft job is claimed (the job is
+  open or will be posted next tick); `NoInput` names the first wanting order's input when no wanting order has one;
+  `OutputFull` names that order's output.
+- **Orders on non-workshops.** Every building saves an order list (empty unless it has a workshop block); only
+  workshops hash theirs, so the other buildings hash as before (CRF-22).
+- **Goldens.** The wagon's refined start stock changes seed 1 from tick 0; the goldens are regenerated (CRF-23).
+Consequences: test worlds that build refined blocks stock planks or cut stone directly; `ScenarioBuilder` takes an
+optional `ContentDb` for test-only workshop data. The screenshot scripts fit the wagon's 20 planks and 20 cut stone
+(the materials row uses all 20 cut stone).

@@ -92,6 +92,7 @@ public sealed partial class BuildingSystem
     {
         Construction.Tick(sim);   // M5-T2: BLD-06 delivers, BLD-08 construct, BLD-09 deconstruct jobs
         Pumps.Tick(sim);          // M5-T4: BLD-13 NoWater and OperatePump jobs, BLD-14 buffer hauls
+        Workshops.Tick(sim);      // M11-T4: CRF-10 Craft jobs, CRF-12 Unload jobs
         _totals.Clear();
         foreach (var b in _buildings.Values)
         {
@@ -110,6 +111,9 @@ public sealed partial class BuildingSystem
             h.Add(b.Origin); h.Add(b.Rotation); h.Add((byte)b.State); h.Add(b.Progress); h.Add(b.NoWater);
             h.Add(b.Delivered.Count); foreach (var (k, v) in b.Delivered) { h.Add(k); h.Add(v); }
             h.Add(b.Stored.Count); foreach (var (k, v) in b.Stored) { h.Add(k); h.Add(v); }
+            if (b.Def.Workshop is null) continue;   // CRF-22: only workshops hash orders, so others hash as before
+            h.Add(b.Orders.Count);
+            foreach (var o in b.Orders) { h.Add(o.Recipe); h.Add((byte)o.Mode); h.Add(o.Count); h.Add(o.Done); }
         }
     }
 }

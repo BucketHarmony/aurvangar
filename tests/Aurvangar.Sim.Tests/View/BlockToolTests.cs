@@ -24,11 +24,11 @@ public class BlockToolTests
     private const int G = 9;
     private static readonly Int3 HubOrigin = new(20, G, 20);
 
-    private static Simulation World(int stone = 0, int log = 0)
+    private static Simulation World(int stone = 0, int planks = 0)
     {
         var b = new ScenarioBuilder().Ground(G - 1).Hub(HubOrigin);
         if (stone > 0) b.Stock("stone", stone);
-        if (log > 0) b.Stock("log", log);
+        if (planks > 0) b.Stock("planks", planks);   // M11-T4: Wood planks cost planks (CRF-02)
         return b.Agent(new Int3(12, G, 17)).Agent(new Int3(13, G, 17)).Build();
     }
 
@@ -131,22 +131,22 @@ public class BlockToolTests
     [Fact]
     public void TopBar_PlanMaterialText()
     {
-        var sim = World(stone: 5, log: 20);
+        var sim = World(stone: 5, planks: 20);
         Assert.True(TopBarModel.PlanText(sim).IsEmpty);
         Assert.Equal("", TopBarModel.PlanText(sim).Text);
 
         sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 12), new Int3(9, G, 12), 1, BlockId.Masonry, false));   // 6 stone
-        sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 14), new Int3(6, G, 14), 1, BlockId.Planks, true));     // 3 log
-        sim.Enqueue(new DesignateBuild(BuildShape.Single, new Int3(4, G, 16), new Int3(4, G, 16), 1, BlockId.PolishedStone, true)); // 2 stone
+        sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 14), new Int3(6, G, 14), 1, BlockId.Planks, true));     // 3 planks
+        sim.Enqueue(new DesignateBuild(BuildShape.Line, new Int3(4, G, 16), new Int3(5, G, 16), 1, BlockId.Rubble, true));     // 2 stone
         sim.Tick();
 
         var text = TopBarModel.PlanText(sim);
         Assert.False(text.IsEmpty);
-        Assert.Equal("Building: stone 6/5 · Planned: log 3, stone 2", text.Text);
+        Assert.Equal("Building: stone 6/5 · Planned: stone 2, planks 3", text.Text);
         // Short: released need over stock; planned need plus released need over stock.
         Assert.Equal(new[] { true }, text.Building.Select(i => i.Short));
-        Assert.Equal(new[] { false, true }, text.Planned.Select(i => i.Short));
-        Assert.Equal("Building: [color=#ffa640]stone 6/5[/color] · Planned: log 3, [color=#ffa640]stone 2[/color]", text.BbCode("#ffa640"));
+        Assert.Equal(new[] { true, false }, text.Planned.Select(i => i.Short));
+        Assert.Equal("Building: [color=#ffa640]stone 6/5[/color] · Planned: [color=#ffa640]stone 2[/color], planks 3", text.BbCode("#ffa640"));
 
         Assert.Equal(text.Text, string.Concat(text.Segments().Select(r => r.Text)));
         Assert.Equal(new[] { "stone 6/5", "stone 2" }, text.Segments().Where(r => r.Short).Select(r => r.Text));

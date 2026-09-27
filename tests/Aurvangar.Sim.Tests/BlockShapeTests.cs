@@ -164,13 +164,13 @@ public class BlockShapeTests
         Assert.Empty(Rejections(sim));
         Assert.Equal(4, sim.Plans.Count);
         Assert.All(sim.Plans.All, p => Assert.Equal(new PlanEntry(BlockId.Slate, PlanState.Planned, stair), p.Entry));
-        Assert.Equal(new[] { (Db.Item("stone"), 4 * 3) }, sim.Plans.Needed(null));
+        Assert.Equal(new[] { (Db.Item("cutstone"), 4 * 3) }, sim.Plans.Needed(null));   // M11-T4: Slate costs cut stone
 
-        // Repainting as slabs changes the form and the totals (Slate slab: 2 stone).
+        // Repainting as slabs changes the form and the totals (Slate slab: 2 cut stone).
         sim.Enqueue(new DesignateBuild(BuildShape.Line, a, b, 1, BlockId.Slate, true, new BlockForm(BlockShape.Slab, 0)));
         sim.Tick();
         Assert.All(sim.Plans.All, p => Assert.Equal(BlockShape.Slab, p.Entry.Form.Shape));
-        Assert.Equal(new[] { (Db.Item("stone"), 4 * 2) }, sim.Plans.Needed(null));
+        Assert.Equal(new[] { (Db.Item("cutstone"), 4 * 2) }, sim.Plans.Needed(null));
 
         // The old command (no form) still means Full.
         Assert.Equal(BlockForm.Full, new DesignateBuild(BuildShape.Single, a, a, 1, BlockId.Masonry, false).Form);
@@ -179,7 +179,7 @@ public class BlockShapeTests
     [Fact]
     public void Save_V7_KeepsFormsEntriesAndCommands()
     {
-        Assert.Equal(7, SaveGame.FormatVersion);
+        Assert.Equal(8, SaveGame.FormatVersion);   // 7 in M11-T10; 8 since M11-T4 (workshop orders), forms unchanged
         var sim = new ScenarioBuilder().Ground(8).Agent(new Int3(3, 9, 3)).Build();
         var built = new Int3(6, 9, 6);
         sim.World.SetBlock(built, BlockId.Beam);

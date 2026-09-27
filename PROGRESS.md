@@ -3694,3 +3694,34 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     should fit in the wagon's 20 + 20, or build a workshop.
   - The ContentDb building count becomes 7.
   - `Unload` must be a new `JobKind`: `Pumps.IsBufferHaul` matches any `Haul` with the pickup-from-building shape.
+
+## M11-T4 — Workshops, recipes and craft jobs (2026-09-27)
+- Done: Planks (6) and cut stone (7) items; Sawmill (1 log → 2 planks, 40 ticks) and Stonecutter (1 stone → 1 cut
+  stone, 50 ticks) with inline recipes and ContentDb validation; Wood planks cost planks, Polished stone and Slate
+  cost cut stone (CON-17 refunds follow). `SetWorkshopOrder` (Make/Keep, recipe order, all rejections) with a
+  CommandCodec entry. `Workshops.Tick` (step 7 after Pumps) posts one Craft job per workshop (k cycles, carried input)
+  and Unload jobs (new JobKind) to the nearest storage; `WorldActions.Craft`; `Economy.Stock` (storage + workshop
+  output + carried); workshop status. Orders saved (FormatVersion 8) and hashed for workshops only. Wagon start stock
+  gains 20 planks and 20 cut stone; scripts fit in it.
+- Review: sim-reviewer REQUIRED fix applied: a preempted Craft or Unload job is now removed (Workshops.Tick re-posts
+  next tick), since a Flee during the agents step could leave a stale Craft job a second dwarf claims and re-crafts,
+  overshooting a Make order. Also applied: save load refuses Keep orders with done > 0 and Make orders with
+  done >= count. Not done (suggestions): carry retry cooldown across Craft re-posts; a RunStep guard on a non-complete
+  workshop; a mid-work teardown test.
+- Tests: 16 M11-T4 placeholders replaced by real tests (CraftContentTests 4 incl. a 16-case bad-data theory,
+  WorkshopOrderTests 5, Scenarios/WorkshopScenarioTests 7) plus `Crafter_PreemptedByFlee_JobWithdrawn_...` (failed
+  before the fix). ~15 block/view test files updated for refined costs and the 7 buildings. Mutation check: with
+  `Workshops.Tick` disabled 6 of 7 workshop scenarios fail. check.sh: 743 passed, 13 skipped (M11-T5..T7), 0 failed.
+- Decisions: ADR-083 (GoToBuilding unloads, teardown cancels, stand-cell craft check, region rule, plan re-post,
+  status, order save/hash, preemption withdraws, goldens). crafting.md CRF-10/12, jobs-agents.md JOB-07 and job
+  table, construction.md, buildings.md updated.
+- Golden: regenerated: the wagon's refined start stock (CRF-23, ADR-082) changes seed-1 state from tick 0
+  (0 a139922bb6feb184, 1200 e72ab15ea245baae, 3000 c37701b82a680af5, 6000 a919148ecb940627).
+- Perf: perf.sh green (10 passed, 1 skipped M11-T7 placeholder). Headless seed 1 × 24000: hash 4d320f5b2368dda1,
+  ~5000 ticks/s; survival script: hash 0e7a45c51c168c13, ~3600 ticks/s.
+- Screens: hub HUD shows Planks 20 and Cut stone 20. The materials row (TICKS=12000) builds all samples, including
+  the refined ones, and the HUD shows cut stone 10 planned and short. The shapes shot builds the Slate stair and
+  slabs from cut stone ("12 cut stone free").
+- Next: M11-T5 (Trade wagon). FormatVersion goes to 9 with the trader visit section. The trader schedule starts
+  affecting state around tick 3000, so expect golden changes from there. Traders run in step 7 after Workshops.
+  Workshop jobs use JobKind Craft/Unload at priority 30. `Economy.Stock` is the colony stock to reuse for offers.

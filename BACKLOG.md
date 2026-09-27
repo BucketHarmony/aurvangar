@@ -410,7 +410,7 @@ starting wagon answers "I dont know where to get stone from".
       leaves.
     - Save, hash and determinism notes.
   - Add placeholder acceptance tests with `Skip = "M11-Tn"` for the tasks below.
-- [ ] **M11-T4** Workshops, recipes and craft jobs · specs: CRF-01..14, CRF-22 (v8), CRF-23 · deps: M11-T3
+- [x] **M11-T4** Workshops, recipes and craft jobs · specs: CRF-01..14, CRF-22 (v8), CRF-23 · deps: M11-T3
   - Sawmill and Stonecutter in data. Commands with CommandCodec entries set workshop orders. Craft jobs fetch the
     inputs, work and output a pile or haul it to storage. Refined items exist, and block costs move to them per
     the spec. Saved (bump FormatVersion) and hashed. Scenario tests.

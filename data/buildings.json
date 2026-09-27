@@ -8,7 +8,7 @@
       "cost": {},
       "buildTicks": 0,
       "placement": "ground",
-      "storage": { "capacity": 0, "perItemCapacity": 100, "accepts": ["log", "stone", "berries", "potato", "water"] },
+      "storage": { "capacity": 0, "perItemCapacity": 100, "accepts": ["log", "stone", "berries", "potato", "water", "planks", "cutstone"] },
       "workers": 0,
       "producer": null,
       "setsBlocks": true,
@@ -24,13 +24,13 @@
       "cost": { "log": 20 },
       "buildTicks": 200,
       "placement": "ground",
-      "storage": { "capacity": 0, "perItemCapacity": 0, "accepts": ["log", "stone"], "receives": false },
+      "storage": { "capacity": 0, "perItemCapacity": 0, "accepts": ["log", "stone", "planks", "cutstone"], "receives": false },
       "workers": 0,
       "producer": null,
       "setsBlocks": true,
       "prebuiltOnly": true,
       "stackable": false,
-      "startStock": { "log": 40, "stone": 60 },
+      "startStock": { "log": 40, "stone": 60, "planks": 20, "cutstone": 20 },
       "removableWhenEmpty": true
     },
     {
@@ -41,7 +41,7 @@
       "cost": { "log": 20 },
       "buildTicks": 300,
       "placement": "ground",
-      "storage": { "capacity": 150, "perItemCapacity": 0, "accepts": ["log", "stone", "berries", "potato"] },
+      "storage": { "capacity": 150, "perItemCapacity": 0, "accepts": ["log", "stone", "berries", "potato", "planks", "cutstone"] },
       "workers": 0,
       "producer": null,
       "setsBlocks": true,
@@ -77,6 +77,50 @@
       "setsBlocks": true,
       "prebuiltOnly": false,
       "stackable": true
+    },
+    {
+      "id": "sawmill",
+      "name": "Sawmill",
+      "footprint": [2, 2, 2],
+      "entrance": [0, 0, -1],
+      "cost": { "log": 16 },
+      "buildTicks": 240,
+      "placement": "ground",
+      "storage": null,
+      "workers": 1,
+      "producer": null,
+      "setsBlocks": true,
+      "prebuiltOnly": false,
+      "stackable": false,
+      "workshop": {
+        "outputBuffer": 20,
+        "haulAt": 10,
+        "recipes": [
+          { "id": "planks", "name": "Saw planks", "input": { "log": 1 }, "output": { "planks": 2 }, "workTicks": 40 }
+        ]
+      }
+    },
+    {
+      "id": "stonecutter",
+      "name": "Stonecutter",
+      "footprint": [2, 2, 2],
+      "entrance": [0, 0, -1],
+      "cost": { "log": 8, "stone": 8 },
+      "buildTicks": 240,
+      "placement": "ground",
+      "storage": null,
+      "workers": 1,
+      "producer": null,
+      "setsBlocks": true,
+      "prebuiltOnly": false,
+      "stackable": false,
+      "workshop": {
+        "outputBuffer": 20,
+        "haulAt": 10,
+        "recipes": [
+          { "id": "cutstone", "name": "Cut stone", "input": { "stone": 1 }, "output": { "cutstone": 1 }, "workTicks": 50 }
+        ]
+      }
     }
   ]
 }

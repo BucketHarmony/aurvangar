@@ -20,10 +20,11 @@ public class BlockPlanScenarioTests
     private const int G = 9;
     private static readonly Int3 HubOrigin = new(20, G, 20);
 
-    private static Simulation World(int stone, int log = 0)
+    private static Simulation World(int stone, int log = 0, int cutstone = 0)
     {
         var b = new ScenarioBuilder().Ground(G - 1).Hub(HubOrigin).Stock("stone", stone);
         if (log > 0) b.Stock("log", log);
+        if (cutstone > 0) b.Stock("cutstone", cutstone);   // M11-T4: Polished stone costs cut stone (CRF-02)
         return b.Agent(new Int3(12, G, 17)).Agent(new Int3(13, G, 17)).Build();
     }
 
@@ -112,24 +113,27 @@ public class BlockPlanScenarioTests
     [Fact]
     public void MaterialTotals_NeededVersusStored()
     {
-        var sim = World(30);
+        var sim = World(30, cutstone: 10);
         Assert.Empty(sim.Plans.Needed(null));
         Line(sim, 8, 11, BlockId.Masonry, plan: true);          // 4 x 1 stone
-        Line(sim, 12, 13, BlockId.PolishedStone, plan: true);   // 2 x 2 stone
-        Line(sim, 14, 15, BlockId.Planks, plan: true);          // 2 x 1 log (none stored)
+        Line(sim, 12, 13, BlockId.PolishedStone, plan: true);   // 2 x 2 cut stone
+        Line(sim, 14, 15, BlockId.Planks, plan: true);          // 2 x 1 planks (none stored)
         Assert.Equal(8, sim.Plans.Count);
 
         var planned = sim.Plans.Needed(PlanState.Planned);
-        Assert.Equal(8, NeededOf(planned, "stone"));
-        Assert.Equal(2, NeededOf(planned, "log"));
-        Assert.Equal(2, planned.Count);
-        Assert.True(planned[0].Item.Value < planned[1].Item.Value, "Needed is not in ascending item id order");
+        Assert.Equal(4, NeededOf(planned, "stone"));
+        Assert.Equal(4, NeededOf(planned, "cutstone"));
+        Assert.Equal(2, NeededOf(planned, "planks"));
+        Assert.Equal(3, planned.Count);
+        Assert.True(planned[0].Item.Value < planned[1].Item.Value && planned[1].Item.Value < planned[2].Item.Value,
+            "Needed is not in ascending item id order");
         Assert.Empty(sim.Plans.Needed(PlanState.Released));
         Assert.Equal(planned, sim.Plans.Needed(null));
 
         Release(sim, new Int3(8, G, 12), new Int3(13, G, 12));
-        Assert.Equal(new[] { (TestContent.Db.Item("stone"), 8) }, sim.Plans.Needed(PlanState.Released));
-        Assert.Equal(new[] { (TestContent.Db.Item("log"), 2) }, sim.Plans.Needed(PlanState.Planned));
+        Assert.Equal(new[] { (TestContent.Db.Item("stone"), 4), (TestContent.Db.Item("cutstone"), 4) },
+            sim.Plans.Needed(PlanState.Released));
+        Assert.Equal(new[] { (TestContent.Db.Item("planks"), 2) }, sim.Plans.Needed(PlanState.Planned));
         Assert.Equal(planned, sim.Plans.Needed(null));
 
         int lastNeeded = 8;
@@ -137,15 +141,17 @@ public class BlockPlanScenarioTests
         {
             int masonry = Cells(8, 11).Count(c => sim.World.GetBlock(c) == BlockId.Masonry);
             int polished = Cells(12, 13).Count(c => sim.World.GetBlock(c) == BlockId.PolishedStone);
-            int needed = NeededOf(sim.Plans.Needed(PlanState.Released), "stone");
+            var released = sim.Plans.Needed(PlanState.Released);
+            int needed = NeededOf(released, "stone") + NeededOf(released, "cutstone");
             Assert.Equal(8, needed + masonry + 2 * polished);
             Assert.True(needed <= lastNeeded);
             lastNeeded = needed;
-            Assert.Equal(needed, NeededOf(sim.Plans.Needed(null), "stone"));
-            Assert.Equal(2, NeededOf(sim.Plans.Needed(null), "log"));
+            var all = sim.Plans.Needed(null);
+            Assert.Equal(needed, NeededOf(all, "stone") + NeededOf(all, "cutstone"));
+            Assert.Equal(2, NeededOf(all, "planks"));
         });
         Assert.Empty(sim.Plans.Needed(PlanState.Released));
-        Assert.Equal(new[] { (TestContent.Db.Item("log"), 2) }, sim.Plans.Needed(null));
+        Assert.Equal(new[] { (TestContent.Db.Item("planks"), 2) }, sim.Plans.Needed(null));
     }
 
     [Fact]
@@ -160,7 +166,7 @@ public class BlockPlanScenarioTests
         }
         Assert.NotEqual(a.StateHash(), b.StateHash());
 
-        var sim = World(30);
+        var sim = World(30, cutstone: 10);
         Line(sim, 10, 15, BlockId.Masonry, plan: true);
         Line(sim, 10, 11, BlockId.PolishedStone, plan: false);   // a Released part, repainted
         for (int t = 0; t < 200; t++) sim.Tick();

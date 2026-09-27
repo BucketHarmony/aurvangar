@@ -51,14 +51,16 @@ public class BlockPlacementTests
         Assert.Equal(ActionResult.InventoryEmpty, Place(free));
         a.Carried = new ItemStack(Log, 3);
         Assert.Equal(ActionResult.WrongItem, Place(free));
-        a.Carried = new ItemStack(Stone, 1);
+        var cut = TestContent.Db.Item("cutstone");   // M11-T4: Polished stone costs 2 cut stone (CRF-02)
+        a.Carried = new ItemStack(cut, 1);
         Assert.Equal(ActionResult.NotEnoughItems, Place(free, BlockId.PolishedStone));
         Assert.Equal(BlockId.Air, sim.World.GetBlock(free));
 
-        a.Carried = new ItemStack(Stone, 3);
+        a.Carried = new ItemStack(cut, 3);
         Assert.Equal(ActionResult.Ok, Place(free, BlockId.PolishedStone));
         Assert.Equal(BlockId.PolishedStone, sim.World.GetBlock(free));
-        Assert.Equal(new ItemStack(Stone, 1), a.Carried);
+        Assert.Equal(new ItemStack(cut, 1), a.Carried);
+        a.Carried = new ItemStack(Stone, 1);
         Assert.Equal(ActionResult.Ok, Place(free + Int3.Up));                 // supported by the block just placed
         Assert.True(a.Carried.IsEmpty);
 
@@ -143,7 +145,7 @@ public class BlockPlacementTests
     [Fact]
     public void PlanEntries_SavedAndHashed()
     {
-        Assert.Equal(7, SaveGame.FormatVersion);   // 6 in M8-T2; 7 since M11-T10 (block forms)
+        Assert.Equal(8, SaveGame.FormatVersion);   // 6 in M8-T2; 7 since M11-T10 (block forms); 8 since M11-T4 (orders)
         Simulation Fresh() => new ScenarioBuilder().Ground(8).Agent(new Int3(3, 9, 3)).Build();
         var empty = Fresh();
         var baseHash = empty.StateHash();

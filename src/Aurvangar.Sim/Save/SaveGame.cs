@@ -11,9 +11,10 @@ namespace Aurvangar.Sim.Save;
 public static partial class SaveGame
 {
     public const string Magic = "CSAV";
-    public const int FormatVersion = 7;   // 2: M5-T5 need retry ticks, ColonyLost; 3: M6-T1 moisture; 4: M6-T2 farms;
+    public const int FormatVersion = 8;   // 2: M5-T5 need retry ticks, ColonyLost; 3: M6-T1 moisture; 4: M6-T2 farms;
                                           // 5: M7-T5 give-up marks; 6: M8-T2 block plan entries;
-                                          // 7: M11-T10 block forms, plan entry forms, DesignateBuild form
+                                          // 7: M11-T10 block forms, plan entry forms, DesignateBuild form;
+                                          // 8: M11-T4 workshop orders, Craft/Unload jobs, SetWorkshopOrder
 
     /// <summary>Largest world edge a save may declare (guards the allocation on corrupt input).</summary>
     private const int MaxWorldEdge = 1024;
