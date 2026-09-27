@@ -3363,3 +3363,45 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   GHOST=levee SHOTS=hub`). The three built levees by the hall and a green levee ghost at the end of the line, with no
   white entrance tile; tooltip "Levee (2 log) / R rotate, B next building, Shift keeps the tool".
 - Next: M11-T2 (starting wagon). A storage building needs an entrance (ContentDb enforces it), so the Wagon keeps one.
+
+## M11-T2 — Starting wagon with building supplies (2026-09-27)
+- Done: G6 "arrive with a wagon full of building resources" (ADR-077). New `wagon` in `data/buildings.json`
+  (prebuilt 2×2×3 storage of log and stone, `"receives": false`, `startStock` 40 log + 60 stone,
+  `removableWhenEmpty`). Starting stock is data: `BuildingDef.StartStock` (the hub has 40 berries and 30 water; its old
+  30 logs moved to the wagon), validated by ContentDb; `WorldFactory.StartStock` is gone. `WorldFactory.Start.cs`
+  places each other start building, complete, at the nearest dry site 2..4 cells from the hall whose entrance the
+  hall's entrance reaches (seed 1: origin (36,24,55), entrance (36,24,54)). `StorageDef.Receives` = false gives no
+  room (`JobBoard.StorageRoom`, `WorldActions.FreeCapacity`), so nothing is hauled in, but it is a normal source and
+  the HUD totals count it. Deconstruct of the wagon is rejected with `NotEmpty` while it holds items (tool text "The
+  Wagon still holds N items: use them first"); empty, it gives 10 logs back.
+  - View: `BuildingVisual.Wheels`; `BuildingRenderer` draws four dark wheels and a cream cover over the top half,
+    body in the new palette colour `#9c4a2f`.
+  - Scripts (tests kept): `SurvivalScript.BreachTick` 7200 → 7500, `MonumentScript.YardTick` 6600 → 7200 (the
+    tunnel and quarry room are dug later now); the `build` screenshot script keeps its sites clear of the standing
+    buildings and its mid-build tick is 200 (was 500).
+  - Docs: buildings.md (schema, wagon row, BLD-15..17), 00-overview.md, testing.md (build and survival ticks),
+    screenshot.sh comments.
+- Tests: new `Scenarios/WagonScenarioTests` (9 with the seed theory): data shape; wagon beside the hall on seeds 1-3
+  (gap, standable dry entrance in the hall's region, stock from data); HUD totals and wheels on seed 1; hauls go to
+  the hall, never the wagon; its stock builds a warehouse; teardown only when empty (`NotEmpty`, `PrebuiltOnly` for
+  the hall, 10-log refund reaches the hall); a start stock the storage cannot hold is refused. They failed first on the
+  missing API (`StartStock`, `RemovableWhenEmpty`, `Receives`, `Wheels`).
+  - Updated for the new start: ContentDb building count 5, `Seed1_HubStartingStock` (hub logs 0, wagon 40/60),
+    WorldInvariant hub lookups, screenshot build test (hub + wagon + placed, mid-build at 200, wagon excluded from the
+    state mix), survival building filter.
+  - check.sh: 645 passed, 0 skipped, 0 failed. 0 warnings.
+- Decisions: ADR-077.
+- Golden: regenerated: the start world has a new building (the wagon) and the stock moved from the hall into it, so
+  every seed-1 hash changes from tick 0 (0 → `4c9a42f98266af17`, 6000 → `00cbef7a70242f9b`).
+- Headless (seed 1, 24,000 ticks): no commands: colony lost at 15,009 as before (thirst), hash `2d55f196360b3034`.
+  `--script survival`: 5/5 alive, 452 jobs, 0 failed, hash `6a16f70cd54b1c0c`, stored log 84 stone 82.
+  `--script monument`: 5/5 alive, 667 jobs, 2 failed, hash `9f7c7a04a14ede2b`. `--script materials`: 5/5 alive,
+  929 jobs, 4 failed, hash `43cf753453e8321b`, stone 123 in store.
+- Perf: perf.sh (serial, Release) 9 of 9 pass.
+- sim-reviewer: run (Sim diff ~200 lines). No rule violations; it asked for the BLD-15..17 spec text, ADR-077 and
+  the overview's stock line, all added.
+- Screenshot (Forward+, seed 1, looked at): `artifacts/screens/m11t2_wagon/hub.png` (`TICKS=60 SHOTS=hub`). The
+  wagon stands north-west of the hall: red-brown body under a cream cover, dark wheels; HUD "Log 40 Stone 60 Berries
+  40 Potato 0 Water 30". The wheels are small at this zoom; the cover makes it read as a wagon, not a crate.
+- Next: M11-T3 (economy and crafting spec). Start buildings are any building with `startStock`; a `receives: false`
+  storage is source-only. The wagon's 60 stone is there from day 1 for masonry.

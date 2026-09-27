@@ -6,7 +6,7 @@ namespace Aurvangar.Client;
 
 /// <summary>Buildings (VIEW-09): one footprint box per building in the color <see cref="BuildingVisuals"/> gives
 /// (translucent blueprint, semi-opaque site, solid complete), a label with a progress bar above sites and teardowns,
-/// and a red "NO WATER" billboard over a dry pump. Nodes are pooled by index and refreshed every frame from the
+/// a red "NO WATER" billboard over a dry pump, and four wheels on the long sides of a wheeled building and a canvas cover over its top half (the wagon, M11-T2). Nodes are pooled by index and refreshed every frame from the
 /// ViewCore data; this node never reads sim state.</summary>
 public partial class BuildingRenderer : Node3D
 {
@@ -14,7 +14,17 @@ public partial class BuildingRenderer : Node3D
     public const float BarHeight = 0.22f;
 
     private sealed record Slot(Node3D Root, MeshInstance3D Box, StandardMaterial3D Material, Label3D Label,
-        Node3D Bar, MeshInstance3D Fill, Label3D NoWater);
+        Node3D Bar, MeshInstance3D Fill, Label3D NoWater, Node3D Wheels);
+
+    public const float WheelRadius = 0.5f;
+    public const float WheelWidth = 0.18f;
+    private static readonly CylinderMesh WheelMesh = new()
+    {
+        TopRadius = WheelRadius, BottomRadius = WheelRadius, Height = WheelWidth, RadialSegments = 20, Rings = 1,
+    };
+    private static readonly StandardMaterial3D WheelMaterial = new() { AlbedoColor = new Color(0.16f, 0.11f, 0.07f), Roughness = 1f };
+    /// <summary>The wagon's canvas cover over the top half of its box.</summary>
+    private static readonly StandardMaterial3D CoverMaterial = new() { AlbedoColor = new Color(0.91f, 0.86f, 0.74f), Roughness = 1f };
 
     private static readonly BoxMesh UnitBox = new() { Size = Vector3.One };
     private static readonly StandardMaterial3D BarBack = Flat(new Color(0.08f, 0.08f, 0.08f, 0.85f));
@@ -55,10 +65,37 @@ public partial class BuildingRenderer : Node3D
                 s.Fill.Scale = new Vector3(Mathf.Max(f, 0.001f) * BarWidth, BarHeight * 0.7f, 0.02f);
                 s.Fill.Position = new Vector3(-BarWidth / 2f + f * BarWidth / 2f, 0, 0.02f);
             }
+            s.Wheels.Visible = v.Wheels;
+            if (v.Wheels) PlaceWheels(s.Wheels, MeshConvert.ToGodot(v.Min), size);
             s.NoWater.Visible = v.NoWater;
             if (v.NoWater) s.NoWater.Position = anchor + new Vector3(0, 0.3f, 0);
         }
         Declutter();
+    }
+
+    /// <summary>A canvas cover over the top half of the box, and four wheels on its two long sides, a fifth of the way
+    /// in from each end, their axles across
+    /// the short side, sticking out a little.</summary>
+    private static void PlaceWheels(Node3D wheels, Vector3 min, Vector3 size)
+    {
+        bool alongX = size.X >= size.Z;
+        float length = alongX ? size.X : size.Z, width = alongX ? size.Z : size.X;
+        float y = min.Y + WheelRadius - 0.05f;
+        // Cylinders stand along Y; lay them on their side, axle across the box.
+        var basis = alongX ? new Basis(Vector3.Right, Mathf.Pi / 2f) : new Basis(Vector3.Forward, Mathf.Pi / 2f);
+        int i = 0;
+        var cover = (MeshInstance3D)wheels.GetChild(4);
+        cover.Scale = new Vector3(size.X + 0.06f, size.Y * 0.5f + 0.03f, size.Z + 0.06f);
+        cover.Position = min + new Vector3(size.X / 2f, size.Y * 0.75f + 0.015f, size.Z / 2f);
+        foreach (float along in new[] { 0.2f, 0.8f })
+            foreach (float side in new[] { -WheelWidth / 2f + 0.06f, width + WheelWidth / 2f - 0.06f })
+            {
+                var w = (MeshInstance3D)wheels.GetChild(i++);
+                w.Basis = basis;
+                w.Position = alongX
+                    ? new Vector3(min.X + along * length, y, min.Z + side)
+                    : new Vector3(min.X + side, y, min.Z + along * length);
+            }
     }
 
     private readonly List<ScreenRect> _labelRects = new();
@@ -159,8 +196,13 @@ public partial class BuildingRenderer : Node3D
         noWater.Text = "NO WATER";
         root.AddChild(noWater);
 
+        var wheels = new Node3D { Name = "Wheels", Visible = false };
+        for (int i = 0; i < 4; i++) wheels.AddChild(new MeshInstance3D { Name = $"Wheel{i}", Mesh = WheelMesh, MaterialOverride = WheelMaterial });
+        wheels.AddChild(new MeshInstance3D { Name = "Cover", Mesh = UnitBox, MaterialOverride = CoverMaterial });
+        root.AddChild(wheels);
+
         AddChild(root);
-        return new Slot(root, box, material, label, bar, fill, noWater);
+        return new Slot(root, box, material, label, bar, fill, noWater, wheels);
     }
 
     private static Label3D Billboard(string name, Color color, int fontSize) => new()

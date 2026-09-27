@@ -16,12 +16,15 @@ materials, are built by colonists, then operate. Definitions live in `data/build
   "buildTicks": 300,
   "placement": "ground",           // ground | waterEdge
   "storage": { "capacity": 150, "perItemCapacity": 0, "accepts": ["log", "stone", "berries", "potato"] },
-                                   // capacity = total cap (0 = none); perItemCapacity = cap per item (0 = none)
+                                   // capacity = total cap (0 = none); perItemCapacity = cap per item (0 = none);
+                                   // optional "receives": false = takes no new stock, only a source (BLD-16)
   "workers": 0,
   "producer": null,                // pump: { output, cycleTicks, minIntakeLevel, unitsPerCycle, buffer, haulAt }
   "setsBlocks": true,              // footprint cells become BuildingSolid on completion
   "prebuiltOnly": false,           // true for the hub: cannot be placed by the player
-  "stackable": false               // true for the levee: may sit on the same type (BLD-04, ADR-040)
+  "stackable": false,              // true for the levee: may sit on the same type (BLD-04, ADR-040)
+  "startStock": null,              // optional { item: count }: a start building, stocked at world creation (BLD-15)
+  "removableWhenEmpty": false      // a prebuilt storage that may be torn down once empty (the wagon, BLD-17)
 }
 ```
 
@@ -30,6 +33,7 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 | id | Footprint | Cost | Build ticks | Function |
 |---|---|---|---|---|
 | `hub` | 3×2×3 | – (pre-placed, complete) | – | Storage: every item, 100 each. Spawn point. Eat/drink source |
+| `wagon` | 2×2×3 | 20 log (refund only) | 200 (teardown 100) | Pre-placed beside the hall (BLD-15) with 40 log and 60 stone. Takes no new stock (BLD-16); dwarves haul out of it. Torn down for 10 logs once empty (BLD-17) |
 | `warehouse` | 2×2×2 | 20 log | 300 | Storage: 150 total, solid goods only |
 | `pump` | 2×1×1 | 12 log | 200 | `waterEdge`. 1 worker. Produces 1 water per 30 work ticks while intake level ≥ 256; output goes to its internal buffer (10), hauled to storage |
 | `levee` | 1×1×1 | 2 log | 40 | Becomes BuildingSolid. Blocks water. Stackable (can be placed on top of another levee). No entrance (ADR-076) |
@@ -96,6 +100,20 @@ checked right after `Overlaps` (CON-08).
   `ItemId` order when hashing or saving.
 - **BLD-11** Water is storable only in `hub` (and later tanks). Warehouses reject water.
 - **BLD-12** Global `Storage.Totals` is recomputed each tick for the HUD (sum over storage buildings).
+
+## Start buildings (BLD-15..17, M11-T2, ADR-077)
+
+- **BLD-15** A building with a `startStock` is a start building. World creation places the `hub` on its flat patch,
+  then each other start building in data order, complete, beside it: the nearest site (footprint gap 2..4 cells in
+  x/z from the hall's, then the smallest height difference, then z, x, rotation) that passes BLD-02 (bar the
+  prebuilt-only check), is dry, and whose entrance is reachable from the hall's entrance before and after it is
+  placed. Then every start building gets its `startStock`. ContentDb requires a start stock to fit the building's
+  storage (accepted items, per-item and total caps). The hub starts with 40 berries and 30 water, the wagon with 40
+  log and 60 stone.
+- **BLD-16** A storage with `"receives": false` has no room for anything (no haul, delivery or pump output goes to
+  it) but is a normal source: Deliver, Consume and pickups take from it like any storage, and the HUD counts it.
+- **BLD-17** A prebuilt building with `removableWhenEmpty` may be deconstructed (BLD-09, half its cost back at its
+  entrance) once it holds nothing; before that the command is rejected with `NotEmpty` and the tool says why.
 
 ## Pump production (BLD-13..14)
 

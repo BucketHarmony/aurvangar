@@ -12,10 +12,16 @@ public sealed partial class BuildingSystem
     /// <c>PlannedBlocks</c>: footprint, entrance or stand cell), footprint cells (air, no plant),
     /// ground under the bottom layer, the entrance cell (for a building with no entrance, a stand cell in reach:
     /// <c>NoStandCell</c>, ADR-076), then the water edge for <c>waterEdge</c> buildings.</summary>
-    public PlacementResult CanPlace(BuildingDef def, Int3 origin, int rotation)
+    public PlacementResult CanPlace(BuildingDef def, Int3 origin, int rotation) => CanPlace(def, origin, rotation, false);
+
+    /// <summary>World creation (BLD-15, M11-T2): <see cref="CanPlace(BuildingDef, Int3, int)"/> for a start building,
+    /// which skips the prebuilt-only check.</summary>
+    internal PlacementResult CanPlaceAtStart(BuildingDef def, Int3 origin, int rotation) => CanPlace(def, origin, rotation, true);
+
+    private PlacementResult CanPlace(BuildingDef def, Int3 origin, int rotation, bool atStart)
     {
         if (!BuildingShape.IsValidRotation(rotation)) return PlacementResult.BadRotation;
-        if (def.PrebuiltOnly) return PlacementResult.PrebuiltOnly;
+        if (def.PrebuiltOnly && !atStart) return PlacementResult.PrebuiltOnly;
 
         var footprint = BuildingShape.Footprint(def, origin, rotation).ToList();
         bool hasEntrance = def.HasEntrance;

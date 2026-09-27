@@ -59,19 +59,20 @@ public class ScreenshotScriptTests
         foreach (var c in commands) sim.Enqueue(c);
         sim.Tick();
         Assert.DoesNotContain(sim.Events.Drain(), e => e is CommandRejected);
-        Assert.Equal(1 + places.Count, sim.Buildings.All.Count());
+        Assert.Equal(2 + places.Count, sim.Buildings.All.Count());   // the hub and the wagon (M11-T2) + the placed
 
         // The harness shows a red warehouse ghost on the hub roof.
         var pick = ScreenshotScripts.GhostPick("build", sim)!.Value;
         Assert.Equal(PlacementResult.NotOnGround, new Aurvangar.ViewCore.Tools.BuildTool(TestContent.Db).Ghost(sim, pick)!.Value.Result);
         Assert.Null(ScreenshotScripts.GhostPick("digchop", sim));
 
-        // Part way (TICKS=500) the shots show several building states; by tick 1600 everything is built. (It was 1200
-        // before M6-T3: the dwarves first pick berries (40 < 60 food), which delays the chops that supply logs; ADR-048.)
-        sim.RunTicks(499);
-        var states = sim.Buildings.All.Where(b => b.Def.Id != "hub").Select(b => b.State).Distinct().ToList();
-        Assert.True(states.Count >= 2, $"states at tick 500: {string.Join(",", states)}");
-        sim.RunTicks(1100);
+        // Part way (TICKS=200) the shots show several building states; by tick 1600 everything is built. (It was 1200
+        // before M6-T3: the dwarves first pick berries (40 < 60 food), which delays the chops that supply logs; ADR-048.
+        // The mid-build tick was 500 before M11-T2: the wagon's 40 logs now finish every site by about tick 400, ADR-077.)
+        sim.RunTicks(199);
+        var states = sim.Buildings.All.Where(b => b.Def.Id is not ("hub" or "wagon")).Select(b => b.State).Distinct().ToList();
+        Assert.True(states.Count >= 2, $"states at tick 200: {string.Join(",", states)}");
+        sim.RunTicks(1400);
         Assert.All(sim.Buildings.All, b => Assert.Equal(BuildingState.Complete, b.State));
         // M7-T2: the pump stands on a wet bank site with no dug notch (its worker stands one level up), so it runs.
         var pump = sim.Buildings.All.Single(b => b.Def.Id == "pump");

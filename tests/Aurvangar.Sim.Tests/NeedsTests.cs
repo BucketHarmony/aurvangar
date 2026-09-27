@@ -267,7 +267,8 @@ public class NeedsTests
         }
     }
 
-    /// <summary>docs/00-overview.md: the Great Hall starts with 40 berries, 30 water and 30 logs.</summary>
+    /// <summary>docs/00-overview.md: the Great Hall starts with 40 berries and 30 water. Since M11-T2 (ADR-077) the
+    /// building supplies (logs, stone) start in the wagon beside it; the stock is data (<c>startStock</c>).</summary>
     [Fact]
     public void Seed1_HubStartingStock()
     {
@@ -275,6 +276,9 @@ public class NeedsTests
         var hub = sim.Buildings.All.Single(b => b.Def.Id == "hub");
         Assert.Equal(40, hub.Stored.GetValueOrDefault(Item("berries").Value));
         Assert.Equal(30, hub.Stored.GetValueOrDefault(Item("water").Value));
-        Assert.Equal(30, hub.Stored.GetValueOrDefault(Item("log").Value));
+        Assert.Equal(0, hub.Stored.GetValueOrDefault(Item("log").Value));
+        var wagon = sim.Buildings.All.Single(b => b.Def.Id == "wagon");
+        Assert.Equal(40, wagon.Stored.GetValueOrDefault(Item("log").Value));
+        Assert.Equal(60, wagon.Stored.GetValueOrDefault(Item("stone").Value));
     }
 }

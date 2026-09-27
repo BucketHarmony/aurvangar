@@ -15,7 +15,8 @@ public sealed record PlaceBuilding(string DefId, Int3 Origin, int Rotation) : IC
 
 /// <summary>BLD-09: a blueprint or construction site is cancelled (full refund of what was delivered); a complete
 /// building is deconstructed by a Deconstruct job (half refund). Rejected with a reason for the hub
-/// ("PrebuiltOnly"), an unknown id, a building with another building on top, or one already being deconstructed.
+/// ("PrebuiltOnly"), a wagon that still holds items ("NotEmpty", BLD-17), an unknown id, a building with another
+/// building on top, or one already being deconstructed.
 /// Not a positional record: that would generate a Deconstruct method, which C# forbids on a type of that name.</summary>
 public sealed record Deconstruct : ICommand
 {

@@ -92,7 +92,7 @@ public static class SurvivalScript
     /// <summary>The dam cells: the river's top water layer (y=17) is on their south side, the tunnel on the north.</summary>
     public static readonly Int3 BreachA = new(84, 17, 66);
     public static readonly Int3 BreachB = new(85, 17, 66);
-    public const long BreachTick = 7200;
+    public const long BreachTick = 7500;   // 7200 before M11-T2: the tunnel is dug later with the wagon start (ADR-077)
 
     /// <summary>Levees on the breach cells, rotation 0 (a levee has no entrance, ADR-076).</summary>
     public const long RepairTick = BreachTick + 300;

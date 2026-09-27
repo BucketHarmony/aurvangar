@@ -25,6 +25,7 @@
   },
   "buildings": {
     "hub": "#c28b4a",
+    "wagon": "#9c4a2f",
     "warehouse": "#a07850",
     "pump": "#4f7fa0",
     "levee": "#8f8a70",

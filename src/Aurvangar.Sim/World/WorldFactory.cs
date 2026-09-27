@@ -5,7 +5,7 @@ using Aurvangar.Sim.Paths;
 namespace Aurvangar.Sim.World;
 
 /// <summary>Builds the standard game world: 128x64x128, terrain, hub, plants, colonists, pre-settled river.</summary>
-public static class WorldFactory
+public static partial class WorldFactory
 {
     public const int SizeX = 128, SizeY = 64, SizeZ = 128;
 
@@ -18,8 +18,9 @@ public static class WorldFactory
         foreach (var t in terrain.TreeBases) sim.Plants.AddTree(t);
         foreach (var b in terrain.BushBases) sim.Plants.AddBush(b);
         PreSettleRiver(sim, terrain);
+        PlaceStartBuildings(sim, hall);   // M11-T2: the wagon (BLD-15)
         SpawnColonists(sim, hall.EntranceCell);
-        StartingStock(sim, hall);
+        StartingStock(sim);
         sim.World.ClearChangeLog();
         sim.PathGrid.ClearWalkChanges();   // worldgen is not a JOB-12 walkability change
         sim.World.MarkAllDirty();
@@ -27,12 +28,13 @@ public static class WorldFactory
         return sim;
     }
 
-    /// <summary>docs/00-overview.md: the Great Hall's starting stock.</summary>
-    public static readonly (string Item, int Count)[] StartStock = { ("berries", 40), ("water", 30), ("log", 30) };
-
-    private static void StartingStock(Simulation sim, Buildings.Building hall)
+    /// <summary>BLD-15 (M11-T2, ADR-077): every start building holds its <c>startStock</c> from buildings.json (the Great
+    /// Hall its food and water, the wagon the building supplies).</summary>
+    private static void StartingStock(Simulation sim)
     {
-        foreach (var (item, n) in StartStock) hall.Stored[sim.Content.Item(item).Value] = n;
+        foreach (var b in sim.Buildings.All)
+            if (b.Def.StartStock is { } stock)
+                foreach (var (item, n) in stock) b.Stored[sim.Content.Item(item).Value] = n;
     }
 
     /// <summary>GEN-08 pre-settle length in ticks.</summary>

@@ -349,7 +349,7 @@ starting wagon answers "I dont know where to get stone from".
     entrance tile.
   - Scenario tests: a levee can be built with only one side reachable; stacked levees still build. Keep the
     survival session's reservoir working. Regenerate goldens if needed, and record why. ADR.
-- [ ] **M11-T2** Starting wagon with building supplies · specs: ECO-*, BLD-* · deps: M11-T1
+- [x] **M11-T2** Starting wagon with building supplies · specs: ECO-*, BLD-* · deps: M11-T1
   - G6: "can they arrive with a wagon full of building resources for us to start with?"
   - The colony starts with a Wagon, a prebuilt storage building next to the Great Hall, defined in data. It holds
     building supplies: at least 60 stone and 40 logs, plus the current food and water. It takes no new stock after

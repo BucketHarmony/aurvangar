@@ -75,7 +75,7 @@ public sealed class JobBoard
     public int StorageRoom(Building b, ItemId item, Job? own = null)
     {
         var s = b.Def.Storage;
-        if (s is null) return 0;
+        if (s is null || !s.Receives) return 0;   // BLD-16: the wagon takes no new stock
         int ownItem = 0, ownTotal = 0;
         if (own is { IsClaimed: true })
             foreach (var r in own.Reservations)

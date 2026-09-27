@@ -21,7 +21,7 @@ public class WorldInvariantTests
     public void HubFootprintIsBuildingSolid_EntranceStandable() // GEN-05
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
-        var hub = Assert.Single(sim.Buildings.All);
+        var hub = sim.Buildings.All.Single(b => b.Def.Id == "hub");   // M11-T2: the wagon stands beside it
         Assert.All(hub.FootprintCells(), c => Assert.Equal(BlockId.BuildingSolid, sim.World.GetBlock(c)));
         Assert.True(sim.PathGrid.IsStandable(hub.EntranceCell));
     }
@@ -39,7 +39,7 @@ public class WorldInvariantTests
     {
         var sim = WorldFactory.Create(1, TestContent.Db);
         sim.Tick(); // regions build at end of tick
-        var hub = sim.Buildings.All.Single();
+        var hub = sim.Buildings.All.Single(b => b.Def.Id == "hub");
         int hubRegion = sim.Regions.RegionOf(hub.EntranceCell);
         Assert.NotEqual(Paths.Regions.None, hubRegion);
         // A cell on the river bank (standable, within 2 of wet cells) and a cell on the hill slope share the hub region.

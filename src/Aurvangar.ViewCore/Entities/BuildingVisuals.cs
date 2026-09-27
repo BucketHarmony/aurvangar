@@ -11,9 +11,10 @@ public enum BuildingLook : byte { Blueprint, Site, Complete, Deconstructing }
 /// <summary>One building as the view draws it: a box from <see cref="Min"/> with <see cref="Size"/> (world units,
 /// already clipped to the slice level and slightly inflated so it covers the building's own solid blocks), its color
 /// (alpha &lt; 1 is translucent), a label (empty for none) with a progress bar (<see cref="Progress"/> 0..1, or -1
-/// for no bar) above <see cref="LabelAnchor"/>, and the pump's no-water flag.</summary>
+/// for no bar) above <see cref="LabelAnchor"/>, the pump's no-water flag, and <see cref="Wheels"/> for a building drawn
+/// with wheels on its long sides (the wagon, M11-T2).</summary>
 public readonly record struct BuildingVisual(BuildingId Id, Vector3 Min, Vector3 Size, BuildingLook Look, Vector4 Color,
-    string Label, float Progress, bool NoWater, Vector3 LabelAnchor);
+    string Label, float Progress, bool NoWater, Vector3 LabelAnchor, bool Wheels = false);
 
 /// <summary>Building render data (VIEW-09). Blueprint = translucent blueprint color with the materials still to come;
 /// site = semi-opaque building color with the delivery or build progress; complete = solid palette color; being torn
@@ -30,6 +31,9 @@ public static class BuildingVisuals
 
     /// <summary>The label sits this far above the top of the box.</summary>
     public const float LabelLift = 0.35f;
+
+    /// <summary>M11-T2: building types drawn with wheels (the starting wagon).</summary>
+    public static readonly IReadOnlySet<string> WheeledIds = new HashSet<string>(StringComparer.Ordinal) { "wagon" };
 
     public static BuildingLook LookOf(Building b) => b.State switch
     {
@@ -55,7 +59,8 @@ public static class BuildingVisuals
             var anchor = new Vector3(lo.X + size.X / 2f, lo.Y + size.Y + LabelLift, lo.Z + size.Z / 2f);
             var (label, progress) = LabelOf(sim, b);
             bool noWater = b.State == BuildingState.Complete && b.Def.Producer is not null && b.NoWater;
-            list.Add(new BuildingVisual(b.Id, lo, size, look, ColorOf(b, look, colors), label, progress, noWater, anchor));
+            list.Add(new BuildingVisual(b.Id, lo, size, look, ColorOf(b, look, colors), label, progress, noWater, anchor,
+                WheeledIds.Contains(b.Def.Id)));
         }
         return list;
     }

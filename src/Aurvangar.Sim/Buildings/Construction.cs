@@ -28,12 +28,15 @@ public static partial class Construction
     }
 
     /// <summary>BLD-09: cancel a blueprint or site, or start deconstructing a complete building. Rejected with
-    /// SupportsBlocks when removing a complete building's footprint would unground a built block (CON-10).</summary>
+    /// SupportsBlocks when removing a complete building's footprint would unground a built block (CON-10). A
+    /// prebuilt-only building is rejected (PrebuiltOnly) unless it is removable when empty (the wagon, BLD-17): then
+    /// only while it still holds items (NotEmpty).</summary>
     public static void Deconstruct(Simulation sim, string tag, BuildingId id)
     {
         var b = sim.Buildings.Get(id);
         if (b is null) { Reject(sim, tag, "UnknownBuilding"); return; }
-        if (b.Def.PrebuiltOnly) { Reject(sim, tag, "PrebuiltOnly"); return; }
+        if (b.Def.PrebuiltOnly && !b.Def.RemovableWhenEmpty) { Reject(sim, tag, "PrebuiltOnly"); return; }
+        if (b.Def.RemovableWhenEmpty && b.Stored.Count > 0) { Reject(sim, tag, "NotEmpty"); return; }   // BLD-17
         if (b.State == BuildingState.Deconstructing) { Reject(sim, tag, "AlreadyDeconstructing"); return; }
         if (HasBuildingOnTop(sim, b)) { Reject(sim, tag, "BuildingOnTop"); return; }
         if (b.State == BuildingState.Complete && SupportsBlocks(sim, b)) { Reject(sim, tag, "SupportsBlocks"); return; }

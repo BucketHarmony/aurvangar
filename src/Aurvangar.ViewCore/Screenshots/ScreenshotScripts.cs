@@ -20,8 +20,9 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// <item><c>build</c> (M5-T6): the <c>digchop</c> chop order plus a warehouse, a pump and a
 /// line of <see cref="LeveeCount"/> levees, each at the nearest valid site at least <see cref="BuildGap"/> cells
 /// from the hub (<see cref="FindSite"/>). The pump needs no water to be placed (ADR-040); on seed 1 the nearest site
-/// is a dry terrace step, so the shots also show its no-water icon. With <c>--ticks 500</c> the shots show buildings in several states; by
-/// tick 1600 all of them are complete (1200 before the M6-T3 berry picking, ADR-048).</item>
+/// is a dry terrace step, so the shots also show its no-water icon. With <c>--ticks 200</c> the shots show buildings in several states; by
+/// tick 1600 all of them are complete (1200 before the M6-T3 berry picking, ADR-048; since M11-T2 the wagon's logs finish
+/// them by about tick 400, so the mid-build tick moved from 500 to 200, ADR-077).</item>
 /// <item><c>farm</c> (M6-T5): a <see cref="FarmSize"/>�<see cref="FarmSize"/> field (<see cref="FindFarm"/>) on the
 /// nearest moist ground to the hub. <c>--ticks 4000</c> shows growing crops; by 9000 (before the day-5 drought) the
 /// first are mature and harvested. The <c>farm</c> camera preset looks at it.</item>
@@ -204,6 +205,9 @@ public static class ScreenshotScripts
     {
         var content = sim.Content;
         var taken = new HashSet<Int3>();
+        // M11-T2: keep clear of the buildings already standing (the hall and the wagon beside it), so the new sites do
+        // not wall in the wagon's entrance.
+        foreach (var b in sim.Buildings.All) Take(sim, b.Def, b.Origin, b.Rotation, taken);
         var list = new List<ICommand> { ChopNearHub(sim) };
         if (FindSite(sim, content.Building("warehouse"), taken) is { } wh) list.Add(wh);
         // The pump goes to the nearest site with water at its intake (on seed 1 a bank site that uses the stand cell

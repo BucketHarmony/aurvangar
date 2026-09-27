@@ -34,7 +34,7 @@ The POC is done when the **definition-of-done session** below plays end to end o
 
 1. The map loads: 128×128×64 voxels, a hill, a river flowing from the west edge to the east edge, trees, berry
    bushes. A pre-built Great Hall (the `hub` building) stands on a flat patch near the river with 5 dwarves and starting stock
-   (40 berries, 30 water, 30 logs).
+   (40 berries, 30 water) and, beside it, a Wagon of building supplies (40 logs, 60 stone; BLD-15, M11-T2).
 2. The player places a Water Pump on the riverbank. Colonists build it. It fills storage with water.
 3. The player designates a farm field near the river. Colonists plant; potatoes grow only on moist tiles.
 4. The player designates chopping; colonists fell trees and haul logs to storage.

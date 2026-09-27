@@ -21,7 +21,9 @@ public static class DeconstructTool
     /// <summary>Why the building cannot be deconstructed (the same checks as the command, BLD-09), or null.</summary>
     public static string? Refusal(Simulation sim, Building b)
     {
-        if (b.Def.PrebuiltOnly) return $"The {b.Def.Name} cannot be torn down";
+        if (b.Def.PrebuiltOnly && !b.Def.RemovableWhenEmpty) return $"The {b.Def.Name} cannot be torn down";
+        if (b.Def.RemovableWhenEmpty && b.Stored.Count > 0)   // BLD-17 (M11-T2)
+            return $"The {b.Def.Name} still holds {b.Stored.Values.Sum()} items: use them first";
         if (b.State == BuildingState.Deconstructing) return "Already being torn down";
         if (Construction.HasBuildingOnTop(sim, b)) return "Something is built on top of it";
         return null;

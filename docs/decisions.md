@@ -1833,3 +1833,35 @@ Decision:
 Consequences: the survival session's levees (including the reservoir seal at (67,17,71)) build as before; its hash
 `e1ddb97096eb0267` and every golden are unchanged, because builders already stood on any reach cell. A levee can now
 be built into a notch reached from one side at any rotation.
+
+## ADR-077: The colony starts with a wagon of building supplies; starting stock moves into data (2026-09-27, M11-T2)
+Context: G6: "can they arrive with a wagon full of building resources for us to start with?" The Great Hall's
+starting stock (40 berries, 30 water, 30 logs) was a C# array in `WorldFactory` (ADR-043), and every stone had to be
+quarried first.
+Decision:
+- New `wagon` building in `data/buildings.json`: 2×2×3, prebuilt-only, a storage that accepts log and stone with
+  `"receives": false`, `startStock` 40 log and 60 stone, `removableWhenEmpty`, cost 20 log (only the teardown refund
+  uses it: 10 logs). It keeps an entrance because it is a storage (ContentDb, ADR-076).
+- `startStock` is a building field (BLD-15). The hall keeps 40 berries and 30 water; its 30 logs moved to the wagon,
+  which holds 40. ContentDb checks each start stock against the building's storage (accepted items, caps).
+- World creation places each non-hub start building, in data order, complete, at the nearest site beside the hall:
+  footprint gap 2..4 in x/z, height within 2 of the hall's floor, sorted by (gap, rise, z, x, rotation). The site
+  must pass BLD-02 bar the prebuilt-only check, be dry, and have its entrance reachable from the hall's entrance both
+  before and after it is placed (else it is taken back and the next site is tried). No site throws. On seed 1 it is
+  at (36,24,55) rotation 0, entrance (36,24,54), 2 cells west of the hall.
+- `receives: false` (BLD-16) is enforced in the two room checks (`JobBoard.StorageRoom`, `WorldActions.FreeCapacity`),
+  so hauls, deliveries and pump output never pick it; it is a source like any storage, and the HUD totals include it.
+- `removableWhenEmpty` (BLD-17): Deconstruct is rejected with `NotEmpty` while it holds anything; the tool says
+  "The Wagon still holds N items: use them first". Empty, it comes down with the usual half-cost refund.
+- The view draws the wagon in its own palette colour with four wheels and a cream cover (styling keyed by the
+  `wagon` id in `BuildingVisuals.WheeledIds`); no sim data.
+- Scripts that depended on the old start (tests kept, intents unchanged): the extra 70 items to spend and store change
+  who does what when, so the survival tunnel and the monument quarry room are dug later on seed 1. `SurvivalScript
+  .BreachTick` 7200 → 7500 (repair still +300: at 7200 the breach cells were not dug by the repair tick, so a
+  repair levee's site was blocked; a longer repair delay instead caught no dwarf in the flood), `MonumentScript.YardTick` 6600 → 7200 (the far warehouse site was not dug yet). The
+  `build` screenshot script now keeps its sites clear of every standing building (the first levee line walled in the
+  wagon's entrance and a builder dropped 10 logs), and since the wagon's logs finish its sites by about tick 400, its
+  mid-build tick is 200 (was 500).
+Consequences: goldens regenerated (the start world holds a new building and the stock moved). A colony can build a
+warehouse, the pump and some levees before the first chop, and has 60 stone for masonry from day 1. Starting stock is
+now changed in data only.

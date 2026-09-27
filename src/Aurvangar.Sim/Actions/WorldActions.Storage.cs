@@ -113,6 +113,7 @@ public sealed partial class WorldActions
     public static int FreeCapacity(Building b, ItemId item)
     {
         var s = b.Def.Storage!;
+        if (!s.Receives) return 0;   // BLD-16
         int free = int.MaxValue;
         if (s.PerItemCapacity > 0) free = s.PerItemCapacity - StoredCount(b, item);
         if (s.Capacity > 0)

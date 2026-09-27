@@ -86,11 +86,11 @@ plays in, so they show the same lighting and colors as play (ADR-035). There is 
 On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env options: `SEED`, `TICKS` (1200),
 `SHOTS`, `OUT`, and `SCRIPT=digchop` (dig a pit and chop trees near the hub, so colonists are at work;
 `TICKS=400` shows the marks, 1200 shows the piles) or `SCRIPT=build` (chop plus a warehouse, a pump and a levee line
-near the hub; `TICKS=500` catches them mid-build, 1600 shows them complete, ADR-048; add `GHOST=levee` for a green
+near the hub; `TICKS=200` catches them mid-build (500 before the M11-T2 wagon), 1600 shows them complete, ADR-048; add `GHOST=levee` for a green
 levee ghost at the end of the line with no entrance tile, M11-T1, `SHOTS=hub`) or `SCRIPT=farm` (a 5×5 field on
 the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the first mature ones and harvests) or
 `SCRIPT=survival` (the timed `SurvivalScript`, each command enqueued at its tick, M7-T7). Useful survival shots:
-`TICKS=7700 SHOTS=tunnel` (flooded tunnel, breach levee sites), `TICKS=8400 SHOTS=tunnel` (levees complete),
+`TICKS=8000 SHOTS=tunnel` (flooded tunnel, breach levee sites), `TICKS=8700 SHOTS=tunnel` (levees complete),
 `TICKS=3000 SHOTS=reservoir` (full reservoir), `TICKS=14400 SHOTS=reservoir,tunnel,river` (drought: the river is
 empty, the reservoir and the tunnel still hold water). `SCRIPT=monument` (the timed `MonumentScript`, M8-T6):
 `TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 14000 (tower half built), 17400 (complete).
@@ -119,8 +119,8 @@ the survival scenario (`SurvivalScenarioTests`), and `run-headless.sh --script s
 | 1800 | five levees `(33..37,23,76)` on the bank between the hall and the river |
 | 2400 | 5×6 farm field `(62,67)..(66,72)` beside the reservoir |
 | 3000 | tunnel into the hill's south slope `(84,17,56)..(85,18,65)`; its north half is stone |
-| 7200 | breach (N): dig the bank cells `(84..85,17,66)` between the tunnel mouth and the river; the tunnel floods |
-| 7500 | levee repair (N+300): a levee on each breach cell; the flood is walled off |
+| 7500 | breach (N, 7200 before the M11-T2 wagon): dig the bank cells `(84..85,17,66)` between the tunnel mouth and the river; the tunnel floods |
+| 7800 | levee repair (N+300): a levee on each breach cell; the flood is walled off |
 | 9600 | seal levee on the reservoir mouth `(67,17,71)`; the reservoir holds through the drought (M7-T3) |
 
 `Scripts.MonumentScript` (M8-T6, ADR-066) is the monument session on seed 1: chop, a pump, a corridor and quarry

@@ -13,7 +13,25 @@
       "producer": null,
       "setsBlocks": true,
       "prebuiltOnly": true,
-      "stackable": false
+      "stackable": false,
+      "startStock": { "berries": 40, "water": 30 }
+    },
+    {
+      "id": "wagon",
+      "name": "Wagon",
+      "footprint": [2, 2, 3],
+      "entrance": [0, 0, -1],
+      "cost": { "log": 20 },
+      "buildTicks": 200,
+      "placement": "ground",
+      "storage": { "capacity": 0, "perItemCapacity": 0, "accepts": ["log", "stone"], "receives": false },
+      "workers": 0,
+      "producer": null,
+      "setsBlocks": true,
+      "prebuiltOnly": true,
+      "stackable": false,
+      "startStock": { "log": 40, "stone": 60 },
+      "removableWhenEmpty": true
     },
     {
       "id": "warehouse",

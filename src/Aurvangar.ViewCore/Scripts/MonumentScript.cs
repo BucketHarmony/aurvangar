@@ -63,7 +63,7 @@ public static class MonumentScript
     /// <summary>The second, at the room's far end: 150 stone fit in one Warehouse, and the rest would go to the Great
     /// Hall, a long walk per stone.</summary>
     public static readonly Int3 YardOrigin = new(88, 24, 42);
-    public const long YardTick = 6600;
+    public const long YardTick = 7200;   // 6600 before M11-T2: the room is dug later with the wagon start (ADR-077)
 
     /// <summary>The whole plan's release, once the stone is in store.</summary>
     public const long ReleaseTick = 9600;

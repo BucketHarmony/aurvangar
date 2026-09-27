@@ -59,7 +59,7 @@ public class SurvivalScriptTests
         Assert.DoesNotContain(events, e => e.Event is CommandRejected);
         Assert.Empty(sim.Designations.All);
 
-        var built = sim.Buildings.All.Where(b => b.Def.Id != "hub").OrderBy(b => b.Id.Value).ToList();
+        var built = sim.Buildings.All.Where(b => b.Def.Id is not ("hub" or "wagon")).OrderBy(b => b.Id.Value).ToList();
         Assert.Equal(new[] { "pump", "warehouse" }.Concat(Enumerable.Repeat("levee", SurvivalScript.LeveeCount)),
             built.Select(b => b.Def.Id));
         Assert.All(built, b => Assert.Equal(BuildingState.Complete, b.State));

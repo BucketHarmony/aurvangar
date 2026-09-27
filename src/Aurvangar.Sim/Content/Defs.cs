@@ -25,7 +25,10 @@ public sealed record ItemDef(string Id, string Name, int Food, int Drink);
 /// <summary>A building type from buildings.json. See docs/specs/buildings.md. <see cref="Stackable"/> (BLD-04,
 /// ADR-040): may be placed on another building of the same type, blueprinted or complete, and its complete blocks
 /// count as ground for any building. <see cref="Entrance"/> is null for a building with no workers and no storage
-/// (the levee, M11-T1, ADR-076): its builders stand on any standable cell in reach of the footprint.</summary>
+/// (the levee, M11-T1, ADR-076): its builders stand on any standable cell in reach of the footprint.
+/// <see cref="StartStock"/> (M11-T2, ADR-077): a building with it is part of the starting colony (the hub and the
+/// wagon, BLD-15) and holds these items at world creation. <see cref="RemovableWhenEmpty"/>: a prebuilt-only building
+/// that may still be torn down once it holds nothing (the wagon, BLD-17).</summary>
 public sealed record BuildingDef(
     string Id,
     string Name,
@@ -39,14 +42,18 @@ public sealed record BuildingDef(
     ProducerDef? Producer,
     bool SetsBlocks,
     bool PrebuiltOnly,
-    bool Stackable = false)
+    bool Stackable = false,
+    Dictionary<string, int>? StartStock = null,
+    bool RemovableWhenEmpty = false)
 {
     /// <summary>False for a building with no entrance in data (the levee, ADR-076).</summary>
     public bool HasEntrance => Entrance is not null;
 }
 
-/// <summary>Storage block of a building. Capacity is total (0 = none); PerItemCapacity caps each item (0 = none).</summary>
-public sealed record StorageDef(int Capacity, int PerItemCapacity, string[] Accepts);
+/// <summary>Storage block of a building. Capacity is total (0 = none); PerItemCapacity caps each item (0 = none).
+/// <see cref="Receives"/> false (the wagon, BLD-16, ADR-077): it holds only what it started with; nothing is delivered
+/// or hauled into it, but it is still a source.</summary>
+public sealed record StorageDef(int Capacity, int PerItemCapacity, string[] Accepts, bool Receives = true);
 
 /// <summary>Producer block (pump).</summary>
 public sealed record ProducerDef(string Output, int CycleTicks, int MinIntakeLevel, int UnitsPerCycle, int Buffer, int HaulAt);

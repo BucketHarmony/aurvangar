@@ -164,6 +164,9 @@ public sealed class ContentDb
                         throw new InvalidDataException($"buildings.json: building '{b.Id}' stores unknown item '{key}'");
             if (b.Producer is not null && !_itemsByKey.ContainsKey(b.Producer.Output))
                 throw new InvalidDataException($"buildings.json: building '{b.Id}' produces unknown item '{b.Producer.Output}'");
+            ValidateStartStock(b);
+            if (b.RemovableWhenEmpty && b.Storage is null)
+                throw new InvalidDataException($"buildings.json: building '{b.Id}' is removableWhenEmpty but has no storage");
             if (b.Footprint.Length != 3 || b.Footprint.Any(v => v <= 0))
                 throw new InvalidDataException($"buildings.json: building '{b.Id}' footprint must be 3 positive ints");
             if (b.Placement is not ("ground" or "waterEdge"))
@@ -181,6 +184,26 @@ public sealed class ContentDb
             if (inside || b.Entrance[1] != 0)
                 throw new InvalidDataException($"buildings.json: building '{b.Id}' entrance must be outside the footprint at y = 0");
         }
+    }
+
+    /// <summary>BLD-15 (M11-T2, ADR-077): a start building's stock is items it stores, within its caps.</summary>
+    private void ValidateStartStock(BuildingDef b)
+    {
+        if (b.StartStock is null) return;
+        string who = $"buildings.json: building '{b.Id}'";
+        if (b.Storage is null) throw new InvalidDataException($"{who} has startStock but no storage");
+        int total = 0;
+        foreach (var (key, n) in b.StartStock)
+        {
+            if (!_itemsByKey.ContainsKey(key)) throw new InvalidDataException($"{who} starts with unknown item '{key}'");
+            if (!b.Storage.Accepts.Contains(key, StringComparer.Ordinal))
+                throw new InvalidDataException($"{who} starts with '{key}', which it does not store");
+            if (n < 1 || (b.Storage.PerItemCapacity > 0 && n > b.Storage.PerItemCapacity))
+                throw new InvalidDataException($"{who} starts with {n} '{key}'; the count must be 1..its per-item capacity");
+            total += n;
+        }
+        if (b.Storage.Capacity > 0 && total > b.Storage.Capacity)
+            throw new InvalidDataException($"{who} starts with {total} items, over its capacity {b.Storage.Capacity}");
     }
 
     private static string ReadResource(Assembly asm, string name)
