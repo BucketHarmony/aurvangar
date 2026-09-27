@@ -2120,3 +2120,28 @@ Decision:
 Consequences: goldens change after tick 3000 (the first arrival runs in the tick after the 3000 hash); the 6000 line
 is regenerated. The trader appears in every test world with a hall that runs past tick 3000. A trader is sent away on
 any tick outside its visit window, not only the exact leave tick. `BuildingVisuals.WheeledIds` includes the trader.
+
+## ADR-085: Workshop and trade panels: order buttons, Accept all, where they sit (2026-09-27, M11-T6)
+Context: VIEW-28..30 leave open how the order buttons behave on a row with no order, what "Accept all" sends, how a
+toast "opens" the trade panel, and where the panels go.
+Decision:
+- **Order rows** (`WorkshopPanelModel`, ViewCore). The only view state is the mode picked on a row with no order
+  (Make by default). + or - on such a row creates the order in the picked mode (count = the step); a step to 0 or Clear
+  sends count 0 (removes it), and the row keeps its mode. Make / Keep on a row with an order re-sends it with the same
+  count in the new mode, so the sim resets `done` (CRF-07). Every button sends at most one `SetWorkshopOrder`; the
+  count is clamped to 0..999, and a no-op sends nothing. Keep rows show "in stock N" (CRF-08 `Economy.Stock`).
+- **Status words** (CRF-13): not built yet, no orders, working, output full (item), needs item, waiting for a crafter,
+  orders met. The HUD alert for a complete workshop in NoInput or OutputFull uses the same text ("Sawmill: needs log").
+- **Accept all** sends the most lots the colony can pay for now (at most the lots left). When it cannot pay for one it
+  asks for every lot left, so it is disabled with the sim's reason. The button reads "Accept all (n)". The panel runs
+  the CRF-18 checks in the sim's order with `Traders.FreeStock`, so a disabled button is exactly a command the sim
+  would refuse (tested against the sim).
+- **Toolbar and toasts.** A "Trade" button at the end of the toolbar is enabled while a trader is here; its tooltip
+  is "Trade wagon: leaves in 3h" or "Trade wagon in 1 day 4h" (hours of 100 ticks, rounded up). The arrival toast
+  names the button ("open Trade to see its offers") rather than being clickable; TraderLeft and TraderNoRoom toast too.
+- **Panels** sit beside the colonist panel; one is open at a time. A Select click on a workshop (complete or planned)
+  opens its panel; a gone workshop, a departed trader or a load closes it.
+- **Screenshots.** A timed `workshop` script (a stonecutter and a sawmill with orders, one accepted lot at tick 3001),
+  a `workshop` camera preset, and `--panel workshop|trade` (`PANEL=` in screenshot.sh).
+Consequences: no sim change; goldens unchanged. The top bar totals were already every item in data order; with the
+Trade button the totals may wrap or drop below the toolbar at narrow widths (HudLayout, tested).

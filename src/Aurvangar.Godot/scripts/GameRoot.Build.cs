@@ -79,6 +79,8 @@ public partial class GameRoot
             case ToolKind.Blocks:
                 _blocks.Press(Hover);
                 return true;
+            case ToolKind.Select:
+                return SelectClick();   // VIEW-28: a click on a workshop opens its panel
             default:
                 return false;
         }
@@ -134,6 +136,9 @@ public partial class GameRoot
                 break;
             case CommandRejected r:
                 _hud.Toast($"{r.Command} refused: {r.Reason}");
+                break;
+            default:
+                HandleTraderEvent(e);
                 break;
         }
     }

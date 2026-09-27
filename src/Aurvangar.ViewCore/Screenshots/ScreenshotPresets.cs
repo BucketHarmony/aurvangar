@@ -42,7 +42,7 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes", "workshop" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -58,6 +58,7 @@ public static class ScreenshotPresets
     public const float StairsYaw = 180f;
     public const float WallYaw = 130f;
     public const float ShapesYaw = 330f;
+    public const float WorkshopYaw = 45f;
 
     public static CameraShot For(string name, Simulation sim)
     {
@@ -148,6 +149,17 @@ public static class ScreenshotPresets
                 if (ShapesScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
                 var focus = new Vector3(s.X + BlocksScript.SiteW / 2f, s.Y + 1, s.Z + BlocksScript.SiteD / 2f);
                 return new CameraShot(name, focus, ShapesYaw, 35f, 11f, top);
+            }
+            case "workshop":
+            {
+                // M11-T6: the hall and the two workshops of the workshop script, from the south-east.
+                var hub = HubFocus(sim);
+                var ws = sim.Buildings.All.Where(b => b.Def.Workshop is not null).ToList();
+                if (ws.Count == 0) return new CameraShot(name, hub, 45f, 50f, 32f, top);
+                float x = hub.X, z = hub.Z;
+                foreach (var b in ws) { x += b.Origin.X + 1f; z += b.Origin.Z + 1f; }
+                var focus = new Vector3(x / (ws.Count + 1), hub.Y, z / (ws.Count + 1));
+                return new CameraShot(name, focus, WorkshopYaw, 45f, 20f, top);
             }
             case "slice":
             {

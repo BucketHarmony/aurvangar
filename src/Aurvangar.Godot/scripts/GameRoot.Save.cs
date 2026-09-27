@@ -41,6 +41,8 @@ public partial class GameRoot
     /// drag. The slice level carries over; the colony-lost modal follows the new colony.</summary>
     public void AttachSimulation(Simulation sim)
     {
+        _workshopPanel.Close();   // M11-T6: a loaded world has other buildings
+        _tradeOpen = false;
         foreach (Node? old in new Node?[] { Terrain, WaterView, PlantView, CropView, AgentView, PileView, DesignationView, PlanView, BuildingView })
         {
             if (old == null) continue;

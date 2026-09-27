@@ -102,6 +102,9 @@ pit cell (`TICKS=700`: digging, the pit's lower cells "would trap a dwarf"; 2000
 `SCRIPT=shapes SHOTS=shapes TICKS=2400` (M11-T11): fine shapes built from the wagon's stock on the `blocks` site: a
 3-step Stone wall stair to a landing, two pillars under a Wood planks slab roof, Slate and planks slab rows, planned
 Polished stone stairs (shaped plan ghosts), and a held Slate stair drag of the block tool (shaped tool ghost).
+`SCRIPT=workshop SHOTS=workshop TICKS=3200 PANEL=workshop` (M11-T6): the timed `WorkshopScript`, a stonecutter (Make 60
+cut stone) and a sawmill (Keep 30 planks) by the hall and one accepted lot of logs for stone; `PANEL=workshop` opens the
+stonecutter's panel, `PANEL=trade` the trade panel with the wagon in.
 `SCRIPT=paint` (the timed `PaintScript`, M9-T1): single blocks painted with the player's block tool along drags, a
 planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
 `TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag

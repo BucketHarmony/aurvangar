@@ -5,10 +5,13 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// <summary>Command-line user args of the screenshot harness (VIEW-20), i.e. what follows <c>--</c> on the Godot
 /// command line: <c>--seed 1 --ticks 1200 --shots overview,river,hub,slice --out artifacts/screens</c>.
 /// <c>--ghost levee</c> (M11-T1) shows that building's ghost (<see cref="ScreenshotScripts.GhostPickFor"/>) instead of
-/// the script's own. Every key is optional; bad input throws <see cref="ArgumentException"/> naming the key.</summary>
+/// the script's own. <c>--panel workshop|trade</c> (M11-T6) opens that panel in the shots. Every key is optional; bad input throws <see cref="ArgumentException"/> naming the key.</summary>
 public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string> Shots, string OutDir,
-    string Script = ScreenshotArgs.DefaultScript, string? Ghost = null)
+    string Script = ScreenshotArgs.DefaultScript, string? Ghost = null, string? Panel = null)
 {
+    /// <summary>Panels <c>--panel</c> may open (M11-T6): the first workshop's panel, or the trade panel.</summary>
+    public static readonly IReadOnlyList<string> Panels = new[] { "workshop", "trade" };
+
     public const ulong DefaultSeed = 1;
     public const int DefaultTicks = 1200;
     public const string DefaultOutDir = "artifacts/screens";
@@ -22,6 +25,7 @@ public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string>
         string outDir = DefaultOutDir;
         string script = DefaultScript;
         string? ghost = null;
+        string? panel = null;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -55,11 +59,16 @@ public sealed record ScreenshotArgs(ulong Seed, int Ticks, IReadOnlyList<string>
                     if (value.Length == 0) throw new ArgumentException("screenshot args: --ghost is empty");
                     ghost = value;
                     break;
+                case "--panel":
+                    if (!Panels.Contains(value))
+                        throw new ArgumentException($"screenshot args: unknown panel '{value}' (known: {string.Join(",", Panels)})");
+                    panel = value;
+                    break;
                 default:
                     throw new ArgumentException($"screenshot args: unknown key '{key}'");
             }
         }
-        return new ScreenshotArgs(seed, ticks, shots, outDir, script, ghost);
+        return new ScreenshotArgs(seed, ticks, shots, outDir, script, ghost, panel);
     }
 
     /// <summary>PNG path for a preset: <c>&lt;out&gt;/&lt;preset&gt;.png</c>.</summary>

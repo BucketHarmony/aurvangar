@@ -3762,3 +3762,29 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   - `sim.Trader` holds LotsLeft and Deals (Paid and Granted per deal), and `Traders.FreeStock` gives the NotEnough
     preview;
   - send `AcceptOffer(offer, lots)`, and listen for TraderArrived, TraderLeft and TraderNoRoom.
+
+## M11-T6 — Godot: workshop orders and trade panel (2026-09-27)
+- Done: ViewCore `WorkshopPanelModel` (VIEW-28: recipe rows "Saw planks: 1 log -> 2 planks", CRF-13 status words
+  "Sawmill: needs log", Make/Keep, - count + with Shift 5, "done 46/60" or "in stock 30", Clear; each change is at most
+  one `SetWorkshopOrder`) and `TradePanelModel` (VIEW-29: "Trade wagon: leaves in 3h", offer rows with lots left and
+  free stock, Accept 1 / Accept all (n) disabled with the CRF-18 reason and a tooltip, deals with paid and granted,
+  the Trade button tooltip "Trade wagon in 1 day 4h", arrival/left/no-room toasts). `TopBarModel` adds workshop
+  NoInput/OutputFull alerts (VIEW-30); totals already list every item, so Planks and Cut stone show. Godot:
+  `WorkshopPanelView`, `TradePanelView`, `GameRoot.Economy.cs` (Select click on a workshop opens its panel; toolbar
+  Trade button; one panel at a time; closed on load), `PanelText`. Screenshot harness: timed `workshop` script,
+  `workshop` preset, `--panel workshop|trade` (`PANEL=` in screenshot.sh).
+- Tests: the 3 M11-T6 placeholders are replaced by `View/WorkshopPanelTests.cs` (2) and `View/TradePanelTests.cs` (3,
+  including the workshop script/args/preset). Disabled accept buttons are checked against the sim's own rejection.
+  check.sh: 761 passed, 3 skipped (M11-T7), 0 failed, 0 warnings.
+- Decisions: ADR-085 (order-row behaviour, status words, Accept all = most affordable lots, Trade button and toasts,
+  panel placement, screenshot hooks). view-ui.md VIEW-28/29 and testing.md updated.
+- Golden: unchanged (no sim change).
+- Perf: n/a (view only; no sim, water or path change).
+- Screens (looked at): `SCRIPT=workshop TICKS=3200 SHOTS=workshop PANEL=workshop` shows the Stonecutter panel
+  "Stonecutter: working", Make 60, "done 46/60", a dwarf "Cut stone", HUD "Planks 30 Cut stone 60", the "Trade (wagon
+  in)" button and the arrival toast. `PANEL=trade` shows "Trade wagon: leaves in 16h", four offers with lots left and
+  "have 1 log" in orange (all accepts disabled: the logs and stone went to the workshops), and the deal "1 x 10 log ->
+  10 stone: paid 10/10, granted 1/1". An earlier render with less crafting showed the stone-for-logs row enabled.
+- Next: M11-T7 (EconomyScript). `ScreenshotScripts.Names` gains "economy" there; the `workshop` script and preset can
+  serve as a pattern (timed, `EnqueueDue`). The trade panel's free stock is `Traders.FreeStock`; on seed 1 the
+  workshops eat the wagon's logs fast, so the script should chop for logs before it trades.

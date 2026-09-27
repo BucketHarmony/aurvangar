@@ -60,6 +60,11 @@ public partial class ScreenshotRunner : Node
         if (args.Script == "stairs")
             root.ShowStairTool(Aurvangar.ViewCore.Scripts.StairScript.TooltipPick(root.Sim));   // M11-T8
 
+        if (args.Panel == "workshop")   // M11-T6: the first workshop's panel
+            root.OpenWorkshopPanel(root.Sim.Buildings.All.Where(b => b.Def.Workshop is not null).OrderBy(b => b.Id.Value).FirstOrDefault());
+        else if (args.Panel == "trade")
+            root.OpenTradePanel();
+
         int failures = 0;
         foreach (var name in args.Shots)
         {

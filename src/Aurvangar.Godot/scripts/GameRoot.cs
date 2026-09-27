@@ -22,7 +22,7 @@ namespace Aurvangar.Client;
 /// level (VIEW-04), picking (VIEW-05), the camera (VIEW-06), agents, buildings, piles and designations (VIEW-08..11),
 /// the HUD (VIEW-12, 15, 16) and the F3 overlay (VIEW-17). Input and drag tools live in GameRoot.Input.cs; the build
 /// and deconstruct tools and the colony-lost modal (VIEW-14, 18) in GameRoot.Build.cs; F5/F9 and the renderer
-/// rebuild on load in GameRoot.Save.cs.</summary>
+/// rebuild on load in GameRoot.Save.cs; the workshop and trade panels (VIEW-28, 29) in GameRoot.Economy.cs.</summary>
 public partial class GameRoot : Node3D
 {
     public Simulation Sim { get; private set; } = null!;
@@ -93,6 +93,7 @@ public partial class GameRoot : Node3D
         _hud.ToolChosen += SetTool;
         _hud.BuildChosen += ChooseBuilding;
         _hud.Colonists.Clicked += CenterOnAgent;
+        ReadyEconomyPanels();
 
         AttachSimulation(sim);
 
@@ -234,6 +235,7 @@ public partial class GameRoot : Node3D
         _hud.TopBar.Show(TopBarModel.Build(Sim, TickAccumulator.Speeds[SpeedIndex]));
         UpdatePlanText(now: false);
         SyncBlockHud();
+        UpdateEconomyPanels();
         _hud.SetSliceHint(SliceHint.Text(SliceY, Slice.MaxY));
         string? label = ClickToolTooltip() ?? BlockTooltip() ?? DigTooltip();
         if (label == null && _tool.Tool == ToolKind.Farm) label = FarmTool.Tooltip(Sim, Hover, _tool.PreviewBox(SliceY));

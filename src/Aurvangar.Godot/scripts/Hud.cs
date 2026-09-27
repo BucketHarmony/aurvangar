@@ -10,7 +10,7 @@ namespace Aurvangar.Client;
 /// label that follows the mouse (pile counts VIEW-10, build and deconstruct tooltips VIEW-14, farm tiles and the farm
 /// tool's moisture hint, M6-T5). M8-T5 adds the Blocks menu (block picker), the Release tool and the block options row
 /// (block, Plan, Release all; VIEW-21; single blocks since M9-T1, so no height controls). M11-T11 adds the shape picker
-/// and Rotate to that row (VIEW-27).</summary>
+/// and Rotate to that row (VIEW-27). M11-T6 adds the Trade button and the workshop and trade panels (VIEW-28, 29).</summary>
 public partial class Hud : CanvasLayer
 {
     public const double ToastSeconds = 3.0;
@@ -35,7 +35,12 @@ public partial class Hud : CanvasLayer
     public event System.Action<DigMode>? DigModeChosen;
     public event System.Action? ReleaseAllPressed;
 
+    /// <summary>VIEW-29: the toolbar's Trade button.</summary>
+    public event System.Action? TradePressed;
+
     public ColonistPanel Colonists { get; private set; } = null!;
+    public WorkshopPanelView Workshop { get; private set; } = null!;
+    public TradePanelView Trade { get; private set; } = null!;
     public TopBarView TopBar { get; private set; } = null!;
 
     /// <summary>Buildable (id, name) pairs for the Build menu; set by GameRoot before the node enters the tree.</summary>
@@ -57,6 +62,7 @@ public partial class Hud : CanvasLayer
     private Label _hintLabel = null!;
     private readonly Dictionary<BlockShape, Button> _shapeButtons = new();
     private Button _rotateButton = null!;
+    private Button _tradeButton = null!;
     private Label _toast = null!;
     private Label _hoverLabel = null!;
     private HBoxContainer _digRow = null!;
@@ -80,6 +86,9 @@ public partial class Hud : CanvasLayer
         AddTool(bar, ToolKind.Release, "Release (L)");
         AddTool(bar, ToolKind.Deconstruct, "Deconstruct (X)");
         AddTool(bar, ToolKind.Cancel, "Cancel (Z)");
+        _tradeButton = new Button { Text = "Trade", FocusMode = Control.FocusModeEnum.None, Disabled = true };
+        _tradeButton.Pressed += () => TradePressed?.Invoke();
+        bar.AddChild(_tradeButton);
         _toolbar = bar;
         AddChild(bar);
         AddBlockRow();
@@ -94,6 +103,12 @@ public partial class Hud : CanvasLayer
 
         Colonists = new ColonistPanel();
         AddChild(Colonists);
+
+        // VIEW-28/29: beside the colonist panel.
+        Workshop = new WorkshopPanelView { Position = new Vector2(8 + ColonistPanel.Width + 12, 52) };
+        AddChild(Workshop);
+        Trade = new TradePanelView { Position = new Vector2(8 + ColonistPanel.Width + 12, 52) };
+        AddChild(Trade);
 
         _toast = new Label { Name = "Toast", Visible = false, Position = new Vector2(8, 0) };
         _toast.AddThemeFontSizeOverride("font_size", 16);
@@ -157,6 +172,17 @@ public partial class Hud : CanvasLayer
         _digBoxButton.SetPressedNoSignal(mode == DigMode.Box);
         _digStairButton.SetPressedNoSignal(mode == DigMode.StairDown);
         _digHint.Text = mode == DigMode.StairDown ? DigStairHint : DigBoxHint;
+    }
+
+    /// <summary>VIEW-29: the Trade button is enabled while a trader is here; its tooltip gives the time left or the
+    /// next arrival (<see cref="TradePanelModel.ButtonTooltip"/>). Hidden when the data has no trader.</summary>
+    public void SetTradeButton(bool here, string? tooltip)
+    {
+        _tradeButton.Visible = tooltip != null;
+        _tradeButton.Disabled = !here;
+        _tradeButton.TooltipText = tooltip ?? "";
+        string text = here ? "Trade (wagon in)" : "Trade";
+        if (_tradeButton.Text != text) _tradeButton.Text = text;
     }
 
     /// <summary>VIEW-26: the view level and its keys at the bottom right (<see cref="SliceHint"/>).</summary>

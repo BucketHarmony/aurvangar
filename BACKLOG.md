@@ -417,7 +417,7 @@ starting wagon answers "I dont know where to get stone from".
 - [x] **M11-T5** Trade wagon · specs: CRF-15..21, CRF-22 (v9), CRF-24 · deps: M11-T4
   - Trade wagons arrive on schedule with data-defined offers. A command accepts an offer. Dwarves haul the goods
     and the wagon leaves on time. Saved and hashed. Scenario test: stone can be bought with logs.
-- [ ] **M11-T6** Godot: workshop orders and trade panel · specs: VIEW-28..30, CRF-13, CRF-18 · deps: M11-T5
+- [x] **M11-T6** Godot: workshop orders and trade panel · specs: VIEW-28..30, CRF-13, CRF-18 · deps: M11-T5
   - Click a workshop to see its recipes and set orders (make N or keep N). A trade panel appears when a wagon is
     in, showing offers, what we have and accept buttons. The HUD shows refined items. Keep logic in ViewCore with
     tests. Render screenshots and look at them.

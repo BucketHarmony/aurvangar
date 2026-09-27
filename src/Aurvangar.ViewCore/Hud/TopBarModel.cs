@@ -39,10 +39,24 @@ public static class TopBarModel
         if (NeedsSystem.NoWater(sim)) alerts.Add(NoWater);
         if (sim.Buildings.All.Any(b => b.State == BuildingState.Complete && b.Def.Producer is not null && b.NoWater))
             alerts.Add(PumpDry);
+        alerts.AddRange(WorkshopAlerts(sim));
         if (GiveUpText(sim) is { } gaveUp) alerts.Add(gaveUp);
         long tick = sim.Clock.Tick;
         return new TopBar(sim.Clock.Day + 1, WeatherSystem.SeasonAt(tick), WeatherSystem.DaysUntilChange(tick),
             SpeedText(speedMultiplier), Totals(sim), alerts, sim.Agents.ColonyLost);
+    }
+
+    /// <summary>VIEW-30 (M11-T6): one alert per complete workshop whose CRF-13 status is NoInput or OutputFull, in
+    /// building order, worded as the workshop panel's status ("Sawmill: needs log").</summary>
+    public static IEnumerable<string> WorkshopAlerts(Simulation sim)
+    {
+        foreach (var b in sim.Buildings.All)
+        {
+            if (b.Def.Workshop is null || b.State != BuildingState.Complete) continue;
+            var state = Workshops.StatusOf(sim, b);
+            if (state.Status is WorkshopStatus.NoInput or WorkshopStatus.OutputFull)
+                yield return WorkshopPanelModel.StatusText(sim.Content, b.Def.Name, state);
+        }
     }
 
     /// <summary>JOB-12 / VIEW-15: one notice naming every given-up job source in (source, id) order, repeated names
@@ -118,7 +132,7 @@ public static class TopBarModel
     public static string SpeedText(int multiplier) => multiplier <= 0 ? "Paused" : $"{multiplier}x";
 
     /// <summary>Stored items in every complete storage building (BLD-12), one entry per item in content order
-    /// (log, stone, berries, potato, water), zeros included. Summed here from the buildings rather than read from
+    /// (log, stone, berries, potato, water, planks, cut stone; VIEW-30), zeros included. Summed here from the buildings rather than read from
     /// <see cref="BuildingSystem.Totals"/>, which is empty after a load until the next tick.</summary>
     public static List<ItemTotal> Totals(Simulation sim)
     {

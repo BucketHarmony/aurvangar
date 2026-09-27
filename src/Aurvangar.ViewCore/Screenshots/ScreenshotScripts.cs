@@ -47,10 +47,13 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// <item><c>shapes</c> (M11-T11): <see cref="ShapesScript"/>, a stair, pillars under a slab roof, slab rows and planned
 /// stairs; the harness holds a stair drag of the block tool. <c>--ticks 2400</c> shows it built (the <c>shapes</c>
 /// preset).</item>
+/// <item><c>workshop</c> (M11-T6): the timed <see cref="WorkshopScript"/>, a sawmill and a stonecutter with orders and
+/// one accepted trade. <c>--ticks 3200 --panel workshop</c> (or <c>trade</c>) shows a panel open (the <c>workshop</c>
+/// preset).</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes", "workshop" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -73,6 +76,7 @@ public static class ScreenshotScripts
             case "monument":
             case "paint":
             case "wall":
+            case "workshop":
                 return Array.Empty<ICommand>();
             case "digchop":
                 return new ICommand[] { PitDig(sim), ChopNearHub(sim) };
@@ -114,7 +118,7 @@ public static class ScreenshotScripts
     }
 
     /// <summary>True for a script whose commands have their own ticks (<c>survival</c>, <c>monument</c>, <c>paint</c>).</summary>
-    public static bool IsTimed(string name) => name is "survival" or "monument" or "paint" or "wall";
+    public static bool IsTimed(string name) => name is "survival" or "monument" or "paint" or "wall" or "workshop";
 
     /// <summary>Enqueues the commands of timed script <paramref name="name"/> due at the sim's current tick.</summary>
     public static void EnqueueDue(string name, Simulation sim)
@@ -122,6 +126,7 @@ public static class ScreenshotScripts
         if (name == "monument") MonumentScript.EnqueueDue(sim);
         else if (name == "survival") SurvivalScript.EnqueueDue(sim);
         else if (name is "paint" or "wall") PaintScript.EnqueueDue(sim);
+        else if (name == "workshop") WorkshopScript.EnqueueDue(sim);
     }
 
     /// <summary>Runs <paramref name="ticks"/> ticks of script <paramref name="name"/> the way the harness does: an
@@ -278,7 +283,7 @@ public static class ScreenshotScripts
         return !def.HasEntrance || !taken.Contains(BuildingShape.Entrance(def, origin, rot));
     }
 
-    private static void Take(Simulation sim, BuildingDef def, Int3 origin, int rot, HashSet<Int3> taken)
+    internal static void Take(Simulation sim, BuildingDef def, Int3 origin, int rot, HashSet<Int3> taken)
     {
         var cells = BuildingShape.Footprint(def, origin, rot).ToList();
         if (def.HasEntrance) cells.Add(BuildingShape.Entrance(def, origin, rot));

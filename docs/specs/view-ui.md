@@ -151,7 +151,8 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   - one row per recipe ("Saw planks: 1 log -> 2 planks"), with its order: mode (Make or Keep), count (- and +, steps
     of 1, 5 with Shift), and `done/count` for Make. Setting, changing or clearing a row sends one `SetWorkshopOrder`
     (count 0 removes).
-  - Model and texts in ViewCore (`WorkshopPanelModel`), tested.
+  - Model and texts in ViewCore (`WorkshopPanelModel`), tested. Keep rows show the colony stock ("in stock 12"). A
+    row with no order remembers the picked mode; + creates the order in it (ADR-085).
 - **VIEW-29** Trade panel (M11-T6, CRF-15..21). While a trader is here, a toolbar button and a toast on arrival open a
   panel:
   - "Trade wagon: leaves in 3h" (game hours, 100 ticks each);
@@ -160,7 +161,8 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   - the open deals with their paid and granted lots.
 
   With no trader in, the button's tooltip gives the next arrival ("Trade wagon in 1 day 4h"). Model and texts in
-  ViewCore (`TradePanelModel`), tested.
+  ViewCore (`TradePanelModel`), tested. "Accept all (n)" asks for the most lots the colony can pay for now; the
+  arrival toast names the Trade button (ADR-085).
 - **VIEW-30** HUD (M11-T6): the top bar totals include every item in data order (planks and cut stone after water);
   workshop `NoInput` and `OutputFull` statuses join the VIEW-15 alerts; the trader is drawn as a wagon (the M11-T2
   wheels and cover) in its own palette colour.
