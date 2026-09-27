@@ -262,6 +262,40 @@ record the new ADR in M8-T1.
     walled courtyard. Dwarves quarry stone by digging the hill. Tests: it completes by day 10 with all 5 alive,
     no dwarf is walled in, no floating block exists, and a save/load mid-build continues identically. Run
     perf.sh; the full tick stays within budget. Headless and screenshot support for `--script monument`.
-- [ ] **M8-GATE HUMAN-GATE G4: build a monument** · deps: M8-T6
+- [x] **M8-GATE HUMAN-GATE G4: build a monument** · deps: M8-T6
   - Report with screenshots of the monument going up (several ticks), the perf table and open issues. Ask the
     human to build something by hand and report how it felt. Stop.
+
+## M9 — Construction polish (G4 answers)
+
+Human answers are in PROGRESS.md under "G4 answers". Right-drag orbit stays as it is (no task).
+
+- [ ] **M9-T1** Block tool places single blocks · specs: CON-*, VIEW-21..23 · deps: M8-GATE
+  - G4 answer: "building should be one square at a time." The human chose single-block placement over shapes.
+  - Remove the shape modes (Tab cycling, and height by +/- or Ctrl+wheel) from the player's block tool. A click on
+    a block face plans or places one block in the cell against that face. The top face stacks upward, and a side
+    face places beside. A drag paints one block into each new cell the cursor passes over. The cells stay on the
+    layer of the first click (or on the face plane), so a wall is painted course by course.
+  - Keep the sim's shape commands for scripts (MonumentScript) and tests. Only the player-facing tool changes.
+  - Deconstruct also works by click or drag per block. Plan mode (P) and release (L, Release all) are unchanged.
+  - Put the face-to-cell and paint-path logic in ViewCore with unit tests. Update the controls text and the gate
+    report's control list. Record the change as an ADR (it amends ADR-065).
+  - Render screenshots and look at them.
+- [ ] **M9-T2** Build trips carry full batches · specs: CON-*, JOB-* · deps: M8-GATE
+  - G4 issues 2 and 3: after a whole-plan release, a trip carries about 1.3 blocks, and dwarves stand idle between
+    layers.
+  - Gather Ready cells ahead of the build front (up to the trip limit of 10), so one trip builds several blocks.
+  - Scenario test: releasing the monument plan at once averages at least 4 blocks per trip. The monument still
+    finishes by day 10 with all 5 dwarves alive. Run perf.sh. Regenerate goldens if needed and record why.
+- [ ] **M9-T3** HUD: no top-bar overlap, clear invalid cells · specs: VIEW-15, VIEW-21..23 · deps: M9-T1
+  - A long plan line must not overlap the toolbar ("Day 7" was drawn over "Cancel (Z)"): wrap it or move it.
+  - Red invalid-cell ghosts must be readable at monument camera distance: stronger colour or an outline.
+  - Keep the layout logic in ViewCore with tests. Render screenshots and look at them.
+- [ ] **M9-T4** More building materials · specs: CON-* · deps: M9-T1
+  - Add at least three more buildable block types in data/*.json, each with a cost and a palette colour. For
+    example: rough stone or rubble from stone, a dirt or clay block, a wood beam. Add new items only if a block
+    needs them.
+  - The picker lists them. A spec update adds the new CON rows. There are tests for cost and refund.
+- [ ] **M9-GATE HUMAN-GATE G5: hand-build review** · deps: M9-T1, M9-T2, M9-T3, M9-T4
+  - Report with screenshots of single-block painting, a hand-style build in progress and the new materials, plus
+    the perf table and open issues. Ask the human to build by hand again and report how it felt. Stop.

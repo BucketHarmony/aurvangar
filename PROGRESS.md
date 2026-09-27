@@ -2569,3 +2569,16 @@ Block building controls:
 4. **Anything else** from your play session: bugs, confusions, or things you wanted to build and could not.
 
 Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
+
+### G4 answers (human, 2026-09-27)
+
+- **Right-drag:** "right click to drag is great." Right-drag orbit (M7-T1) stays as it is.
+- **Building:** "I think building should be one square at a time." Asked what that meant, the human chose
+  **the player places single blocks**. The shape modes are dropped from the player's tool, and the sim keeps them
+  for scripts. -> M9-T1.
+- **Next milestone:** the human took the recommendation, construction polish:
+  - single-block tool -> M9-T1;
+  - build batching -> M9-T2;
+  - top-bar overlap and clearer red cells -> M9-T3;
+  - more materials -> M9-T4;
+  - then gate G5.
