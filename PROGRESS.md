@@ -3405,3 +3405,17 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   40 Potato 0 Water 30". The wheels are small at this zoom; the cover makes it read as a wagon, not a crate.
 - Next: M11-T3 (economy and crafting spec). Start buildings are any building with `startStock`; a `receives: false`
   storage is source-only. The wagon's 60 stone is there from day 1 for masonry.
+
+### G6 follow-up (human, 2026-09-27)
+
+- "How do I dig down deeper than 1 tile? Is there a slice view? 3D building depends on it."
+  - The slice view exists (PageUp/PageDown or [ ]) but is not shown in the HUD.
+  - A dig drag already goes down to the view level, but dwarves climb only one level. The strand rule makes the
+    deeper cells of a straight-sided pit wait, with no explanation.
+  - -> M11-T8: stair-down dig mode, reasons on waiting cells, slice keys and level in the HUD.
+- "buildings, items, log piles with no ground beneath them should fall down to ground. Physics should be
+  explored." -> M11-T9: gravity for piles and buildings. Terrain cave-ins stay out.
+- "Can we set pixel size to variable? Can we have a .25 meter pixel?" The human was told that a 0.25 m sim grid is
+  about 64 times the cells and a near-rewrite. They chose **fine block shapes** on the 1 m grid (slab, stair,
+  pillar, drawn at 0.25 m detail) instead. -> M11-T10 (sim) and M11-T11 (view).
+- **Order:** the human chose to do these before the economy work. M11-T3 now depends on M11-T11.

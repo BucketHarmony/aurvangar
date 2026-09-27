@@ -357,7 +357,45 @@ starting wagon answers "I dont know where to get stone from".
   - The HUD shows it like other storage. Starting stock is data-driven (move `WorldFactory.StartStock` into data).
   - Update the scripts that depended on quarrying if the new stone lets them start sooner, but keep their tests.
     Regenerate goldens and record why. Render the wagon and look at it.
-- [ ] **M11-T3** Economy and crafting spec and ADR · deps: M11-T2
+- [ ] **M11-T8** Dig stairs and dig feedback · specs: DSG-*, VIEW-04, VIEW-* · deps: M11-T2
+  - G6 follow-up: "How do I dig down deeper than 1 tile? Is there a slice view? 3D building depends on it."
+  - The dig tool gets a **Stair down** mode: a drag digs a 1-wide staircase from the first cell down to the view
+    level (VIEW-04). Each step goes one level down and one cell along the drag, so every dug cell stays
+    reachable.
+  - Hovering a waiting dig cell shows why it waits: "would trap a dwarf" (strand rule), "waiting for the cell
+    above", or unreachable.
+  - The HUD shows the slice keys (PageUp/PageDown or [ ]) and the current view level, so the slice view can be
+    found.
+  - Scenario test on seed 1: a staircase dug to stone depth lets dwarves quarry stone at the bottom and climb out.
+    A straight-sided pit reports "would trap a dwarf" for its waiting cells.
+  - Keep the logic in ViewCore with tests. Render screenshots and look at them.
+- [ ] **M11-T9** Gravity for piles and buildings · specs: new GRV-* in docs/specs/gravity.md · deps: M11-T8
+  - G6 follow-up: "buildings, items, log piles with no ground beneath them should fall down to ground. Physics
+    should be explored."
+  - Write the GRV spec and ADR first.
+  - Loose piles whose cell below is not solid fall to the first standable cell. Choose instant or one cell per
+    tick, and merge them per ECO-08. Felled logs and refund piles fall too.
+  - A building whose footprint loses all support below it collapses: it is removed, part of its cost and all
+    stored items drop as piles that fall, and dwarves inside are moved out.
+  - Terrain cave-ins are out of scope. Built blocks keep the CON support rule.
+  - Save and hash any new state. Scenario tests: dig under a log pile and it falls; dig out under a warehouse
+    and it collapses into piles; nothing is left floating (Grounding helper). Run perf.sh.
+- [ ] **M11-T10** Fine block shapes in the sim · specs: CON-* · deps: M11-T9
+  - G6 follow-up: "Can we set pixel size to variable? Can we have a .25 meter pixel?" The human chose fine block
+    shapes on the 1 m grid, not a 0.25 m simulation grid.
+  - Each built block cell stores a shape: at least Full, Slab (lower half), Stair (4 rotations) and Pillar. Put
+    shapes in data. The build command carries the shape and rotation (CommandCodec). Save (bump FormatVersion)
+    and hash them.
+  - The sim treats every shape as one solid cell for paths, support and water unless the spec says otherwise;
+    record it in an ADR. The cost may vary by shape (integers).
+  - Update docs/specs/construction.md. Tests.
+- [ ] **M11-T11** Godot: fine shapes at 0.25 m detail · specs: CON-*, VIEW-* · deps: M11-T10
+  - The mesher draws each shape from 0.25 m sub-cells (a 4x4x4 pattern per shape and rotation), keeping the
+    MESH-P1 budget.
+  - The block tool has a shape picker and R to rotate. The ghost shows the shape.
+  - Keep the logic in ViewCore with tests. Render screenshots (a stair, slabs and pillars in a small build) and
+    look at them.
+- [ ] **M11-T3** Economy and crafting spec and ADR · deps: M11-T11
   - G6: the human picked economy and crafting as the missing gameplay element.
   - Write `docs/specs/crafting.md` with rule IDs (CRF-xx), and update docs/00-overview.md scope. The spec covers:
     - Workshops: buildings with a worker and a list of recipes in data. Include at least a Sawmill (log -> planks
