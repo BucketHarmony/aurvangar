@@ -14,7 +14,7 @@ public readonly record struct PlanEntry(BlockId Block, PlanState State);
 public enum PlanResult : byte { Ok, OutOfWorld, Solid, Building, Plant, Farm, Unsupported }
 
 /// <summary>CON-05: why an entry waits (derived, never stored). The first check that applies, in this order.</summary>
-public enum BuildStatus : byte { Planned, InJob, GivenUp, BelowFirst, NoSupport, Occupied, NoAccess, WouldStrand, NoMaterial, Ready }
+public enum BuildStatus : byte { Planned, InJob, GivenUp, BelowFirst, NoSupport, CourseBelow, Occupied, NoAccess, WouldStrand, NoMaterial, Ready }
 
 /// <summary>CON-04 (M8-T2, ADR-062): the plan entries by cell index. Sim state: saved (section <c>BlockPlans</c>) and
 /// hashed (only when not empty). Entries exist only for cells that are not built yet: the Place step removes its entry,

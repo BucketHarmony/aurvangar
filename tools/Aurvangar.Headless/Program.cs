@@ -37,7 +37,7 @@ if (timed && opts.Script == "survival")
 }
 else if (timed)
 {
-    Console.WriteLine($"script: monument ({MonumentScript.Commands.Count} commands at ticks 0..{MonumentScript.LastTick}, then one release per course from tick {MonumentScript.ReleaseTick})");
+    Console.WriteLine($"script: monument ({MonumentScript.Commands.Count} commands at ticks 0..{MonumentScript.LastTick}; the whole plan is released at tick {MonumentScript.ReleaseTick})");
 }
 else if (opts.Script is not null)
 {

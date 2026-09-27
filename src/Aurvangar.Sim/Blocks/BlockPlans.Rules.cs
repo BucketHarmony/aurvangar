@@ -9,6 +9,11 @@ namespace Aurvangar.Sim.Blocks;
 /// across ticks.</summary>
 public sealed partial class BlockPlans
 {
+    /// <summary>CON-05 check 6 (M9-T2, ADR-068): an entry waits while a Build job holds a cell one course down within
+    /// this many cells horizontally (Chebyshev), so a structure rises course by course and a whole course turns Ready
+    /// together (full CON-12 batches, and no wall top cut off by a section built too high).</summary>
+    public const int CourseRadius = 8;
+
     /// <summary>CON-08: whether <paramref name="cell"/> may get an entry, given the command's own cells
     /// <paramref name="pending"/> (for plan support; null for none). The first failing check is the answer.</summary>
     public static PlanResult CanPlan(Simulation sim, Int3 cell, IReadOnlyList<Int3>? pending)
@@ -79,8 +84,11 @@ public sealed partial class BlockPlans
     /// <summary>CON-05 with a per-tick <paramref name="scan"/> (agent and storage regions, held cells; a null
     /// <see cref="BuildScan.Held"/> skips check 2, "ignoring its own hold"). <paramref name="builder"/> is not counted
     /// by the strand check (its own stand cell is). <paramref name="stands"/> gets the strand-filtered stand cells
-    /// when checks 1..8 pass.</summary>
-    internal static BuildStatus StatusOf(BuildScan scan, Int3 cell, PlanEntry e, AgentId builder, out List<Int3>? stands)
+    /// when checks 1..9 pass. <paramref name="ignoreAgents"/> leaves agents out of the Occupied check (the CON-12
+    /// re-check, M9-T2: a dwarf walking over a wall top must not break up the posted batches of the builders standing
+    /// on it; CON-13 waits for the agent at run time).</summary>
+    internal static BuildStatus StatusOf(BuildScan scan, Int3 cell, PlanEntry e, AgentId builder, out List<Int3>? stands,
+        bool ignoreAgents = false)
     {
         stands = null;
         var sim = scan.Sim;
@@ -91,8 +99,9 @@ public sealed partial class BlockPlans
         if (sim.GiveUps.Count > 0 && sim.GiveUps.IsGivenUp(GiveUpSource.Build, index)) return BuildStatus.GivenUp;
         if (sim.Plans.Has(cell + Int3.Down)) return BuildStatus.BelowFirst;
         if (!Support.Placement(world, cell)) return BuildStatus.NoSupport;
-        if (sim.Agents.AnyHolds(cell) || sim.Agents.AnyHolds(cell + Int3.Down) || !sim.Piles.At(cell).IsEmpty
-            || sim.Plants.IsOccupied(cell))
+        if (scan.CourseBelow(cell)) return BuildStatus.CourseBelow;
+        if ((!ignoreAgents && (sim.Agents.AnyHolds(cell) || sim.Agents.AnyHolds(cell + Int3.Down)))
+            || !sim.Piles.At(cell).IsEmpty || sim.Plants.IsOccupied(cell))
             return BuildStatus.Occupied;
 
         var all = JobGoals.BuildStandCells(sim, cell, strandFree: false, prefer: false);
@@ -121,16 +130,58 @@ internal sealed class BuildScan
     public readonly Dictionary<int, Job>? Held;
     private readonly Dictionary<int, SortedSet<int>> _storageRegions = new();   // building id -> regions (lookups only)
 
-    public BuildScan(Simulation sim, Dictionary<int, Job>? held)
+    /// <summary>The job whose own cells the CON-05 course check ignores (the re-check and the run of that job).</summary>
+    public readonly Job? Self;
+    /// <summary>Cells Build jobs hold, other than <see cref="Self"/>'s, by y (lookups only), built on first use and
+    /// kept current by <see cref="AddHeld"/>.</summary>
+    private Dictionary<int, List<Int3>>? _heldByY;
+
+    public BuildScan(Simulation sim, Dictionary<int, Job>? held, Job? self = null)
     {
         Sim = sim;
         Held = held;
+        Self = self;
         foreach (var a in sim.Agents.All)
         {
             if (!a.IsAlive) continue;
             int r = sim.Regions.RegionOf(a.Cell);
             if (r != Paths.Regions.None) AgentRegions.Add(r);
         }
+    }
+
+    /// <summary>CON-05 course check (M9-T2, ADR-068): a cell one course down within
+    /// <see cref="BlockPlans.CourseRadius"/> horizontally (Chebyshev) is held by a Build job other than
+    /// <see cref="Self"/>.</summary>
+    public bool CourseBelow(Int3 cell)
+    {
+        if (_heldByY is null)
+        {
+            _heldByY = new Dictionary<int, List<Int3>>();
+            foreach (var j in Sim.Jobs.All)   // ascending id
+            {
+                if (j.Kind != JobKind.Build || j == Self) continue;
+                for (int k = BlockBuildSystem.HeldFrom(Sim, j); k < j.Steps.Count; k++)
+                    if (j.Steps[k].Kind == StepKind.Place) AddByY(j.Steps[k].Cell);
+            }
+        }
+        if (!_heldByY.TryGetValue(cell.Y - 1, out var below)) return false;
+        foreach (var c in below)
+            if (Math.Abs(c.X - cell.X) <= BlockPlans.CourseRadius && Math.Abs(c.Z - cell.Z) <= BlockPlans.CourseRadius)
+                return true;
+        return false;
+    }
+
+    /// <summary>The poster's new job holds <paramref name="c"/> (the held map and the course check).</summary>
+    public void AddHeld(Int3 c, Job job)
+    {
+        Held![Sim.World.Index(c)] = job;
+        if (_heldByY is not null) AddByY(c);
+    }
+
+    private void AddByY(Int3 c)
+    {
+        if (!_heldByY!.TryGetValue(c.Y, out var list)) _heldByY[c.Y] = list = new List<Int3>();
+        list.Add(c);
     }
 
     /// <summary>Regions of a building's GoToBuilding goals.</summary>
@@ -157,7 +208,7 @@ internal sealed class BuildScan
         return false;
     }
 
-    /// <summary>CON-05 check 9: some storage serving the stand cells holds at least one block's cost unpromised.</summary>
+    /// <summary>CON-05 check 10: some storage serving the stand cells holds at least one block's cost unpromised.</summary>
     public bool HasMaterial(ItemId item, int cost, IReadOnlyList<Int3> stands)
     {
         foreach (var s in Sim.Buildings.All)

@@ -89,6 +89,7 @@ public static class PlanGhostMesher
         BuildStatus.InJob => "being built",
         BuildStatus.GivenUp => "given up: the builders could not do it",
         BuildStatus.BelowFirst => "waiting for the block below",
+        BuildStatus.CourseBelow => "waiting for the course below",
         BuildStatus.NoSupport => "nothing holds it up",
         BuildStatus.Occupied => "something is in the way",
         BuildStatus.NoAccess => "no dwarf can reach it",

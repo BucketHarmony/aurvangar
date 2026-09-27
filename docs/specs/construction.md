@@ -68,19 +68,23 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   3. `GivenUp`: its JOB-12 mark (CON-15) is given up.
   4. `BelowFirst`: the cell directly below has an entry. This gives bottom-up order.
   5. `NoSupport`: placement support fails (CON-09).
-  6. `Occupied`: one of these is in the way:
+  6. `CourseBelow` (M9-T2, ADR-068): a Build job holds a cell one course down (y - 1) within
+     `BlockPlans.CourseRadius` (8) horizontally (Chebyshev). A structure then rises course by course, and a whole
+     course turns `Ready` together, so it goes out in full batches. Only held cells count, so a stuck entry below
+     never holds anything up. The re-check and the run of a job ignore the job's own cells.
+  7. `Occupied`: one of these is in the way:
      - a living agent holds the cell, or the cell below it (the headroom; `Agents.AnyHolds`);
      - a pile is in the cell;
      - a plant occupies the cell.
-  7. `NoAccess`: no build stand cell (CON-11, before the strand filter) is in a living agent's region.
-  8. `WouldStrand`: every stand cell is removed by the strand filter, or placing the block would cut another
+  8. `NoAccess`: no build stand cell (CON-11, before the strand filter) is in a living agent's region.
+  9. `WouldStrand`: every stand cell is removed by the strand filter, or placing the block would cut another
      living dwarf off from the hall (CON-14).
-  9. `NoMaterial`: no complete storage accepting the cost item holds at least one unpromised cost unit, with its
+  10. `NoMaterial`: no complete storage accepting the cost item holds at least one unpromised cost unit, with its
      `GoToBuilding` goals in the region of one of the cell's stand cells.
-  10. `Ready`.
+  11. `Ready`.
 
-  The build poster uses exactly this function (`Ready` means a job may be posted). Checks 1 to 6 are O(1). Checks 7
-  and 8 cost a region lookup and a cached what-if flood. The view reads statuses (VIEW-22). It must not call
+  The build poster uses exactly this function (`Ready` means a job may be posted). Checks 1 to 5 and 7 are O(1);
+  check 6 scans the held cells one course down (built once per scan). Checks 8 and 9 cost a region lookup and a cached what-if flood. The view reads statuses (VIEW-22). It must not call
   `StatusOf` for every entry every frame; M8-T5 decides how often.
 - **CON-06** Material totals. `BlockPlans.Needed(PlanState? state)` returns, for each item, the sum of cost over
   entries in that state (or over all entries), in ascending item id order. The HUD compares it with
@@ -196,12 +200,15 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   - **Batch**:
     - The seed is the first such entry. An entry whose JOB-12 mark is given up is never a seed.
     - Up to `floor(10 / cost) - 1` more entries join. Each must be `Ready`, unheld and the same block type, within
-      Chebyshev distance 4 of the seed, with a stand cell in a region shared with a stand cell of the seed. They join
-      in `(y, index)` order.
+      Chebyshev distance 4 of a batch member, with a stand cell in a region shared with a stand cell of the seed.
+      Members are taken in order, the seed first; around each, the box is scanned in ascending `(dy, dz, dx)` order
+      and each new entry joins at the end (M9-T2, ADR-068: a batch follows a wall course instead of stopping at a box
+      around the seed). The members after the seed are then stably sorted by y, so lower cells are built first.
     - One Build job is posted per batch, and it holds its cells until they are placed, skipped or cancelled.
   - **Limits**: at most 8 new Build jobs per tick, and at most 32 unclaimed Build jobs at a time.
-  - **Re-check**: each tick, an unclaimed Build job with a cell that is no longer `Ready` (ignoring its own hold) is
-    cancelled, and its cells are batched again later. Otherwise its placed cells leave it and it is re-planned
+  - **Re-check**: each tick, an unclaimed Build job with a cell that is no longer `Ready` (ignoring its own hold and
+    its own cells in the course check, and ignoring agents in the `Occupied` check, M9-T2: a dwarf walking over a wall
+    top must not break up the batches of the builders standing on it) is cancelled, and its cells are batched again later. Otherwise its placed cells leave it and it is re-planned
     against the current stock (source, count), keeping its JOB-08 failure count (ADR-062).
   - **Job**: `JobKind.Build`, priority 25 (the same as Dig and Chop; JOB-05 row added in M8-T2). The target is the
     seed cell. Steps:

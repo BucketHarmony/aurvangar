@@ -7,8 +7,7 @@ using Aurvangar.Sim.World;
 namespace Aurvangar.ViewCore.Scripts;
 
 /// <summary>The M8-T6 monument session on seed 1 (construction.md CON-P1, ADR-066): fixed commands at fixed ticks, like
-/// <see cref="SurvivalScript"/>, plus one <see cref="ReleasePlan"/> per course as the tower rises
-/// (<see cref="NextCourse"/>). Used by the monument scenarios, the CON-P1 perf test,
+/// <see cref="SurvivalScript"/>. Used by the monument scenarios, the CON-P1 perf test,
 /// <c>run-headless.sh --script monument</c> and the screenshot harness (<c>SCRIPT=monument</c>).
 /// <list type="number">
 /// <item>Tick 0: chop the trees around the site (<see cref="Chop"/>; logs for the warehouses), a Water Pump on the
@@ -23,8 +22,8 @@ namespace Aurvangar.ViewCore.Scripts;
 /// corridor's.</item>
 /// <item>Ticks <see cref="QuarryStoreTick"/> and <see cref="YardTick"/>: two Warehouses inside the dug room, so each
 /// dug stone (a one-item pile, one haul each) travels a few cells, and all of it is in store before the release.</item>
-/// <item>From tick <see cref="ReleaseTick"/>: release the lowest course that still has Planned entries once the course
-/// below it is built. A whole course is Ready at once, so the Build jobs carry full batches (CON-12) up to it.</item>
+/// <item>Tick <see cref="ReleaseTick"/>: release the whole plan at once, as a player's "Release all" does (M9-T2,
+/// ADR-068). CON-12 batching gathers the cells ahead of the build front, so trips carry full batches.</item>
 /// </list>
 /// Coordinates are fixed for seed 1; other seeds get the same commands, which may be rejected.</summary>
 public static class MonumentScript
@@ -66,13 +65,10 @@ public static class MonumentScript
     public static readonly Int3 YardOrigin = new(88, 24, 42);
     public const long YardTick = 6600;
 
-    /// <summary>The first course's release, once the stone is in store.</summary>
+    /// <summary>The whole plan's release, once the stone is in store.</summary>
     public const long ReleaseTick = 9600;
-    /// <summary>A course is released when the one below has at most this many entries left.</summary>
-    public const int CourseLeft = 0;
 
-    /// <summary>(tick, command) pairs in tick order; commands of one tick are enqueued in list order. The course
-    /// releases are not listed: they depend on the build's progress (<see cref="NextCourse"/>).</summary>
+    /// <summary>(tick, command) pairs in tick order; commands of one tick are enqueued in list order.</summary>
     public static IReadOnlyList<(long Tick, ICommand Command)> Commands { get; } = Build();
 
     public static long LastTick => Commands[^1].Tick;
@@ -99,6 +95,7 @@ public static class MonumentScript
             (RoomDigTick, new DesignateDig(QuarryA, QuarryB)),
             (QuarryStoreTick, new PlaceBuilding("warehouse", QuarryStoreOrigin, 0)),
             (YardTick, new PlaceBuilding("warehouse", YardOrigin, 0)),
+            (ReleaseTick, new ReleasePlan(new Int3(0, 0, 0), new Int3(WorldFactory.SizeX - 1, WorldFactory.SizeY - 1, WorldFactory.SizeZ - 1))),
         };
     }
 
@@ -128,31 +125,7 @@ public static class MonumentScript
             sim.Enqueue(command);
             n++;
         }
-        if (NextCourse(sim) is { } course)
-        {
-            sim.Enqueue(new ReleasePlan(new Int3(0, course, 0), new Int3(WorldFactory.SizeX - 1, course, WorldFactory.SizeZ - 1)));
-            n++;
-        }
         return n;
-    }
-
-    /// <summary>The course (y) to release now, or null: from <see cref="ReleaseTick"/> on, the lowest course that still
-    /// has Planned entries, once the course below it has at most <see cref="CourseLeft"/> entries left unbuilt. A
-    /// function of the sim state alone, so a loaded save carries on the same way.</summary>
-    public static int? NextCourse(Simulation sim)
-    {
-        if (sim.Clock.Tick < ReleaseTick) return null;
-        int lowestPlanned = int.MaxValue;
-        foreach (var (c, e) in sim.Plans.All)   // ascending index is ascending y
-            if (e.State == PlanState.Planned) { lowestPlanned = c.Y; break; }
-        if (lowestPlanned == int.MaxValue) return null;
-        int below = 0;
-        foreach (var (c, _) in sim.Plans.All)
-        {
-            if (c.Y > lowestPlanned - 1) break;
-            if (c.Y == lowestPlanned - 1) below++;
-        }
-        return below <= CourseLeft ? lowestPlanned : null;
     }
 
     /// <summary>Runs <paramref name="ticks"/> ticks, enqueuing the script's commands at their ticks.</summary>

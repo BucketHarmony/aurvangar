@@ -2639,3 +2639,56 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   shorter (no shape buttons). Red ghost cells are still faint. M9-T4: the Blocks menu lists
   `BlockTool.Blocks`, which are all `IsConstruction` blocks in id order, so new blocks appear there automatically.
   The G5 gate should use `SCRIPT=paint` for the "single-block painting" shot.
+
+## M9-T2 — Build trips carry full batches (2026-09-27)
+- Done: G4 issues 2 and 3. A whole-plan release now builds course by course in full trips (ADR-068).
+  - With the M8 rules, releasing the monument plan at once gave 103 trips (91 of them one block), and the build
+    stalled for good at 120 of 221 blocks. Wall sections rose ahead of their neighbours, and 23 entries became
+    `NoAccess`.
+  - **CON-05 check 6 `CourseBelow`:** an entry waits while a Build job holds a cell one course down within
+    `BlockPlans.CourseRadius` = 8 (horizontal Chebyshev).
+    - Only held cells count, so a stuck lower entry never holds anything up.
+    - The check comes after `NoSupport`.
+    - `BuildScan.Self` makes the re-check and the running job ignore their own cells.
+    - Ghost tooltip text: "waiting for the course below".
+  - **CON-12 chain batches:** entries join within 4 of *any* batch member. The members after the seed are stably
+    sorted by y.
+  - **The re-check ignores agents** in the `Occupied` check. Before this, a dwarf walking over a wall top cancelled
+    the unclaimed batches there every tick. New batch members must still be fully `Ready`.
+  - **`MonumentScript`** releases the whole plan at tick 9600 with one `ReleasePlan` in `Commands`. `NextCourse`
+    and `CourseLeft` were removed, and the headless line was updated.
+  - **Docs:** construction.md (CON-05, CON-12) and testing.md.
+- Tests:
+  - New `MonumentScenarioTests.Seed1_Monument_WholePlanRelease_FullTrips` (≥ 4 blocks per trip; `MonumentRun`
+    counts trips). Before the change it failed at 2.15 blocks per trip, and the monument never completed.
+  - New `BlockBuildScenarioTests.Batching.cs`:
+    - `StraightLine_OneFullBatch`: one 10-cell job (the old rule gave 5);
+    - `UpperCourse_WaitsForHeldCourseBelow`.
+  - The walled-in and floating checks every 100 ticks are kept, and they pass.
+  - `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the ledge 5 cells from a held column now reads
+    `CourseBelow` (the new rule; ADR-068).
+  - check.sh: 603 passed, 0 skipped, 0 failed. 0 warnings.
+- Numbers (monument, seed 1, whole release):
+  - 46 build trips, 4.80 blocks per trip;
+  - complete at tick 17,200 (day 7.2; the course-by-course script took 18,316);
+  - 5 of 5 dwarves alive, no rejected command.
+  - Most courses go out as jobs of 10, 10, 3 and 1 blocks. The remaining singles are stair steps and the door
+    lintel.
+  - Dwarves still idle while the last batch of a course finishes (about 27% of agent-ticks from the release to
+    completion).
+- Decisions: ADR-068.
+- sim-reviewer: not run (the Aurvangar.Sim diff is about 105 lines).
+- Golden: unchanged. The survival session has no plan entries. Headless `--script monument --ticks 24000`: hash
+  `320a8b23d7ef322e`, 1 failed job.
+- Perf (perf.sh, serial, all 9 pass):
+  - CON-P1: median 0.011 ms, p95 1.10 ms, build poster 3.3 ms over 500 ticks;
+  - SIM-P1: median 2.30 ms.
+- Screenshots (seed 1, looked at):
+  - `artifacts/screens/m9t2_12500/monument.png`: the first two courses are built, and the rest of the released plan
+    shows as ghosts.
+  - `artifacts/screens/m9t2_17400/monument.png`: the tower and courtyard are complete, with dwarves on the top.
+- Next:
+  - The monument screenshot ticks in docs/testing.md are now 11000, 14000 and 17400.
+  - Hand-painted single blocks (M9-T1) batch the same way, because batching works on entries, not commands.
+  - A structure within 8 cells of another waits while the other's lower course is held.
+  - Overlapping courses (less idle time) would need batches that span two courses.

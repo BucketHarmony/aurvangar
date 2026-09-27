@@ -18,7 +18,7 @@ public static partial class JobRunner
         bool keep = false;
         if (sim.Plans.Get(step.Cell) is { State: PlanState.Released } e && e.Block == block)
         {
-            var status = BlockPlans.StatusOf(new BuildScan(sim, held: null), step.Cell, e, a.Id, out _);
+            var status = BlockPlans.StatusOf(new BuildScan(sim, held: null, self: job), step.Cell, e, a.Id, out _);
             keep = status is BuildStatus.Ready or BuildStatus.Occupied or BuildStatus.NoMaterial;
         }
         if (keep) return false;

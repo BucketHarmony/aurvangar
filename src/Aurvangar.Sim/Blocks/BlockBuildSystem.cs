@@ -16,7 +16,7 @@ public static partial class BlockBuildSystem
     /// <summary>CON-12: unclaimed Build jobs on the board at a time.</summary>
     public const int MaxUnclaimed = 32;
 
-    /// <summary>CON-12: Chebyshev distance from the seed within which entries join its batch.</summary>
+    /// <summary>CON-12: Chebyshev distance from a batch member within which entries join the batch.</summary>
     public const int BatchRadius = 4;
 
     public static void Tick(Simulation sim)
@@ -58,7 +58,7 @@ public static partial class BlockBuildSystem
     }
 
     /// <summary>The first step index whose Place counts as held.</summary>
-    private static int HeldFrom(Simulation sim, Job j) =>
+    internal static int HeldFrom(Simulation sim, Job j) =>
         j.IsClaimed && sim.Agents.Get(j.ClaimedBy) is { } a && a.CurrentJob == j.Id ? a.StepIndex : 0;
 
     /// <summary>The block a Build job places (all its cells have the same one).</summary>
@@ -75,11 +75,11 @@ public static partial class BlockBuildSystem
     /// failed after its pickup (JOB-08) keeps its failure count.</summary>
     private static void Recheck(Simulation sim, List<Job> jobs)
     {
-        var scan = new BuildScan(sim, held: null);
         var promised = new SortedDictionary<(int B, int Item), int>();
         foreach (var j in jobs)
         {
             if (j.IsClaimed) continue;
+            var scan = new BuildScan(sim, held: null, self: j);
             var block = BlockOf(j);
             var cells = new List<Int3>();
             bool bad = !sim.World.InBounds(j.Target) || sim.GiveUps.IsGivenUp(GiveUpSource.Build, sim.World.Index(j.Target));
@@ -93,7 +93,7 @@ public static partial class BlockBuildSystem
                     if (s.Cell == j.Target) bad = true;
                     continue;   // placed, cancelled or repainted: not this job's any more
                 }
-                if (BlockPlans.StatusOf(scan, s.Cell, e, default, out var stands) != BuildStatus.Ready) bad = true;
+                if (BlockPlans.StatusOf(scan, s.Cell, e, default, out var stands, ignoreAgents: true) != BuildStatus.Ready) bad = true;
                 else
                 {
                     if (s.Cell == j.Target) seedStands = stands;
@@ -142,12 +142,14 @@ public static partial class BlockBuildSystem
             if (BlockPlans.StatusOf(scan, cell, e, default, out var stands) != BuildStatus.Ready) continue;
             var (item, cost) = sim.Content.CostOf(e.Block);
             var batch = new List<Int3> { cell };
-            Join(sim, scan, cell, e.Block, stands!, Math.Max(ItemsCarried / cost, 1), batch);
+            int max = Math.Max(ItemsCarried / cost, 1);
+            Join(sim, scan, cell, e.Block, stands!, max, batch);
+            SortByCourse(batch);
             if (!Source(sim, scan, promised, e.Block, cell, stands!, batch.Count, out var src, out int take)) continue;
             batch.RemoveRange(take, batch.Count - take);
             var job = sim.Jobs.Post(JobKind.Build, cell, Steps(sim, src, item, cost, e.Block, batch),
                 new[] { Reservation.OutOfStorage(src, item, take * cost) });
-            foreach (var c in batch) held[world.Index(c)] = job;
+            foreach (var c in batch) scan.AddHeld(c, job);
             Promise(promised, src, item, take * cost);
             unclaimed++;
             posts++;
@@ -156,9 +158,11 @@ public static partial class BlockBuildSystem
 
     private const int ItemsCarried = Agents.Agent.CarryCapacity;
 
-    /// <summary>CON-12 batch: up to <paramref name="max"/> cells in all. Entries of the same block within
-    /// <see cref="BatchRadius"/> of the seed (box scanned in ascending index order) that are released, unheld,
-    /// <c>Ready</c> and have a stand cell in a region shared with a seed stand cell.</summary>
+    /// <summary>CON-12 batch (M9-T2 chain, ADR-068): up to <paramref name="max"/> cells in all. Members are taken in
+    /// order (the seed first); around each, the box within <see cref="BatchRadius"/> is scanned in ascending
+    /// (dy, dz, dx) order for entries of the same block that are released, unheld, <c>Ready</c> and
+    /// have a stand cell in a region shared with a seed stand cell; each joins at the end. So a batch follows a wall
+    /// course instead of stopping at a box around the seed.</summary>
     private static void Join(Simulation sim, BuildScan scan, Int3 seed, BlockId block, List<Int3> seedStands, int max,
         List<Int3> batch)
     {
@@ -170,21 +174,36 @@ public static partial class BlockBuildSystem
             if (r != Paths.Regions.None) regions.Add(r);
         }
         var world = sim.World;
-        for (int dy = -BatchRadius; dy <= BatchRadius; dy++)
-            for (int dz = -BatchRadius; dz <= BatchRadius; dz++)
-                for (int dx = -BatchRadius; dx <= BatchRadius; dx++)
-                {
-                    var c = seed + new Int3(dx, dy, dz);
-                    if (c == seed || !world.InBounds(c) || sim.Plans.Get(c) is not { } e) continue;
-                    if (e.Block != block || e.State != PlanState.Released || scan.Held!.ContainsKey(world.Index(c))) continue;
-                    if (BlockPlans.StatusOf(scan, c, e, default, out var stands) != BuildStatus.Ready) continue;
-                    bool shared = false;
-                    foreach (var s in stands!)
-                        if (regions.Contains(sim.Regions.RegionOf(s))) { shared = true; break; }
-                    if (!shared) continue;
-                    batch.Add(c);
-                    if (batch.Count >= max) return;
-                }
+        var tried = new HashSet<int>();   // lookups only
+        foreach (var c in batch) tried.Add(world.Index(c));
+        for (int m = 0; m < batch.Count; m++)
+        {
+            var from = batch[m];
+            for (int dy = -BatchRadius; dy <= BatchRadius; dy++)
+                for (int dz = -BatchRadius; dz <= BatchRadius; dz++)
+                    for (int dx = -BatchRadius; dx <= BatchRadius; dx++)
+                    {
+                        var c = from + new Int3(dx, dy, dz);
+                        if (!world.InBounds(c) || sim.Plans.Get(c) is not { } e || !tried.Add(world.Index(c))) continue;
+                        if (e.Block != block || e.State != PlanState.Released || scan.Held!.ContainsKey(world.Index(c))) continue;
+                        if (BlockPlans.StatusOf(scan, c, e, default, out var stands) != BuildStatus.Ready) continue;
+                        bool shared = false;
+                        foreach (var s in stands!)
+                            if (regions.Contains(sim.Regions.RegionOf(s))) { shared = true; break; }
+                        if (!shared) continue;
+                        batch.Add(c);
+                        if (batch.Count >= max) return;
+                    }
+        }
+    }
+
+    /// <summary>Stable sort by y of the members after the seed (M9-T2): lower cells are built first, and trimming the
+    /// batch keeps them. The seed stays first (the re-check and the source rule key on it).</summary>
+    private static void SortByCourse(List<Int3> batch)
+    {
+        var rest = batch.Skip(1).Select((c, k) => (c, k)).OrderBy(x => x.c.Y).ThenBy(x => x.k).Select(x => x.c).ToList();
+        batch.RemoveRange(1, batch.Count - 1);
+        batch.AddRange(rest);
     }
 
     /// <summary>ADR-041 source for <paramref name="cells"/> blocks: among complete storages that accept the cost item

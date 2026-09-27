@@ -92,7 +92,7 @@ the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the 
 `TICKS=7700 SHOTS=tunnel` (flooded tunnel, breach levee sites), `TICKS=8400 SHOTS=tunnel` (levees complete),
 `TICKS=3000 SHOTS=reservoir` (full reservoir), `TICKS=14400 SHOTS=reservoir,tunnel,river` (drought: the river is
 empty, the reservoir and the tunnel still hold water). `SCRIPT=monument` (the timed `MonumentScript`, M8-T6):
-`TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 15000 (tower half built), 18600 (complete).
+`TICKS=11000 SHOTS=monument` (first courses and plan ghosts), 14000 (tower half built), 17400 (complete).
 `SCRIPT=paint` (the timed `PaintScript`, M9-T1): single blocks painted with the player's block tool along drags, a
 planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
 `TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag
@@ -120,8 +120,8 @@ the survival scenario (`SurvivalScenarioTests`), and `run-headless.sh --script s
 
 `Scripts.MonumentScript` (M8-T6, ADR-066) is the monument session on seed 1: chop, a pump, a corridor and quarry
 room dug into the hill's stone with two warehouses inside it, and a planned hollow 7×7, 8-high Masonry tower (door,
-inner stair) plus a courtyard wall. `EnqueueDue` releases the plan one course at a time from tick 9600, driven by
-the plan state (a loaded save carries on the same way). Used by `MonumentScenarioTests`, CON-P1 and
+inner stair) plus a courtyard wall. The whole plan is released at tick 9600, as a player's "Release all" does
+(M9-T2, ADR-068); the CON-05 course check and CON-12 batching raise it course by course in full trips. Used by `MonumentScenarioTests`, CON-P1 and
 `run-headless.sh --script monument`.
 
 `run-headless.sh --script digchop` (also `none`, `build`, `farm`, `survival` and `monument`) runs the screenshot harness's `ScreenshotScripts` command list

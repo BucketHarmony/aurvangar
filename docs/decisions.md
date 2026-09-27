@@ -1587,3 +1587,46 @@ Consequences:
   and this is fine at hand-painting sizes.
 - A tall structure takes one drag per course. There is no vertical paint; a player who wants one could get it
   later from a modifier key.
+
+## ADR-068: Build batching gathers whole courses: course check, chain batches, agent-tolerant re-check (2026-09-27, M9-T2)
+Context: at G4, a whole-plan release gave trips of about 1.3 blocks, and dwarves stood idle between courses
+(ADR-066). M9-T2 asks that releasing the monument plan at once averages at least 4 blocks per trip, and that the
+monument still finishes by day 10 with all 5 dwarves alive. With the M8 rules, a whole release of the monument
+posted 91 one-block jobs out of 103 trips, and it stalled for good at 120 of 221 blocks: sections of the tower wall
+rose ahead of their neighbours, and 23 entries became `NoAccess` (no dwarf could get onto the wall top any more).
+The script's course-by-course release (ADR-066) had been hiding both problems.
+Decision (the simplest set that met the test; each part was measured on the whole-release monument):
+- **Course check (CON-05 check 6, `BuildStatus.CourseBelow`).** An entry waits while a Build job holds a cell one
+  course down within `BlockPlans.CourseRadius` = 8 horizontally (Chebyshev). A structure then rises course by
+  course, as the script did, and a finished course turns `Ready` together. Only *held* cells count, so a lower
+  entry that is stuck (no material, no access, given up) never holds anything up. The check comes after
+  `NoSupport`, so the player still sees "nothing holds it up" first. The re-check and the running job ignore the
+  job's own cells (`BuildScan.Self`), so a batch that holds two courses is not cancelled by its own lower cells.
+  Radius sweep (blocks per trip / completion tick): 2 -> 3.0 / 17,500; 4 -> 4.25 / 17,000; 5 -> 4.25 / 17,500;
+  6 and 8 -> 5.0 / 17,500 (measured before batch members were made strict, see below). 8 is two batch radii, and
+  it covers the whole 7-wide tower.
+- **Chain batches (CON-12).** Entries join within distance 4 of any batch member, not only of the seed. Members are
+  scanned in order, so a batch follows a wall course. It is then stably sorted by y. Before this, a 24-cell course
+  split into jobs of 9, 6, 1 and 1 cells.
+- **The re-check ignores agents.** A dwarf walking on a wall top made the cells under it `Occupied`, and every
+  unclaimed Build job holding one of them was cancelled and re-posted smaller the next tick (dozens of one-block
+  jobs per course). The re-check now leaves agents out of the `Occupied` check (a pile or a plant still counts).
+  CON-13 already waits for an agent at run time. New batch members must still be fully `Ready` (letting them
+  ignore agents too gave 5.0 blocks per trip, but it put jobs on cells where a dwarf stood).
+- **The script releases the whole plan** at tick 9600 (one `ReleasePlan` over the world, in `Commands`), as a
+  player's "Release all" does. `NextCourse` and `CourseLeft` are gone.
+- **Tried and dropped:** holding a small batch (under half a load) while a claimed Build job worked nearby. Trips
+  rose to 4.5 blocks at that point in the work, but completion slipped from 17,000 to 20,000 ticks and idle time
+  doubled.
+Consequences:
+- Monument, whole release: 46 trips, 4.80 blocks per trip. It completes at tick 17,200 (day 7.2); ADR-066 had
+  18,316 with course-by-course releases. All 5 dwarves are alive, and no dwarf is walled in and no block floats at
+  any 100-tick check. Jobs per course are now usually 10, 10, 3 and 1; the singles left are stair steps (each step
+  is its own course) and the door lintel.
+- Dwarves still wait while the last batch of a course finishes (about 10,700 idle agent-ticks between ticks 9,600
+  and 17,400, out of 39,000). Overlapping courses would need batches that span a course and the one above it.
+- A structure within 8 cells of another one waits for the other one's held lower course. This is short, because
+  only held cells count.
+- `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the 2-cell ledge at y + 1 now waits (`CourseBelow`) for the
+  held column 5 cells away, instead of getting a job. The assertion was updated to the new rule.
+- Goldens are unchanged (the survival session has no plan entries).

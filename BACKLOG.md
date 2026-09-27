@@ -281,7 +281,7 @@ Human answers are in PROGRESS.md under "G4 answers". Right-drag orbit stays as i
   - Put the face-to-cell and paint-path logic in ViewCore with unit tests. Update the controls text and the gate
     report's control list. Record the change as an ADR (it amends ADR-065).
   - Render screenshots and look at them.
-- [ ] **M9-T2** Build trips carry full batches · specs: CON-*, JOB-* · deps: M8-GATE
+- [x] **M9-T2** Build trips carry full batches · specs: CON-*, JOB-* · deps: M8-GATE
   - G4 issues 2 and 3: after a whole-plan release, a trip carries about 1.3 blocks, and dwarves stand idle between
     layers.
   - Gather Ready cells ahead of the build front (up to the trip limit of 10), so one trip builds several blocks.

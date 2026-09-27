@@ -9,6 +9,7 @@ using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Screenshots;
 using Aurvangar.ViewCore.Scripts;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Aurvangar.Sim.Tests.Scenarios;
 
@@ -25,15 +26,27 @@ public sealed class MonumentRun
     /// <summary>The tick the last planned cell was built, or -1.</summary>
     public long CompletedAt { get; } = -1;
     public int MaxBuiltMidway { get; }
+    /// <summary>Build trips: each time a dwarf is past the pickup of a Build job it claimed (a re-claim after a failure
+    /// is a new trip).</summary>
+    public int BuildTrips { get; }
 
     public MonumentRun()
     {
         Sim = WorldFactory.Create(MonumentScript.Seed, TestContent.Db);
         var hub = Sim.Buildings.All.First();
+        var tripOf = new Dictionary<int, int>();   // agent id -> the Build job it is counted on (lookups only)
         for (long i = 0; i < Ticks; i++)
         {
             MonumentScript.EnqueueDue(Sim);
             Sim.Tick();
+            foreach (var a in Sim.Agents.All)
+            {
+                bool carrying = Sim.Jobs.Get(a.CurrentJob) is { Kind: JobKind.Build } && a.StepIndex >= 2;
+                if (!carrying) { tripOf.Remove(a.Id.Value); continue; }
+                if (tripOf.TryGetValue(a.Id.Value, out var j) && j == a.CurrentJob.Value) continue;
+                tripOf[a.Id.Value] = a.CurrentJob.Value;
+                BuildTrips++;
+            }
             foreach (var e in Sim.Events.Drain())
                 if (e is CommandRejected r) Rejected.Add($"tick {Sim.Clock.Tick}: {r.Command} {r.Reason}");
             if (Sim.Clock.Tick % 100 != 0) continue;
@@ -59,7 +72,13 @@ public class MonumentScenarioTests : IClassFixture<MonumentRun>
     private const long Day = 2400;
     private readonly MonumentRun _run;
 
-    public MonumentScenarioTests(MonumentRun run) => _run = run;
+    private readonly ITestOutputHelper _out;
+
+    public MonumentScenarioTests(MonumentRun run, ITestOutputHelper output)
+    {
+        _run = run;
+        _out = output;
+    }
 
     [Fact]
     public void Seed1_Monument_CompleteByDay10_AllAlive()
@@ -88,6 +107,18 @@ public class MonumentScenarioTests : IClassFixture<MonumentRun>
         Assert.Equal(BlockId.Air, sim.World.GetBlock(new Int3(MonumentScript.DoorA.X, a.Y, MonumentScript.CourtyardFrontZ)));   // gate
         Assert.All(sim.Buildings.All, bl => Assert.Equal(Buildings.BuildingState.Complete, bl.State));
         Assert.True(sim.Water.Stats.Pumped > 0, "the pump never ran");
+    }
+
+    /// <summary>M9-T2 (CON-12, ADR-068): the script releases the whole plan at once, and Build trips still carry full
+    /// batches: on average at least 4 blocks per trip.</summary>
+    [Fact]
+    public void Seed1_Monument_WholePlanRelease_FullTrips()
+    {
+        Assert.Contains(MonumentScript.Commands, c => c.Command is ReleasePlan);
+        Assert.Single(MonumentScript.Commands, c => c.Command is ReleasePlan);
+        double perTrip = (double)MonumentScript.PlannedCells.Count / Math.Max(_run.BuildTrips, 1);
+        _out.WriteLine($"monument: {_run.BuildTrips} build trips, {perTrip:F2} blocks per trip, complete at tick {_run.CompletedAt}");
+        Assert.True(perTrip >= 4.0, $"{perTrip:F2} blocks per trip ({_run.BuildTrips} trips)");
     }
 
     [Fact]
