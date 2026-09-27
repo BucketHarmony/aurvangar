@@ -8,7 +8,7 @@ using Aurvangar.ViewCore.Screenshots;
 using Aurvangar.ViewCore.Scripts;
 
 // Headless runner. Usage:
-//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script none|digchop|build|farm|survival|blocks|monument]
+//   dotnet run --project tools/Aurvangar.Headless -c Release -- --seed 1 --ticks 24000 [--report-every 2400] [--script none|digchop|build|farm|survival|blocks|monument|workshop|economy]
 // Prints world stats, per-interval sim stats and the final StateHash. Exit code 0 on success.
 // Later milestones extend the per-interval report (agents alive, jobs, storage, water).
 
@@ -35,9 +35,17 @@ if (timed && opts.Script == "survival")
 {
     Console.WriteLine($"script: survival ({SurvivalScript.Commands.Count} commands at ticks 0..{SurvivalScript.LastTick})");
 }
-else if (timed)
+else if (timed && opts.Script == "economy")
+{
+    Console.WriteLine($"script: economy (timed; workshops and Keep orders at ticks 0-1, trades at {string.Join(",", EconomyScript.TradeTicks)}, the refined hall ({EconomyScript.HallCells.Count} blocks) released at tick {EconomyScript.HallTick})");
+}
+else if (timed && opts.Script == "monument")
 {
     Console.WriteLine($"script: monument ({MonumentScript.Commands.Count} commands at ticks 0..{MonumentScript.LastTick}; the whole plan is released at tick {MonumentScript.ReleaseTick})");
+}
+else if (timed)
+{
+    Console.WriteLine($"script: {opts.Script} (timed)");
 }
 else if (opts.Script is not null)
 {
@@ -72,6 +80,9 @@ for (int t = 0; t < opts.Ticks; t++)
 runClock.Stop();
 PrintInterval(sim, tickTimes, baseline);
 if (baseline is not null && tracker is not null) PrintWorkSummary(sim, baseline, tracker);
+if (opts.Script == "economy")
+    Console.WriteLine($"economy: hall.built={EconomyScript.HallCells.Count(p => sim.World.GetBlock(p.Cell) == p.Block)}/{EconomyScript.HallCells.Count} " +
+        $"planks={Aurvangar.Sim.Buildings.Economy.Stock(sim, content.Item("planks"))} cutstone={Aurvangar.Sim.Buildings.Economy.Stock(sim, content.Item("cutstone"))}");
 if (colonyLostTick >= 0) Console.WriteLine($"colony.lost tick={colonyLostTick} day={colonyLostTick / 2400}");
 double seconds = runClock.Elapsed.TotalSeconds;
 double tps = seconds > 0 ? opts.Ticks / seconds : 0;

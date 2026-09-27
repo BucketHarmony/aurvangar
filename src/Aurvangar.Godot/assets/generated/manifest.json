@@ -1,0 +1,392 @@
+{
+  "assets": {
+    "brand-app-icon": {
+      "approved": "2026-09-27T23:14:12Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "brand/app-icon.png",
+        "png_32": "brand/app-icon_32.png",
+        "png_512": "brand/app-icon_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "brand-keyart": {
+      "approved": "2026-09-27T23:14:29Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "brand/keyart.png"
+      },
+      "kind": "illustration",
+      "size": [
+        1600,
+        900
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "brand-logo": {
+      "approved": "2026-09-27T23:14:39Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "brand/logo.png",
+        "png_512": "brand/logo_512.png"
+      },
+      "kind": "logo",
+      "size": [
+        1574,
+        625
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "brand-splash": {
+      "approved": "2026-09-27T23:16:09Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "brand/splash.png"
+      },
+      "kind": "illustration",
+      "size": [
+        1600,
+        900
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-alert-no-food": {
+      "approved": "2026-09-27T23:17:45Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-alert-no-food.png",
+        "png_32": "ui/icons/icon-alert-no-food_32.png",
+        "png_512": "ui/icons/icon-alert-no-food_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-alert-no-water": {
+      "approved": "2026-09-27T23:17:50Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-alert-no-water.png",
+        "png_32": "ui/icons/icon-alert-no-water_32.png",
+        "png_512": "ui/icons/icon-alert-no-water_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-alert-pump-dry": {
+      "approved": "2026-09-27T23:17:55Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-alert-pump-dry.png",
+        "png_32": "ui/icons/icon-alert-pump-dry_32.png",
+        "png_512": "ui/icons/icon-alert-pump-dry_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-alert-unreachable": {
+      "approved": "2026-09-27T23:18:02Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-alert-unreachable.png",
+        "png_32": "ui/icons/icon-alert-unreachable_32.png",
+        "png_512": "ui/icons/icon-alert-unreachable_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-item-berries": {
+      "approved": "2026-09-27T23:18:07Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-item-berries.png",
+        "png_32": "ui/icons/icon-item-berries_32.png",
+        "png_512": "ui/icons/icon-item-berries_512.png"
+      },
+      "game_ref": "berries",
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-item-potato": {
+      "approved": "2026-09-27T23:18:33Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-item-potato.png",
+        "png_32": "ui/icons/icon-item-potato_32.png",
+        "png_512": "ui/icons/icon-item-potato_512.png"
+      },
+      "game_ref": "potato",
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-item-stone": {
+      "approved": "2026-09-27T23:18:38Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-item-stone.png",
+        "png_32": "ui/icons/icon-item-stone_32.png",
+        "png_512": "ui/icons/icon-item-stone_512.png"
+      },
+      "game_ref": "stone",
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-item-water": {
+      "approved": "2026-09-27T23:18:44Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-item-water.png",
+        "png_32": "ui/icons/icon-item-water_32.png",
+        "png_512": "ui/icons/icon-item-water_512.png"
+      },
+      "game_ref": "water",
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-speed-1": {
+      "approved": "2026-09-27T23:19:27Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-speed-1.png",
+        "png_32": "ui/icons/icon-speed-1_32.png",
+        "png_512": "ui/icons/icon-speed-1_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-speed-3": {
+      "approved": "2026-09-27T23:19:32Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-speed-3.png",
+        "png_32": "ui/icons/icon-speed-3_32.png",
+        "png_512": "ui/icons/icon-speed-3_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-speed-6": {
+      "approved": "2026-09-27T23:19:37Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-speed-6.png",
+        "png_32": "ui/icons/icon-speed-6_32.png",
+        "png_512": "ui/icons/icon-speed-6_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-blocks": {
+      "approved": "2026-09-27T23:16:17Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-blocks.png",
+        "png_32": "ui/icons/icon-tool-blocks_32.png",
+        "png_512": "ui/icons/icon-tool-blocks_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-build": {
+      "approved": "2026-09-27T23:16:24Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-build.png",
+        "png_32": "ui/icons/icon-tool-build_32.png",
+        "png_512": "ui/icons/icon-tool-build_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-cancel": {
+      "approved": "2026-09-27T23:16:30Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-cancel.png",
+        "png_32": "ui/icons/icon-tool-cancel_32.png",
+        "png_512": "ui/icons/icon-tool-cancel_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-chop": {
+      "approved": "2026-09-27T23:16:37Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-chop.png",
+        "png_32": "ui/icons/icon-tool-chop_32.png",
+        "png_512": "ui/icons/icon-tool-chop_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-deconstruct": {
+      "approved": "2026-09-27T23:16:44Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-deconstruct.png",
+        "png_32": "ui/icons/icon-tool-deconstruct_32.png",
+        "png_512": "ui/icons/icon-tool-deconstruct_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-dig": {
+      "approved": "2026-09-27T23:16:48Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-dig.png",
+        "png_32": "ui/icons/icon-tool-dig_32.png",
+        "png_512": "ui/icons/icon-tool-dig_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-farm": {
+      "approved": "2026-09-27T23:16:54Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-farm.png",
+        "png_32": "ui/icons/icon-tool-farm_32.png",
+        "png_512": "ui/icons/icon-tool-farm_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-plan": {
+      "approved": "2026-09-27T23:16:59Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-plan.png",
+        "png_32": "ui/icons/icon-tool-plan_32.png",
+        "png_512": "ui/icons/icon-tool-plan_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "icon-tool-release-plan": {
+      "approved": "2026-09-27T23:17:05Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "ui/icons/icon-tool-release-plan.png",
+        "png_32": "ui/icons/icon-tool-release-plan_32.png",
+        "png_512": "ui/icons/icon-tool-release-plan_512.png"
+      },
+      "kind": "icon",
+      "size": [
+        512,
+        512
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "portrait-dwarf-base": {
+      "approved": "2026-09-27T23:19:59Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "portrait/portrait-dwarf-base.png"
+      },
+      "kind": "portrait",
+      "size": [
+        768,
+        1024
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c"
+    },
+    "stone-side": {
+      "approved": "2026-09-27T23:15:23Z",
+      "approved_ref": "render/001",
+      "files": {
+        "png": "texture/stone-side.png"
+      },
+      "game_ref": "Stone",
+      "kind": "texture",
+      "size": [
+        1024,
+        1024
+      ],
+      "source_rev": "5495288e2b7adf5878c0413026130e3567bdca2c",
+      "tileable": true
+    }
+  },
+  "version": 1
+}

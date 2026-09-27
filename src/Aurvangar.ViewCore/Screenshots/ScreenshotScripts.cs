@@ -50,10 +50,13 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// <item><c>workshop</c> (M11-T6): the timed <see cref="WorkshopScript"/>, a sawmill and a stonecutter with orders and
 /// one accepted trade. <c>--ticks 3200 --panel workshop</c> (or <c>trade</c>) shows a panel open (the <c>workshop</c>
 /// preset).</item>
+/// <item><c>economy</c> (M11-T7): the timed <see cref="EconomyScript"/> (seed 1): both workshops on Keep orders, logs
+/// traded for stone at the first wagon, and a small hall of refined blocks. <c>--ticks 3400</c> shows the workshops
+/// working and the wagon in, 6000 the hall going up (the <c>economy</c> preset looks at it).</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes", "workshop" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes", "workshop", "economy" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -77,6 +80,7 @@ public static class ScreenshotScripts
             case "paint":
             case "wall":
             case "workshop":
+            case "economy":
                 return Array.Empty<ICommand>();
             case "digchop":
                 return new ICommand[] { PitDig(sim), ChopNearHub(sim) };
@@ -118,7 +122,7 @@ public static class ScreenshotScripts
     }
 
     /// <summary>True for a script whose commands have their own ticks (<c>survival</c>, <c>monument</c>, <c>paint</c>).</summary>
-    public static bool IsTimed(string name) => name is "survival" or "monument" or "paint" or "wall" or "workshop";
+    public static bool IsTimed(string name) => name is "survival" or "monument" or "paint" or "wall" or "workshop" or "economy";
 
     /// <summary>Enqueues the commands of timed script <paramref name="name"/> due at the sim's current tick.</summary>
     public static void EnqueueDue(string name, Simulation sim)
@@ -127,6 +131,7 @@ public static class ScreenshotScripts
         else if (name == "survival") SurvivalScript.EnqueueDue(sim);
         else if (name is "paint" or "wall") PaintScript.EnqueueDue(sim);
         else if (name == "workshop") WorkshopScript.EnqueueDue(sim);
+        else if (name == "economy") EconomyScript.EnqueueDue(sim);
     }
 
     /// <summary>Runs <paramref name="ticks"/> ticks of script <paramref name="name"/> the way the harness does: an

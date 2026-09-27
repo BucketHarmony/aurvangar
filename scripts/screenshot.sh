@@ -12,6 +12,7 @@
 # TICKS=700 SHOTS=stairs; shapes = a stair, pillars and slabs with a stair ghost held, TICKS=2400 SHOTS=shapes;
 # blocks, monument: see docs/testing.md).
 # workshop = a sawmill and a stonecutter with orders and one accepted trade, TICKS=3200 SHOTS=workshop.
+# economy = the timed EconomyScript: workshops on Keep orders, trades and a refined hall, TICKS=3400|5200|7900 SHOTS=workshop,economy.
 # PANEL (none): workshop or trade opens that panel in the shots, e.g. SCRIPT=workshop PANEL=trade (M11-T6).
 # GHOST (none): a building id whose build ghost is shown, e.g. GHOST=levee SCRIPT=build (M11-T1).
 # Run `dotnet build src/Aurvangar.Godot` first after code changes (--build-solutions may not rebuild).

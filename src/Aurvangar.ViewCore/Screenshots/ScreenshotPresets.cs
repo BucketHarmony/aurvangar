@@ -38,11 +38,12 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// <item><c>shapes</c> (M11-T11): the <see cref="ShapesScript"/> build of fine shapes (stair, pillars, slabs) with a
 /// stair drag of the block tool held.</item>
 /// <item><c>monument</c> (M8-T6): the <see cref="MonumentScript"/> tower and courtyard, with the hill quarry behind.</item>
+/// <item><c>economy</c> (M11-T7): the <see cref="EconomyScript"/> refined hall, from the south-east so the door shows.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes", "workshop" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials", "wall", "stairs", "shapes", "workshop", "economy" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -59,6 +60,7 @@ public static class ScreenshotPresets
     public const float WallYaw = 130f;
     public const float ShapesYaw = 330f;
     public const float WorkshopYaw = 45f;
+    public const float EconomyYaw = 30f;
 
     public static CameraShot For(string name, Simulation sim)
     {
@@ -160,6 +162,13 @@ public static class ScreenshotPresets
                 foreach (var b in ws) { x += b.Origin.X + 1f; z += b.Origin.Z + 1f; }
                 var focus = new Vector3(x / (ws.Count + 1), hub.Y, z / (ws.Count + 1));
                 return new CameraShot(name, focus, WorkshopYaw, 45f, 20f, top);
+            }
+            case "economy":
+            {
+                var a = EconomyScript.HallA;
+                var b = EconomyScript.HallB;
+                var focus = new Vector3((a.X + b.X + 1) / 2f, a.Y + 1, (a.Z + b.Z + 1) / 2f);
+                return new CameraShot(name, focus, EconomyYaw, 40f, 16f, top);
             }
             case "slice":
             {

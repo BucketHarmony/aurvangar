@@ -421,7 +421,7 @@ starting wagon answers "I dont know where to get stone from".
   - Click a workshop to see its recipes and set orders (make N or keep N). A trade panel appears when a wagon is
     in, showing offers, what we have and accept buttons. The HUD shows refined items. Keep logic in ViewCore with
     tests. Render screenshots and look at them.
-- [ ] **M11-T7** Economy scenario · specs: CRF-P1, crafting.md scenario 10 · deps: M11-T6
+- [x] **M11-T7** Economy scenario · specs: CRF-P1, crafting.md scenario 10 · deps: M11-T6
   - An EconomyScript for seed 1 builds a Sawmill and a Stonecutter, keeps planks and cut stone stocked, trades
     with one wagon and builds a small hall from refined blocks. Test: done by day 10 with all 5 alive. Run
     perf.sh; the full tick stays within budget. Headless and screenshot support for `--script economy`.

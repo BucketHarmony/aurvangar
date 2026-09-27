@@ -105,6 +105,11 @@ Polished stone stairs (shaped plan ghosts), and a held Slate stair drag of the b
 `SCRIPT=workshop SHOTS=workshop TICKS=3200 PANEL=workshop` (M11-T6): the timed `WorkshopScript`, a stonecutter (Make 60
 cut stone) and a sawmill (Keep 30 planks) by the hall and one accepted lot of logs for stone; `PANEL=workshop` opens the
 stonecutter's panel, `PANEL=trade` the trade panel with the wagon in.
+`SCRIPT=economy SHOTS=workshop,economy` (M11-T7, crafting.md scenario 10): the timed `EconomyScript` (seed 1), both
+workshops on Keep orders (30 planks, 40 cut stone), logs traded for stone at each wagon visit, and a 5x5 hall three
+courses high (Slate, Polished stone, Wood planks) with an inner stair, released at tick 3600 (`TICKS=3400`: workshops
+working and the wagon in, add `PANEL=trade`; 5200: the hall going up; 7900: the finished hall). Also
+`run-headless.sh --script economy`, which prints an `economy:` line (hall blocks built, planks and cut stone stock).
 `SCRIPT=paint` (the timed `PaintScript`, M9-T1): single blocks painted with the player's block tool along drags, a
 planks L released at tick 0 and a planned second course at tick 1, plus a stone paint drag held by the harness;
 `TICKS=3 SHOTS=paint` shows the ghosts, 1500 the built L with the planned course and a red cell where the held drag

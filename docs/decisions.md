@@ -2145,3 +2145,28 @@ Decision:
   a `workshop` camera preset, and `--panel workshop|trade` (`PANEL=` in screenshot.sh).
 Consequences: no sim change; goldens unchanged. The top bar totals were already every item in data order; with the
 Trade button the totals may wrap or drop below the toolbar at narrow widths (HudLayout, tested).
+
+## ADR-086: The economy scenario: a Keep-order colony, affordable trades, a hall with an inner stair (2026-09-27, M11-T7)
+Context: crafting.md scenario 10 asks for an `EconomyScript` on seed 1 that builds both workshops, keeps planks and
+cut stone stocked, trades with one wagon and builds a small hall from refined blocks by day 10 with all 5 alive. The
+spec leaves open the hall's shape, how many lots to accept, and where the water and the logs come from.
+Decision:
+- **Timed and computed**, like `WorkshopScript`: `EconomyScript.EnqueueDue` computes its commands at their ticks. Tick
+  0: the monument's chop area (it covers the hall site) and its Water Pump site, then a Sawmill and a Stonecutter at the
+  nearest free sites by the hall (`FindSite`, the hall site kept clear). Tick 1: Keep 30 planks and Keep 40 cut stone.
+  Tick 3000: chop every tree around the hall too (the survival chop area), logs for later visits and the sawmill.
+- **Trades are affordable by construction.** At fixed ticks in each visit (3001, 3600, 4200, 10201, 10800, 17401,
+  18000) it accepts as many lots of offer 0 (10 log -> 10 stone) as `Traders.FreeStock(log)` pays for, if any lots
+  are left. So no AcceptOffer is ever rejected (the scenario asserts no rejections). On seed 1 this is 2 lots at 3001
+  and more at the later visits: 4 accepts and 4 fully granted deals over 3 visits.
+- **The hall**: 5x5 at the monument's flat site, three courses: Slate, Polished stone, Wood planks (75 cut stone and
+  18 planks with the stair), a two-high door in the south wall, planned then released at tick 3600. A builder reaches
+  one level up or down (26-neighborhood), so a third course cannot be built from the ground: a two-step Wood planks
+  stair inside against the north wall lets builders reach the wall top, as the monument's inner stair does. Without
+  it the top course never builds (seen: 30 of 46 blocks).
+- **Stone** comes from the starting wagon (60) and trades; no quarry is dug (the M11-T8 stair dig is not needed).
+- **Profiling.** `TickPhase` gains `Workshops` and `Traders` (step 7), so CRF-P1 prints their totals. Profiling only;
+  no sim state or tick order changes.
+Consequences: the hall is done at tick 7801 (day 3); both Keep orders are met (1599 and 1696) and are met again at
+day 10. CRF-P1 measures ticks 3700..4199 (trader in all 500 ticks, both workshops working): median about 0.8 ms of 8.
+Goldens unchanged.

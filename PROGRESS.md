@@ -3788,3 +3788,48 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Next: M11-T7 (EconomyScript). `ScreenshotScripts.Names` gains "economy" there; the `workshop` script and preset can
   serve as a pattern (timed, `EnqueueDue`). The trade panel's free stock is `Traders.FreeStock`; on seed 1 the
   workshops eat the wagon's logs fast, so the script should chop for logs before it trades.
+
+## M11-T7 — Economy scenario (2026-09-27)
+- Done: `EconomyScript` (ViewCore, timed like `WorkshopScript`, seed 1; ADR-086):
+  - tick 0: the monument chop (it covers the hall site), a Water Pump at the monument's bank site, and a Sawmill and a
+    Stonecutter at the nearest free sites by the hall;
+  - tick 1: Keep 30 planks and Keep 40 cut stone;
+  - tick 3000: the survival chop, so later visits can be paid in logs;
+  - ticks 3001/3600/4200, 10201/10800 and 17401/18000: accept as many lots of "10 log -> 10 stone" as the free logs
+    pay for (never rejected);
+  - tick 3600: a 5x5 hall, three courses high (Slate, Polished stone, Wood planks), with a two-high door and a two-step
+    planks stair inside, planned and released at once (48 blocks).
+
+  Registered as `economy` in `ScreenshotScripts.Names`/`IsTimed`/`EnqueueDue`, and as an `economy` camera preset on the
+  hall. The headless runner prints the script line and an `economy:` summary line (hall blocks, planks and cut stone
+  stock). `TickPhase` gains `Workshops` and `Traders` (profiler brackets in step 7; no state).
+- Tests: the 4 M11-T7 placeholders are replaced by `Scenarios/EconomyScenarioTests.cs` (3) and
+  `Perf/EconomyPerfTests.cs` (CRF-P1). `PendingAcceptanceTests.cs` was empty and is deleted.
+  - Before the stair, the scenario failed on the hall: 30 of 46 blocks, the top course out of reach from the ground.
+  - check.sh: 764 passed, 0 skipped, 0 failed, 0 warnings.
+- Numbers (seed 1):
+  - hall done at tick 7801 (day 3);
+  - Keep orders met at 1599 (planks) and 1696 (cut stone);
+  - 4 accepts, 4 deals fully granted, 3 visits;
+  - 265 jobs, 0 failed, 5 of 5 alive.
+  - Headless `--script economy --ticks 24000`: hash 185c02b20d8b8d86, hall 48/48, planks 30, cut stone 40 at day 10,
+    26 trees felled, ~2700 ticks/s.
+- Decisions: ADR-086. testing.md and screenshot.sh list the script.
+- Golden: unchanged (no sim state change).
+- Perf: perf.sh green, 11 of 11.
+  - CRF-P1 (ticks 3700-4199, trader in all 500, sawmill working 197 ticks, stonecutter 250): median 0.83 ms of 8 ms,
+    p95 3.8 ms. Totals: workshops 3.2 ms, traders 1.5 ms, build poster 318 ms.
+  - SIM-P1: 2.36 ms.
+- sim-reviewer: not run (the Aurvangar.Sim diff is about 10 lines of profiler brackets).
+- Screens (looked at), all `SCRIPT=economy`:
+  - `artifacts/screens/m11t7_3400/workshop.png`: both workshops, the wagon and the trade wagon, dwarves felling, and
+    the "trade wagon has arrived" toast. HUD: Planks 30, Cut stone 40.
+  - `m11t7_3400_trade/workshop.png` (`PANEL=trade`): the deal "2 x 10 log -> 10 stone: paid 20/20, granted 2/2".
+  - `m11t7_5200/economy.png`: the Slate course and part of the Polished stone course, with ghosts above;
+    "Building: planks 14/30, cut stone 26/1" (short).
+  - `m11t7_7900/economy.png`: the finished hall (blue-grey Slate, white Polished stone, tan planks), the door, and
+    the inner stair.
+- Optional carryovers were not done: the Craft retry cooldown, the torn-down-workshop guard, BuildingPlaced on trader
+  arrival, and dropping the Pay leftover. They are still optional.
+- Next: M11-GATE (HUMAN-GATE G7), the economy review. Use `SCRIPT=economy` shots at 3400 (with `PANEL=trade`), 5200
+  and 7900, plus a `hub` shot for the starting wagon.
