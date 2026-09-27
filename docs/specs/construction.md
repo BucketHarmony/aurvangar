@@ -52,7 +52,7 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 
 ## Plan entries (CON-04..06)
 
-- **CON-04** `BlockPlans` (`Simulation.Plans`, new `Construction/` folder in `Aurvangar.Sim`) holds entries in a
+- **CON-04** `BlockPlans` (`Simulation.Plans`, new `Blocks/` folder in `Aurvangar.Sim`, ADR-062) holds entries in a
   `SortedDictionary<int cellIndex, PlanEntry>`. A `PlanEntry` is `(BlockId Block, PlanState State)`, where
   `PlanState : byte { Planned = 1, Released = 2 }`.
   - Placing the block removes the entry (the `Place` step does it, CON-13).
@@ -194,7 +194,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     - One Build job is posted per batch, and it holds its cells until they are placed, skipped or cancelled.
   - **Limits**: at most 8 new Build jobs per tick, and at most 32 unclaimed Build jobs at a time.
   - **Re-check**: each tick, an unclaimed Build job with a cell that is no longer `Ready` (ignoring its own hold) is
-    cancelled, and its cells are batched again later.
+    cancelled, and its cells are batched again later. Otherwise its placed cells leave it and it is re-planned
+    against the current stock (source, count), keeping its JOB-08 failure count (ADR-062).
   - **Job**: `JobKind.Build`, priority 25 (the same as Dig and Chop; JOB-05 row added in M8-T2). The target is the
     seed cell. Steps:
     `GoTo(source, Building) -> PickUpFromStorage(source, item, n) -> for each cell k: GoTo(cell_k, Build) -> Work(cell_k, buildTicks) -> Place(cell_k, block)`,
@@ -224,9 +225,12 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     Natural blocks keep the ADR-027 behaviour (free, no support check; used only by tests).
   - **Waiting**: `Blocked` by an agent waits up to `JobRunner.DigDeferLimit` (200) ticks, as in DSG-08, and then
     fails the job. Other non-Ok results fail the job (JOB-08).
+  - **Re-goal**: a GoTo(Build) whose move fails because its goal stand cell stopped being walkable (another block
+    went into it) restarts its step, which re-checks the cell and picks fresh stand cells; it is not a failure
+    (ADR-062).
   - **Surplus**: material left over from skipped cells stays carried. The idle agent drops it when the job ends
     (existing behaviour), and JOB-10 hauls it back.
-  - **Step-aside**: an idle dwarf standing in a `Ready` entry's cell, or in the cell below one, steps aside. This
+  - **Step-aside**: an idle dwarf standing in a released entry's cell, or in the cell below one, steps aside (ADR-062). This
     extends ADR-029's `StepAside`.
 - **CON-14** No walling a dwarf in (G3: "reuse the strand rule").
   - **What placing at P removes**:
@@ -249,8 +253,9 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     - stand cells (CON-11);
     - the last filter in `JobRunner.Select`;
     - Work start and the `Place` step (stand down with the JOB-08 cooldown, no failure).
-  - **Step-out**: an idle dwarf in a pocket that an open, unclaimed Build job would cut off walks out
-    (`StepOut` for Build jobs).
+  - **Step-out**: an idle dwarf in a pocket that the placement of a released entry would cut off walks towards the
+    hall (`PlaceStrand.StepOut`; it scans entries, not jobs, because such an entry is `WouldStrand` and has no job;
+    ADR-062).
   - With no complete hall, the rule is off.
   - An entry that waits for this has status `WouldStrand` and is never given up for it.
   - Closing a room with no dwarf inside is allowed. The rule protects dwarves, not piles or buildings; JOB-12 covers
@@ -262,6 +267,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   - A job that places at least one block completes, which clears the mark. The other JOB-12 resets apply unchanged.
     An entry that is gone drops its mark.
   - `TopBarModel.GiveUpText` names the source by the block label ("Unreachable: Stone wall x3").
+  - Build marks are not dropped by the region recovery of `JobGiveUp.StrikeUnreachable`; they clear by the other
+    resets or when the entry is gone (ADR-062).
 
 ## Water (CON-16)
 

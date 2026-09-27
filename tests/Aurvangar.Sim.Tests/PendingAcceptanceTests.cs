@@ -6,47 +6,8 @@ using Xunit;
 // the bodies, then un-skip. A placeholder that is un-skipped without a body fails, by design. Delete this file when
 // it is empty.
 
-namespace Aurvangar.Sim.Tests
-{
-    [Trait("Category", "Unit")]
-    public class BlockContentTests
-    {
-        [Fact(Skip = "M8-T2")] public void ConstructionBlocks_LoadWithCostLabelAndColour() => Placeholder.Write("CON-01: ids 8..10 Masonry/Planks/PolishedStone with the table's label, cost, buildTicks and hardness, IsConstruction true only for them, a palette colour each; Blocks.Count == 11 (update ContentDbTests' 8, see CON-02)");
-        [Fact(Skip = "M8-T2")] public void ConstructionBlock_BadData_ThrowsNamingFileAndId() => Placeholder.Write("CON-02: two cost items, an unknown cost item, count 0 and 11, buildTicks 0, a drop, no label, no palette colour, and a json id with no BlockId value each throw with the file and id");
-    }
-
-    [Trait("Category", "Unit")]
-    public class BuildShapeTests
-    {
-        [Fact(Skip = "M8-T2")] public void Shapes_ExpandToExpectedCells() => Placeholder.Write("CON-07 table: Single 1 cell; Line along the longer axis (ties go to X); Wall 5 long x 3 high = 15; Floor 4x3 = 12; HollowBox 5x4 ring x 2 = 28; HollowBox 1 wide = Wall; Stair of 4 rises one level per cell; cells in ascending (y, index) order");
-        [Fact(Skip = "M8-T2")] public void DesignateBuild_Rejections_InOrder() => Placeholder.Write("CON-07: BadHeight (0 and 33), NotBuildable (Stone, BuildingSolid), TooLarge (> 4096 cells), OutOfWorld, NothingToBuild (every cell solid); each emits CommandRejected with that reason and adds no entry");
-    }
-
-    [Trait("Category", "Unit")]
-    public class BlockPlacementTests
-    {
-        [Fact(Skip = "M8-T2")] public void PlaceBlock_ConstructionBlock_ChecksAndConsumesCarriedCost() => Placeholder.Write("CON-13 Place checks in order: InvalidTarget (solid cell), Blocked (building footprint, agent in cell or below, pile, plant), Unsupported (no solid below or beside), InventoryEmpty, WrongItem, NotEnoughItems (1 stone for PolishedStone); Ok removes the cost from the carried stack; natural blocks keep ADR-027 (free)");
-        [Fact(Skip = "M8-T2")] public void CanPlan_ReasonsInOrder() => Placeholder.Write("CON-08: OutOfWorld, Solid, Building (footprint and entrance), Plant, Farm (tile below), Unsupported (floating); water in the cell is Ok; a cell supported only through another entry or through the command's own pending cells is Ok (CON-09 plan support)");
-        [Fact(Skip = "M8-T2")] public void BuildingPlacement_OverPlanEntry_PlannedBlocks() => Placeholder.Write("CON-08: BLD-02 CanPlace returns PlannedBlocks when a footprint or entrance cell holds an entry, checked right after Overlaps; DesignateFarm skips a tile whose cell above has an entry");
-        [Fact(Skip = "M8-T2")] public void PlanEntries_SavedAndHashed_FormatVersion6() => Placeholder.Write("CON-04: an entry changes StateHash (block and state both count); an empty store adds nothing to the hash; save/load keeps the hash equal and the entries identical; SaveGame.FormatVersion == 6 and a v5 file is refused (SAV-04)");
-    }
-}
-
 namespace Aurvangar.Sim.Tests.Scenarios
 {
-    [Trait("Category", "Scenario")]
-    public class BlockBuildScenarioTests
-    {
-        [Fact(Skip = "M8-T2")] public void Wall_BuiltBottomUpFromStorage() => Placeholder.Write("construction.md scenario 1, CON-12/13: a 6x3 Masonry wall with 30 stone in the hub is fully built; in every column the lower block is placed before the upper; stone taken from storage == blocks placed; at least one job places more than one block (batch)");
-        [Fact(Skip = "M8-T2")] public void OnlyReadyEntriesPostJobs_StatusesExplainTheRest() => Placeholder.Write("construction.md scenario 2, CON-05/12: a floating entry (NoSupport), an entry above a pending one (BelowFirst), an entry with no stone stored (NoMaterial), an entry under a standing dwarf (Occupied) and an entry sealed off (NoAccess) post no Build job; StatusOf reports each; adding stone makes the NoMaterial one Ready");
-        [Fact(Skip = "M8-T2")] public void MasonryWall_HoldsWaterLikeLevee() => Placeholder.Write("construction.md scenario 3, CON-16: buildings.md scenario 3 with a Masonry wall across the channel: the downstream level drops within 200 ticks of the last block; a block placed into a wet cell keeps WAT-11 conservation exact");
-        [Fact(Skip = "M8-T2")] public void ClosedRing_NeverWallsInADwarf() => Placeholder.Write("construction.md scenario 4, CON-14: a HollowBox ring with no door, one dwarf working inside: the closing block waits (status WouldStrand) until the dwarf leaves; an idle dwarf inside steps out; every living dwarf stays in the hall's region every tick; the ring then completes (an empty room may be sealed)");
-        [Fact(Skip = "M8-T2")] public void HighWall_WithStair_BuiltFromBuiltBlocks() => Placeholder.Write("construction.md scenario 5, CON-11: a 5-high Masonry wall with a Stair against it is fully built; at least one Place happens from a stand cell whose floor is a built block; no failed jobs");
-        [Fact(Skip = "M8-T2")] public void Cancel_MidBuild_KeepsPlacedBlocks_LosesNoStone() => Placeholder.Write("construction.md scenario 6, CON-07/DSG-06: CancelDesignation over a half-built wall removes its entries and Build jobs; placed blocks stay; carried stone is dropped and hauled back; stored + piles + carried + placed x cost == the initial stone");
-        [Fact(Skip = "M8-T2")] public void UnreachableEntry_GivenUp_ResetNearby() => Placeholder.Write("CON-15: an entry whose material storage is cut off from the builders gets a GiveUpSource.Build mark and the alert 'Unreachable: Stone wall'; a walkability change within 8 cells resets it and the block gets built");
-        [Fact(Skip = "M8-T2")] public void SaveLoad_MidBuild_ContinuesIdentically() => Placeholder.Write("construction.md scenario 9, SAV-03: save while Build jobs are claimed and carrying; the loaded game matches the hash every 100 ticks for 1000 ticks");
-    }
-
     [Trait("Category", "Scenario")]
     public class BlockDeconstructScenarioTests
     {

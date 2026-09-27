@@ -133,6 +133,7 @@ public sealed class BuildTool
         PlacementResult.NeedsWaterEdge => "Must stand on a bank with water in front",
         PlacementResult.PrebuiltOnly => "Cannot be built",
         PlacementResult.BadRotation => "Bad rotation",
+        PlacementResult.PlannedBlocks => "Blocks are planned here",
         _ => r.ToString(),
     };
 }

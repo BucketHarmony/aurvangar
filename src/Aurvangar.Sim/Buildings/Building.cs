@@ -16,6 +16,8 @@ public enum PlacementResult : byte
     NeedsWaterEdge,
     PrebuiltOnly,
     BadRotation,
+    /// <summary>CON-08 (M8-T2): a footprint, entrance or stand cell holds a block plan entry.</summary>
+    PlannedBlocks,
 }
 
 /// <summary>A placed building instance. Spec: docs/specs/buildings.md.</summary>

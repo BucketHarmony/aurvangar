@@ -2233,3 +2233,28 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     any.
   - Add `GiveUpSource.Build` to `JobGiveUp.SourceOf`.
   - The `DesignateBuild` record carries the `Plan` flag from the start, so the codec does not change in M8-T4.
+
+## M8-T2 — Build-block designations and jobs (2026-09-27)
+- Done: construction blocks Masonry/Planks/PolishedStone (ids 8..10, data-driven cost/label/buildTicks, CON-01/02);
+  `BlockPlans` store (`Aurvangar.Sim.Blocks`, hashed, save v6 `BlockPlans` section); `DesignateBuild` with six
+  shapes, CON-08 validity and CON-09 plan support, cancel via `CancelDesignation`; `BlockBuildSystem` (ARCH-01 step 8)
+  posts batched Build jobs (fetch from storage, then GoTo/Work/Place per cell) with CON-05 statuses, re-check,
+  skip, step-aside/step-out; `WorldActions.PlaceBlock` takes the cost for construction blocks (`Unsupported` added);
+  CON-14 no-walling-in via `PlaceTrial`/`PlaceStrand` (shared `TrialFlood` with `DigTrial`); `GiveUpSource.Build`
+  and the "Unreachable: Stone wall" notice; `PlannedBlocks` for building placement; farms skip cells under entries.
+- Tests: 16 M8-T2 acceptance tests moved out of PendingAcceptanceTests into BlockContentTests, BuildShapeTests,
+  BlockPlacementTests and Scenarios/BlockBuildScenarioTests(.Access); all pass. `ContentDbTests` block count 8 -> 11
+  (CON-01 adds three block types; foreseen in ADR-061). Non-Perf suite: 571 passed, 19 skipped (M8-T3..T6), 0 failed.
+- Decisions: ADR-062 (Blocks namespace, shared what-if flood, re-check re-plans, Build marks outside region recovery,
+  step-aside/step-out on released entries, Build GoTo re-goal when its stand cell fills, test-world geometry, review
+  fixes). construction.md CON-04, CON-12, CON-13, CON-14, CON-15 amended to match.
+- Golden: unchanged (empty plan store adds nothing to the hash). Headless seed 1 survival 24000 ticks: hash
+  4caa8837b195f900 (unchanged).
+- Perf: perf.sh 8/8 passed (1 skipped, M8-T6). sim-reviewer: 3 required fixes applied (skipped-only Build job no
+  longer clears its give-up mark; over-cap plan support = unsupported per CON-09; CON-15 spec line), plus strict
+  ascending order in the BlockPlans save reader.
+- Next: M8-T3 (deconstruct built blocks, CON-10/17/18). A free-standing Stair only keeps step 0 (steps are only
+  diagonally supported) — lean stairs against a wall. Reviewer notes worth keeping in mind for M8-T5/T6: public
+  `BlockPlans.StatusOf`/`CanPlan` rebuild scans per call (batch them for ghosts); `CancelHolder` rebuilds HeldCells per
+  repainted cell; the 16384-cell plan-support cap rejects everything for very large connected plans; `HasMaterial`
+  ignores stock promised to unclaimed Build jobs, so a status can read Ready while Post skips it.

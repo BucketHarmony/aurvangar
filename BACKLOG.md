@@ -242,7 +242,7 @@ record the new ADR in M8-T1.
     - Interaction with water: a built wall holds water like a levee.
     - A plan layer (below).
   - Add placeholder acceptance tests with `Skip = "M8-Tn"` for the tasks below.
-- [ ] **M8-T2** Build-block designations and jobs · specs: CON-01..05, CON-07 (DesignateBuild, cancel), CON-08, CON-09, CON-11..16 · deps: M8-T1
+- [x] **M8-T2** Build-block designations and jobs · specs: CON-01..05, CON-07 (DesignateBuild, cancel), CON-08, CON-09, CON-11..16 · deps: M8-T1
   - New commands (with CommandCodec entries) that designate block placement in the spec's shapes. Build jobs fetch
     the material from storage and place it through `WorldActions.PlaceBlock`, obeying the support and build-order
     rules. Designations are saved (bump FormatVersion) and hashed. Cancel refunds nothing that was not yet placed.

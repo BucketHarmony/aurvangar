@@ -33,6 +33,12 @@ public static class JobGiveUp
             id = sim.World.Index(job.Target);
         }
         else if (job.Kind == JobKind.Deliver && Construction.IsSiteJob(job)) { source = GiveUpSource.Site; id = Construction.SiteOf(job).Value; }
+        else if (job.Kind == JobKind.Build)   // CON-15: keyed by the seed cell
+        {
+            if (!sim.World.InBounds(job.Target)) return false;
+            source = GiveUpSource.Build;
+            id = sim.World.Index(job.Target);
+        }
         else return false;
         return true;
     }
@@ -93,6 +99,7 @@ public static class JobGiveUp
             {
                 GiveUpSource.Site => sim.Buildings.Get(new BuildingId(m.Id)) is { State: BuildingState.Blueprint or BuildingState.UnderConstruction },
                 GiveUpSource.Pile => !sim.Piles.At(sim.World.CellOf(m.Id)).IsEmpty,
+                GiveUpSource.Build => sim.Plans.Has(sim.World.CellOf(m.Id)),   // CON-15: while the entry exists
                 _ => sim.Buildings.Get(new BuildingId(m.Id)) is { State: BuildingState.Complete, Def.Producer: not null },
             };
             if (!live) (gone ??= new()).Add(m);
@@ -130,8 +137,11 @@ public static class JobGiveUp
         // A source given up as unreachable posts no job to check, so its mark is checked instead: it goes when its
         // cell is back in a living agent's region (a far-away change, e.g. a flood draining, reconnected it).
         List<GiveUpMark>? back = null;
+        // A Build mark's cell is the (air) entry cell, often walkable itself, so its region says nothing about the job's
+        // legs: it goes by the other resets only (ADR-062).
         foreach (var m in sim.GiveUps.All)
-            if (m.GivenUp && m.Unreachable && regions.Contains(sim.Regions.RegionOf(m.Cell))) (back ??= new()).Add(m);
+            if (m.GivenUp && m.Unreachable && m.Source != GiveUpSource.Build && regions.Contains(sim.Regions.RegionOf(m.Cell)))
+                (back ??= new()).Add(m);
         if (back is not null)
             foreach (var m in back) sim.GiveUps.Remove(m.Source, m.Id);
     }

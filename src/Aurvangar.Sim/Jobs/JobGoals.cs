@@ -30,6 +30,8 @@ public static class JobGoals
                 return goals;
             case GoalMode.Dig:
                 return DigGoals(sim, step.Cell);
+            case GoalMode.Build:
+                return BuildStandCells(sim, step.Cell, strandFree: true, prefer: true);
             case GoalMode.Building:
                 var b = sim.Buildings.Get(new BuildingId(step.Target));
                 if (b is null) return goals;
@@ -77,6 +79,31 @@ public static class JobGoals
                     if (check && DigStrand.Strands(sim, target, c)) continue;
                     all.Add(c);
                     if (marks.Get(c + Int3.Down) != DesignationMark.Dig) safe.Add(c);
+                }
+        return safe.Count > 0 ? safe : all;
+    }
+
+    /// <summary>CON-11 (M8-T2): build stand cells of a block at <paramref name="target"/>: walkable cells in reach
+    /// except the cell itself and the one below it (the block would take the stand cell or its headroom), ascending
+    /// index. <paramref name="strandFree"/> drops cells the placement would cut off from the Great Hall
+    /// (<see cref="PlaceStrand"/>, CON-14). <paramref name="prefer"/> keeps only cells with no plan entry and no Dig mark
+    /// on their floor when there are any (like <see cref="DigStandCells"/>).</summary>
+    public static List<Int3> BuildStandCells(Simulation sim, Int3 target, bool strandFree, bool prefer)
+    {
+        var grid = sim.PathGrid;
+        bool check = strandFree && sim.PlaceTrial.MaySplit(target);
+        var all = new List<Int3>();
+        var safe = new List<Int3>();
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dz == 0 && dx == 0 && dy <= 0) continue;   // the cell itself and the one below it
+                    var c = target + new Int3(dx, dy, dz);
+                    if (!grid.IsWalkable(c)) continue;
+                    if (check && PlaceStrand.Strands(sim, target, c)) continue;
+                    all.Add(c);
+                    if (prefer && !sim.Plans.Has(c) && sim.Designations.Get(c + Int3.Down) != DesignationMark.Dig) safe.Add(c);
                 }
         return safe.Count > 0 ? safe : all;
     }

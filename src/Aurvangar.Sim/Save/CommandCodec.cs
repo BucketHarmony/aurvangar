@@ -17,6 +17,9 @@ internal static class CommandCodec
             case DesignateFarm c: w.Write(c.X0); w.Write(c.Z0); w.Write(c.X1); w.Write(c.Z1); break;
             case PlaceBuilding c: w.Write(c.DefId); w.Write(c.Origin); w.Write(c.Rotation); break;
             case Deconstruct c: w.Write(c.Building.Value); break;
+            case DesignateBuild c:
+                w.Write((byte)c.Shape); w.Write(c.A); w.Write(c.B); w.Write(c.Height); w.Write((byte)c.Block); w.Write(c.Plan);
+                break;
             default:
                 throw new NotSupportedException(
                     $"SaveGame: command '{command.Tag}' ({command.GetType().Name}) has no save codec; add it to CommandCodec.");
@@ -34,6 +37,8 @@ internal static class CommandCodec
             nameof(DesignateFarm) => new DesignateFarm(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32()),
             nameof(PlaceBuilding) => new PlaceBuilding(r.ReadString(), r.ReadInt3(), r.ReadInt32()),
             nameof(Deconstruct) => new Deconstruct(new Core.BuildingId(r.ReadInt32())),
+            nameof(DesignateBuild) => new DesignateBuild(r.ReadEnum<Blocks.BuildShape>("build shape"), r.ReadInt3(), r.ReadInt3(),
+                r.ReadInt32(), (World.BlockId)r.ReadByte(), r.ReadBoolean()),
             _ => throw new InvalidDataException($"Save file contains unknown command tag '{tag}'."),
         };
     }

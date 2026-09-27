@@ -7,6 +7,12 @@
     { "id": 4, "name": "Grass",         "solid": true,  "diggable": true,  "hardness": 25, "drop": null },
     { "id": 5, "name": "Sand",          "solid": true,  "diggable": true,  "hardness": 20, "drop": null },
     { "id": 6, "name": "Farmland",      "solid": true,  "diggable": true,  "hardness": 25, "drop": null },
-    { "id": 7, "name": "BuildingSolid", "solid": true,  "diggable": false, "hardness": 0,  "drop": null }
+    { "id": 7, "name": "BuildingSolid", "solid": true,  "diggable": false, "hardness": 0,  "drop": null },
+    { "id": 8, "name": "Masonry",       "solid": true,  "diggable": true,  "hardness": 40, "drop": null,
+      "label": "Stone wall",     "cost": { "stone": 1 }, "buildTicks": 20 },
+    { "id": 9, "name": "Planks",        "solid": true,  "diggable": true,  "hardness": 20, "drop": null,
+      "label": "Wood planks",    "cost": { "log": 1 },   "buildTicks": 15 },
+    { "id": 10, "name": "PolishedStone", "solid": true, "diggable": true,  "hardness": 60, "drop": null,
+      "label": "Polished stone", "cost": { "stone": 2 }, "buildTicks": 40 }
   ]
 }

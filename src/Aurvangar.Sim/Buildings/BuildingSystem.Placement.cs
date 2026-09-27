@@ -8,7 +8,8 @@ public sealed partial class BuildingSystem
 {
     /// <summary>BLD-01..04: whether <paramref name="def"/> may be placed as a blueprint at the origin and rotation.
     /// Checks run in a fixed order and the first failure is returned: rotation, prebuilt-only, bounds, overlap with
-    /// any building (any state, including covering another building's entrance), footprint cells (air, no plant),
+    /// any building (any state, including covering another building's entrance), plan entries (CON-08
+    /// <c>PlannedBlocks</c>: footprint, entrance or stand cell), footprint cells (air, no plant),
     /// ground under the bottom layer, the entrance cell, then the water edge for <c>waterEdge</c> buildings.</summary>
     public PlacementResult CanPlace(BuildingDef def, Int3 origin, int rotation)
     {
@@ -23,6 +24,15 @@ public sealed partial class BuildingSystem
 
         foreach (var c in footprint)
             if (BuildingAt(c) is not null || IsAnyEntrance(c)) return PlacementResult.Overlaps;
+
+        if (_plans.Count > 0)   // CON-08 (M8-T2): the footprint, entrance or stand cell holds a plan entry
+        {
+            foreach (var c in footprint)
+                if (_plans.Has(c)) return PlacementResult.PlannedBlocks;
+            if (_plans.Has(entrance) || (def.Stackable && _plans.Has(entrance + Int3.Down))
+                || (RaisesStand(def) && _plans.Has(entrance + Int3.Up)))
+                return PlacementResult.PlannedBlocks;
+        }
 
         foreach (var c in footprint)
             if (_world.GetBlock(c) != World.BlockId.Air || _plants.IsOccupied(c)) return PlacementResult.FootprintBlocked;
@@ -98,6 +108,19 @@ public sealed partial class BuildingSystem
     internal static bool RaisesStand(BuildingDef def) => def.Placement == "waterEdge";
 
     private bool FreeStand(Int3 c) => BuildingAt(c) is null && _paths.IsStandable(c);
+
+    /// <summary>CON-08 check 3 and CON-13 (M8-T2): the cell is a building's entrance or a possible stand cell of it (the
+    /// cell below a stackable building's entrance, ADR-040; the cell above a <c>waterEdge</c> building's, ADR-055).
+    /// Any state. A block there would take the builders' or workers' place.</summary>
+    public bool IsEntranceOrStand(Int3 c)
+    {
+        foreach (var b in _buildings.Values)
+        {
+            var e = b.EntranceCell;
+            if (e == c || (b.Def.Stackable && e + Int3.Down == c) || (RaisesStand(b.Def) && e + Int3.Up == c)) return true;
+        }
+        return false;
+    }
 
     /// <summary>A building's entrance, or for a <c>waterEdge</c> building also the cell above it (its possible raised
     /// stand cell, ADR-055): no footprint may cover either.</summary>

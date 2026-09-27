@@ -16,6 +16,12 @@ public sealed class ContentDb
     /// <summary>Solidity lookup indexed by block byte. Hot path for water and pathing.</summary>
     public bool[] SolidTable { get; } = new bool[256];
 
+    /// <summary>CON-01: construction-block lookup indexed by block byte (a block with a cost).</summary>
+    public bool[] ConstructionTable { get; } = new bool[256];
+
+    private readonly ItemId[] _costItem = new ItemId[256];
+    private readonly int[] _costCount = new int[256];
+
     private readonly Dictionary<string, ItemId> _itemsByKey;
     private readonly Dictionary<string, BuildingDef> _buildingsByKey;
 
@@ -28,9 +34,28 @@ public sealed class ContentDb
         _itemsByKey = new Dictionary<string, ItemId>(StringComparer.Ordinal);
         for (int i = 1; i < items.Count; i++) _itemsByKey[items[i].Id] = new ItemId(i);
         _buildingsByKey = buildings.ToDictionary(b => b.Id, StringComparer.Ordinal);
-        foreach (var b in blocks) SolidTable[b.NumericId] = b.Solid;
+        foreach (var b in blocks)
+        {
+            if (b.NumericId is < 0 or > 255) throw new InvalidDataException($"blocks.json: block id {b.NumericId} ('{b.Name}') is out of range 0..255");
+            SolidTable[b.NumericId] = b.Solid;
+        }
         Validate();
+        foreach (var b in blocks)
+        {
+            if (!b.IsConstruction) continue;
+            ConstructionTable[b.NumericId] = true;
+            foreach (var (key, n) in b.Cost!) { _costItem[b.NumericId] = _itemsByKey[key]; _costCount[b.NumericId] = n; }
+        }
     }
+
+    /// <summary>CON-01: true for a construction block (Masonry, Planks, PolishedStone).</summary>
+    public bool IsConstruction(BlockId id) => ConstructionTable[(int)id];
+
+    /// <summary>CON-01: the one cost item of a construction block and its count (default, 0 for any other block).</summary>
+    public (ItemId Item, int Count) CostOf(BlockId id) => (_costItem[(int)id], _costCount[(int)id]);
+
+    /// <summary>Player-facing name of a block: its label, else its enum name.</summary>
+    public string LabelOf(BlockId id) => (int)id < Blocks.Count ? Blocks[(int)id].Label ?? Blocks[(int)id].Name : id.ToString();
 
     public ItemId Item(string key) =>
         _itemsByKey.TryGetValue(key, out var id) ? id : throw new KeyNotFoundException($"items.json: unknown item '{key}'");
@@ -76,7 +101,17 @@ public sealed class ContentDb
 
     private void Validate()
     {
-        // Block ids must match the BlockId enum exactly (the enum is used in hot paths).
+        ValidateBlocks();
+        ValidateBuildings();
+    }
+
+    /// <summary>CON-02 and the M1-T1 checks. Each error names the file and the block.</summary>
+    private void ValidateBlocks()
+    {
+        // Block ids must match the BlockId enum exactly, both ways (the enum is used in hot paths).
+        foreach (var def in Blocks)
+            if (!Enum.IsDefined((BlockId)(byte)def.NumericId))
+                throw new InvalidDataException($"blocks.json: block id {def.NumericId} ('{def.Name}') has no BlockId value");
         foreach (BlockId id in Enum.GetValues<BlockId>())
         {
             var def = Blocks.FirstOrDefault(b => b.NumericId == (int)id)
@@ -88,6 +123,32 @@ public sealed class ContentDb
         }
         if (Blocks.Select(b => b.NumericId).Distinct().Count() != Blocks.Count)
             throw new InvalidDataException("blocks.json: duplicate block id");
+        foreach (var def in Blocks)
+        {
+            string who = $"blocks.json: block {def.NumericId} ('{def.Name}')";
+            if (def.NumericId != (int)BlockId.Air && !Palette.Blocks.ContainsKey(def.Name))
+                throw new InvalidDataException($"{who} has no palette.json blocks colour");
+            if (!def.IsConstruction)
+            {
+                if (def.BuildTicks != 0) throw new InvalidDataException($"{who} has buildTicks but no cost");
+                continue;
+            }
+            if (def.Cost!.Count != 1) throw new InvalidDataException($"{who} must cost exactly one item type");
+            foreach (var (key, n) in def.Cost)
+            {
+                if (!_itemsByKey.ContainsKey(key)) throw new InvalidDataException($"{who} costs unknown item '{key}'");
+                if (n < 1 || n > Agents.Agent.CarryCapacity)
+                    throw new InvalidDataException($"{who} costs {n} '{key}'; the count must be 1..{Agents.Agent.CarryCapacity}");
+            }
+            if (def.BuildTicks < 1) throw new InvalidDataException($"{who} needs buildTicks >= 1");
+            if (!def.Solid || !def.Diggable) throw new InvalidDataException($"{who} must be solid and diggable");
+            if (def.Drop is not null) throw new InvalidDataException($"{who} must not have a drop (CON-17 refunds the cost)");
+            if (string.IsNullOrWhiteSpace(def.Label)) throw new InvalidDataException($"{who} needs a label");
+        }
+    }
+
+    private void ValidateBuildings()
+    {
         if (Items.Skip(1).Select(i => i.Id).Distinct(StringComparer.Ordinal).Count() != Items.Count - 1)
             throw new InvalidDataException("items.json: duplicate item id");
         if (Buildings.Select(b => b.Id).Distinct(StringComparer.Ordinal).Count() != Buildings.Count)

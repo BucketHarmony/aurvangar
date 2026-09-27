@@ -15,6 +15,7 @@ public sealed partial class BuildingSystem
     private readonly VoxelWorld _world;
     private readonly PlantSystem _plants;
     private readonly PathGrid _paths;
+    private readonly Blocks.BlockPlans _plans;
     private readonly SortedDictionary<int, Building> _buildings = new();
 
     /// <summary>Footprint cell index -> id of the lowest-id building covering it. Derived (kept by Add/Remove, also on
@@ -23,9 +24,9 @@ public sealed partial class BuildingSystem
 
     public IdAllocator Ids { get; } = new();
 
-    public BuildingSystem(VoxelWorld world, PlantSystem plants, PathGrid paths)
+    public BuildingSystem(VoxelWorld world, PlantSystem plants, PathGrid paths, Blocks.BlockPlans plans)
     {
-        _world = world; _plants = plants; _paths = paths;
+        _world = world; _plants = plants; _paths = paths; _plans = plans;
     }
 
     public IEnumerable<Building> All => _buildings.Values;

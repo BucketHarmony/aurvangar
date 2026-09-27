@@ -11,7 +11,7 @@ public class ContentDbTests
     public void LoadEmbedded_LoadsAllFiles()
     {
         var db = TestContent.Db;
-        Assert.Equal(8, db.Blocks.Count);
+        Assert.Equal(11, db.Blocks.Count);   // M8-T2: construction blocks 8..10 (CON-01)
         Assert.Equal(5, db.Items.Count - 1);
         Assert.Equal(4, db.Buildings.Count);
         Assert.NotEmpty(db.Palette.Blocks);

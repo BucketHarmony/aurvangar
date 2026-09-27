@@ -81,7 +81,7 @@ public static class DigStrand
 
     /// <summary>Whether <paramref name="cell"/> reaches the hall's anchors now: by region when the regions are up to
     /// date, else by a flood on the live world.</summary>
-    private static bool ReachesHallNow(Simulation sim, Int3 cell, IReadOnlyList<Int3> anchors)
+    internal static bool ReachesHallNow(Simulation sim, Int3 cell, IReadOnlyList<Int3> anchors)
     {
         if (sim.Regions.IsDirty) return sim.DigTrial.ConnectedNow(cell, anchors);
         int region = sim.Regions.RegionOf(cell);

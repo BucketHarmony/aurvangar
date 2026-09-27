@@ -62,7 +62,8 @@ public static class DesignationSystem
 
     /// <summary>DSG-06. Clears dig marks in the box and chop marks of trees whose base is in it, and cancels their
     /// jobs (a claimed job is released and its agent goes idle). Empty farm tiles in the box are removed with their
-    /// Plant jobs (<see cref="Farming.FarmSystem.CancelIn"/>).</summary>
+    /// Plant jobs (<see cref="Farming.FarmSystem.CancelIn"/>). Block plan entries in the box go with their Build jobs
+    /// (<see cref="Blocks.BlockBuildSystem.CancelIn"/>, CON-07).</summary>
     public static void Cancel(Simulation sim, string tag, Int3 a, Int3 b)
     {
         if (!Clamp(sim.World, a, b, out var min, out var max)) { Reject(sim, tag); return; }
@@ -85,6 +86,7 @@ public static class DesignationSystem
         }
         foreach (var j in cancel) JobRunner.Cancel(sim, j);
         Farming.FarmSystem.CancelIn(sim, min, max);
+        Blocks.BlockBuildSystem.CancelIn(sim, min, max);   // CON-07: plan entries and their Build jobs
     }
 
     // ---- tick (ARCH-01 step 8) ----

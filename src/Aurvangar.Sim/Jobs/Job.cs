@@ -6,18 +6,21 @@ namespace Aurvangar.Sim.Jobs;
 public enum JobKind : byte
 {
     Drink = 1, Eat, Flee, Deliver, Construct, OperatePump, Harvest, Plant, Dig, Chop, Haul, Deconstruct,
+    /// <summary>CON-12 (M8-T2): fetch material and place one or more construction blocks.</summary>
+    Build,
 }
 
 /// <summary>What one job step does. GoTo moves; Work spends ticks; the rest are one <see cref="Actions.WorldActions"/>
 /// call each (JOB-08).</summary>
-public enum StepKind : byte { GoTo, Work, Dig, Chop, PickUp, PickUpFromStorage, DeliverTo, Consume, Drop, Plant, Harvest, HarvestBush }
+public enum StepKind : byte { GoTo, Work, Dig, Chop, PickUp, PickUpFromStorage, DeliverTo, Consume, Drop, Plant, Harvest, HarvestBush, Place }
 
 /// <summary>Where a GoTo step may end: on the cell itself, anywhere the cell is in reach (ARCH-07), anywhere a
-/// building's footprint is in reach, or (JOB-09) in reach of a dig target but never on top of it.</summary>
-public enum GoalMode : byte { Exact, Reach, Building, Dig }
+/// building's footprint is in reach, (JOB-09) in reach of a dig target but never on top of it, or (CON-11) a build stand
+/// cell of a block.</summary>
+public enum GoalMode : byte { Exact, Reach, Building, Dig, Build }
 
 /// <summary>One step of a job. Plain data so it can be hashed and saved. <see cref="Target"/> is a building id (GoTo
-/// Building, Work on a building, storage steps) or a plant id (Chop, HarvestBush).</summary>
+/// Building, Work on a building, storage steps), a plant id (Chop, HarvestBush) or a block id (Place, CON-12).</summary>
 public readonly record struct JobStep(StepKind Kind, Int3 Cell, int Target, ItemId Item, int Count, int Ticks, GoalMode Goal)
 {
     public static JobStep GoTo(Int3 cell, GoalMode goal = GoalMode.Reach) => new(StepKind.GoTo, cell, 0, default, 0, 0, goal);
@@ -33,6 +36,7 @@ public readonly record struct JobStep(StepKind Kind, Int3 Cell, int Target, Item
     public static JobStep Drop(Int3 cell) => new(StepKind.Drop, cell, 0, default, 0, 0, default);
     public static JobStep PlantCrop(Int3 tile) => new(StepKind.Plant, tile, 0, default, 0, 0, default);
     public static JobStep HarvestCrop(Int3 tile) => new(StepKind.Harvest, tile, 0, default, 0, 0, default);
+    public static JobStep Place(Int3 cell, World.BlockId block) => new(StepKind.Place, cell, (int)block, default, 0, 0, default);
     public static JobStep HarvestBush(PlantId bush) => new(StepKind.HarvestBush, default, bush.Value, default, 0, 0, default);
 
     public void AddToHash(ref StateHasher h)
@@ -100,6 +104,7 @@ public sealed class Job
         JobKind.Dig => 25,
         JobKind.Chop => 25,
         JobKind.Deconstruct => 25,
+        JobKind.Build => 25,
         JobKind.Haul => 20,
         _ => 0,
     };

@@ -2,14 +2,22 @@ using System.Text.Json.Serialization;
 
 namespace Aurvangar.Sim.Content;
 
-/// <summary>A block type from blocks.json.</summary>
+/// <summary>A block type from blocks.json. CON-01 (M8-T2): a construction block has a <see cref="Cost"/> (one item
+/// type), a player-facing <see cref="Label"/> and <see cref="BuildTicks"/>; the other blocks leave them out.</summary>
 public sealed record BlockDef(
     [property: JsonPropertyName("id")] int NumericId,
     string Name,
     bool Solid,
     bool Diggable,
     int Hardness,
-    string? Drop);
+    string? Drop,
+    string? Label = null,
+    Dictionary<string, int>? Cost = null,
+    int BuildTicks = 0)
+{
+    /// <summary>CON-01: a block is a construction block if and only if it has a cost.</summary>
+    public bool IsConstruction => Cost is not null;
+}
 
 /// <summary>An item type from items.json.</summary>
 public sealed record ItemDef(string Id, string Name, int Food, int Drink);

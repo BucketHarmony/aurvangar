@@ -68,6 +68,8 @@ public static class TopBarModel
             var stack = sim.Piles.At(sim.World.CellOf(m.Id));
             return stack.IsEmpty ? "pile" : $"{sim.Content.Items[stack.Item.Value].Name.ToLowerInvariant()} pile";
         }
+        if (m.Source == GiveUpSource.Build)   // CON-15: the planned block's label ("Stone wall")
+            return sim.Plans.Get(sim.World.CellOf(m.Id)) is { } e ? sim.Content.LabelOf(e.Block) : "block";
         string building = sim.Buildings.Get(new BuildingId(m.Id))?.Def.Name ?? "building";
         return m.Source switch
         {

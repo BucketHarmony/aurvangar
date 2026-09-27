@@ -13,6 +13,10 @@ public enum BlockId : byte
     Sand = 5,
     Farmland = 6,
     BuildingSolid = 7,
+    /// <summary>CON-01 construction blocks (M8-T2): built by dwarves from a plan entry.</summary>
+    Masonry = 8,
+    Planks = 9,
+    PolishedStone = 10,
 }
 
 /// <summary>Dense voxel storage with chunk dirty tracking. Spec: docs/specs/world.md (WLD-01..07).</summary>

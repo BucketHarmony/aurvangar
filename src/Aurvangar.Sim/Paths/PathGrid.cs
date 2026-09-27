@@ -159,6 +159,29 @@ public sealed class PathGrid
 
     private bool SolidUnless(int index, int airIndex) => index != airIndex && _world.IsSolidAt(index);
 
+    /// <summary>M8-T2 what-if (CON-14): the flag byte the cell would have if the air cell at
+    /// <paramref name="solidIndex"/> held a solid block (a placement). Not cached. The filled cell counts as dry (its
+    /// water is pushed out; where it goes is ignored, like the dug cell of <see cref="FlagsIfAir"/>).</summary>
+    internal byte FlagsIfSolid(int x, int y, int z, int solidIndex)
+    {
+        if ((uint)x >= (uint)_sizeX || (uint)y >= (uint)_sizeY || (uint)z >= (uint)_sizeZ) return 0;
+        int i = x + z * _sizeX + y * _layer;
+        byte f = Valid;
+        int level = i == solidIndex ? 0 : _water.GetLevelAt(i);
+        if (level > 0) f |= Wet;
+        bool standable = !SolidWith(i, solidIndex) && !_plants.IsOccupiedAt(i) && !_sites.Contains(i)
+            && (y + 1 >= _sizeY || !SolidWith(i + _layer, solidIndex))
+            && (y == 0 ? _world.IsSolid(x, -1, z) : SolidWith(i - _layer, solidIndex));
+        if (standable)
+        {
+            f |= Standable;
+            if (level < WaterGrid.Full / 2) f |= Walkable;   // WAT-14
+        }
+        return f;
+    }
+
+    private bool SolidWith(int index, int solidIndex) => index == solidIndex || _world.IsSolidAt(index);
+
     /// <summary>PTH-01 evaluated directly (water never affects standability). A construction site's footprint cell
     /// (PTH-02, BLD-07) is neither standable nor walkable (ADR-041), so fleeing agents and loose piles keep out too.</summary>
     private bool StandableAt(Int3 c, int i) =>

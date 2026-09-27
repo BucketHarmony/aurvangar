@@ -19,6 +19,8 @@ public enum ActionResult : byte
     StorageFull,
     WrongItem,
     AgentDead,
+    /// <summary>CON-09 (M8-T2): a construction block needs a solid block below it or beside it.</summary>
+    Unsupported,
 }
 
 /// <summary>What a <see cref="WorldActions.Work"/> tick is spent on: a cell (dig, chop, plant, harvest) or a building
@@ -88,7 +90,8 @@ public sealed partial class WorldActions
     }
 
     /// <summary>Air → a natural block (a solid, diggable type). Blocked by an agent standing in or stepping into the
-    /// cell or the cell below it (its headroom), a plant, or a pile. Materials are not consumed (ADR-027).</summary>
+    /// cell or the cell below it (its headroom), a plant, or a pile. Materials are not consumed (ADR-027). A construction
+    /// block (CON-13) goes to <see cref="PlaceBuilt"/> instead, which takes its cost from the carried stack.</summary>
     public ActionResult PlaceBlock(AgentId actor, Int3 cell, BlockId block)
     {
         var r = Actor(actor, out var a);
@@ -99,6 +102,7 @@ public sealed partial class WorldActions
         if ((int)block >= _sim.Content.Blocks.Count) return ActionResult.InvalidTarget;
         var def = _sim.Content.Block(block);
         if (!def.Solid || !def.Diggable) return ActionResult.InvalidTarget;
+        if (def.IsConstruction) return PlaceBuilt(a, cell, block);   // CON-13 (M8-T2)
         if (AgentHolds(cell) || AgentHolds(cell + Int3.Down) || _sim.Plants.IsOccupied(cell) || !_sim.Piles.At(cell).IsEmpty)
             return ActionResult.Blocked;
 

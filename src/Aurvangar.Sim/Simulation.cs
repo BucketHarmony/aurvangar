@@ -1,5 +1,6 @@
 using Aurvangar.Sim.Actions;
 using Aurvangar.Sim.Agents;
+using Aurvangar.Sim.Blocks;
 using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Commands;
 using Aurvangar.Sim.Content;
@@ -35,12 +36,16 @@ public sealed class Simulation
     public Regions Regions { get; }
     /// <summary>M4-T14 what-if connectivity for digs. Derived: not hashed, not saved.</summary>
     public DigTrial DigTrial { get; }
+    /// <summary>M8-T2 what-if connectivity for block placements (CON-14). Derived: not hashed, not saved.</summary>
+    public PlaceTrial PlaceTrial { get; }
     public AgentSystem Agents { get; }
     public BuildingSystem Buildings { get; }
     public ItemPiles Piles { get; }
     public JobBoard Jobs { get; }
     /// <summary>JOB-12 give-up marks for recurring jobs that never succeed (M7-T5). Saved and hashed.</summary>
     public GiveUpMarks GiveUps { get; } = new();
+    /// <summary>CON-04 block plan entries (M8-T2). Saved and hashed.</summary>
+    public BlockPlans Plans { get; }
     public DesignationMap Designations { get; }
     public WorldActions Actions { get; }
     public SimClock Clock { get; } = new();
@@ -68,8 +73,10 @@ public sealed class Simulation
         Pathfinder = new Pathfinder(PathGrid);
         Regions = new Regions(PathGrid);
         DigTrial = new DigTrial(PathGrid);
+        PlaceTrial = new PlaceTrial(PathGrid);
         Agents = new AgentSystem(Events);
-        Buildings = new BuildingSystem(World, Plants, PathGrid);
+        Plans = new BlockPlans(World);
+        Buildings = new BuildingSystem(World, Plants, PathGrid, Plans);
         Piles = new ItemPiles(World, Events);
         Jobs = new JobBoard(World);
         Designations = new DesignationMap(World);
@@ -92,6 +99,7 @@ public sealed class Simulation
         NeedsSystem.Tick(this);                  // 6
         Buildings.Tick(this);                    // 7
         DesignationSystem.Tick(this);            // 8
+        BlockBuildSystem.Tick(this);             // 8  CON-04 upkeep, CON-12 Build jobs
         HaulSystem.Tick(this);                   // 9
         Agents.Tick(this);                       // 10
         Water.EndTick(Events);                   // WAT-12/13 for changes made after the water step (ADR-013)
@@ -128,6 +136,7 @@ public sealed class Simulation
         Designations.AddToHash(ref h);
         Jobs.AddToHash(ref h);
         GiveUps.AddToHash(ref h);
+        Plans.AddToHash(ref h);                  // CON-04: only when not empty
         Agents.AddToHash(ref h);
         return h.Value;
     }

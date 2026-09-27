@@ -6,7 +6,10 @@
     "Grass": "#5f8f3e",
     "Sand": "#d6c48f",
     "Farmland": "#5a3b22",
-    "BuildingSolid": "#9a8f7a"
+    "BuildingSolid": "#9a8f7a",
+    "Masonry": "#a39e94",
+    "Planks": "#b98a52",
+    "PolishedStone": "#d8d2c4"
   },
   "cutFaceDarken": 0.55,
   "water": { "shallow": "#5aa9d6", "deep": "#1f4f7a", "alpha": 0.72 },

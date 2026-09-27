@@ -37,15 +37,13 @@ public sealed partial class DigTrial
     public const int LocalBudget = 512;
 
     private readonly PathGrid _grid;
-    private int[] _mark = Array.Empty<int>();
-    private int[] _qa = new int[256], _qb = new int[256];
-    private int _gen;
+    private readonly TrialFlood _f;
 
     // MaySplit cache: pure function of the world, so it is valid until the walkability version moves.
     private readonly Dictionary<int, bool> _splitCache = new();   // lookups only, never enumerated
     private long _cacheVersion = -1, _cacheDeepVersion = -1;
 
-    public DigTrial(PathGrid grid) { _grid = grid; }
+    public DigTrial(PathGrid grid) { _grid = grid; _f = new TrialFlood(grid); }
 
     /// <summary>Diagnostics: exact floods run. Never read by gameplay code.</summary>
     public long ExactChecks { get; private set; }
@@ -86,31 +84,11 @@ public sealed partial class DigTrial
 
         var trial = new DigTrialCells(_grid, dug);
         int sizeX = World.SizeX, layer = World.SizeX * World.SizeZ;
-        int topIndex = World.Index(top);
-        int gen = NextGen();
         Span<int> targets = stackalloc int[PathMoves.MaxMoves];
         for (int k = 0; k < n; k++) targets[k] = steps[k].X + steps[k].Z * sizeX + steps[k].Y * layer;
-
-        // Flood from the first neighbor on the what-if view until every other neighbor is met.
-        int found = 1, head = 0, tail = 0;
-        _mark[targets[0]] = gen;
-        Push(ref _qa, ref tail, targets[0]);
-        while (head < tail && tail <= LocalBudget)
-        {
-            int ai = _qa[head++];
-            int ay = ai / layer, rem = ai - ay * layer, az = rem / sizeX, ax = rem - az * sizeX;
-            int m = PathMoves.Steps(trial, ax, ay, az, steps);
-            for (int k = 0; k < m; k++)
-            {
-                int bi = steps[k].X + steps[k].Z * sizeX + steps[k].Y * layer;
-                if (bi == topIndex || _mark[bi] == gen) continue;
-                _mark[bi] = gen;
-                for (int t = 1; t < n; t++)
-                    if (targets[t] == bi && ++found == n) return false;
-                Push(ref _qa, ref tail, bi);
-            }
-        }
-        return true;   // a neighbor was not met within the budget (or cannot be met): let the exact flood decide
+        // Flood from the first neighbor on the what-if view until every other neighbor is met. A neighbor not met
+        // within the budget (or not at all) leaves it to the exact flood.
+        return _f.MayMiss(trial, targets[..n], World.Index(top), LocalBudget);
     }
 
     /// <summary>Exact: alternating floods from the stand and from the anchors on the what-if view. Connected when
@@ -131,75 +109,7 @@ public sealed partial class DigTrial
     }
 
     private bool Connected<TCells>(TCells trial, Int3 stand, IReadOnlyList<Int3> anchors) where TCells : struct, IMoveCells =>
-        Flood(trial, stand, anchors, out _, out _, out _, out _) == FloodEnd.Met;
-
-    /// <summary>How a two-sided flood ended.</summary>
-    private enum FloodEnd : byte { Met, StandSideOut, AnchorSideOut, StandNotWalkable }
-
-    /// <summary>The alternating two-sided flood behind <see cref="Connected{TCells}"/>. When one side runs out, every
-    /// cell it reached is in its queue (<c>_qa[0..tailA)</c> for the stand side, <c>_qb[0..tailB)</c> for the anchor
-    /// side) and marked with its generation: that side's whole component on the view (M7-T6 reads it).</summary>
-    private FloodEnd Flood<TCells>(TCells trial, Int3 stand, IReadOnlyList<Int3> anchors,
-        out int genA, out int genB, out int tailA, out int tailB) where TCells : struct, IMoveCells
-    {
-        var world = World;
-        int sizeX = world.SizeX, layer = world.SizeX * world.SizeZ;
-        int standIndex = world.Index(stand);
-        genA = 0; genB = 0; tailA = 0; tailB = 0;
-        if ((trial.FlagsAt(stand.X, stand.Y, stand.Z) & PathGrid.WalkableFlag) == 0) return FloodEnd.StandNotWalkable;
-        genA = NextGen(); genB = NextGen();
-        int headA = 0, headB = 0;
-        _mark[standIndex] = genA;
-        Push(ref _qa, ref tailA, standIndex);
-        foreach (var c in anchors)
-        {
-            if (!world.InBounds(c) || (trial.FlagsAt(c.X, c.Y, c.Z) & PathGrid.WalkableFlag) == 0) continue;
-            int i = world.Index(c);
-            if (_mark[i] == genA) return FloodEnd.Met;
-            if (_mark[i] == genB) continue;
-            _mark[i] = genB;
-            Push(ref _qb, ref tailB, i);
-        }
-        Span<PathStep> steps = stackalloc PathStep[PathMoves.MaxMoves];
-        while (headA < tailA && headB < tailB)
-        {
-            if (Expand(trial, ref _qa, ref headA, ref tailA, genA, genB, steps, sizeX, layer)) return FloodEnd.Met;
-            if (Expand(trial, ref _qb, ref headB, ref tailB, genB, genA, steps, sizeX, layer)) return FloodEnd.Met;
-        }
-        return headA >= tailA ? FloodEnd.StandSideOut : FloodEnd.AnchorSideOut;
-    }
-
-    /// <summary>Expands one cell of a side. True when it touches a cell of the other side.</summary>
-    private bool Expand<TCells>(TCells trial, ref int[] queue, ref int head, ref int tail, int own, int other,
-        Span<PathStep> steps, int sizeX, int layer) where TCells : struct, IMoveCells
-    {
-        int ai = queue[head++];
-        int ay = ai / layer, rem = ai - ay * layer, az = rem / sizeX, ax = rem - az * sizeX;
-        int m = PathMoves.Steps(trial, ax, ay, az, steps);
-        for (int k = 0; k < m; k++)
-        {
-            int bi = steps[k].X + steps[k].Z * sizeX + steps[k].Y * layer;
-            int mk = _mark[bi];
-            if (mk == other) return true;
-            if (mk == own) continue;
-            _mark[bi] = own;
-            Push(ref queue, ref tail, bi);
-        }
-        return false;
-    }
+        _f.Flood(trial, stand, anchors, out _, out _, out _, out _) == FloodEnd.Met;
 
     private VoxelWorld World => _grid.World;
-
-    private int NextGen()
-    {
-        if (_mark.Length != _grid.World.CellCount) _mark = new int[_grid.World.CellCount];
-        if (_gen == int.MaxValue) { Array.Clear(_mark); _gen = 0; }
-        return ++_gen;
-    }
-
-    private static void Push(ref int[] queue, ref int tail, int index)
-    {
-        if (tail == queue.Length) Array.Resize(ref queue, queue.Length * 2);
-        queue[tail++] = index;
-    }
 }

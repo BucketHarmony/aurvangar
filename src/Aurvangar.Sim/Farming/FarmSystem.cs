@@ -61,7 +61,8 @@ public sealed class FarmSystem
 
     /// <summary>ECO-11. For each column of the XZ rectangle (corners in any order, clamped), its top solid cell becomes
     /// an Empty tile and Farmland at once when it is Grass, Dirt, or Farmland without a tile (ADR-047), the cell above
-    /// it is standable (PTH-01), and neither is part of a building. Existing tiles are unchanged.</summary>
+    /// it is standable (PTH-01), and neither is part of a building. A tile whose cell above holds a block plan entry is
+    /// skipped (CON-08). Existing tiles are unchanged.</summary>
     public static void Designate(Simulation sim, string tag, int x0, int z0, int x1, int z1)
     {
         var world = sim.World;
@@ -84,6 +85,7 @@ public sealed class FarmSystem
                 if (block is not (BlockId.Grass or BlockId.Dirt or BlockId.Farmland)) continue;
                 if (!sim.PathGrid.IsStandable(c + Int3.Up)) continue;
                 if (sim.Buildings.BuildingAt(c) is not null || sim.Buildings.BuildingAt(c + Int3.Up) is not null) continue;
+                if (sim.Plans.Has(c + Int3.Up)) continue;   // CON-08 (M8-T2): a block is planned on it
                 if (block != BlockId.Farmland) world.SetBlock(c, BlockId.Farmland);
                 farms._tiles.Add(world.Index(c), new FarmTile { Cell = c });
             }

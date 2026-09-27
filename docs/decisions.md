@@ -1389,3 +1389,45 @@ Consequences:
 - The existing `PlaceBlock` natural-block path (free, no support check) is kept for tests only.
 - `ContentDbTests` asserts 8 block types; M8-T2 changes it to 11.
 - The seed-1 goldens should be unchanged by M8-T2..T5, since no plan exists in `SurvivalScript`.
+
+## ADR-062: Build-block jobs: implementation choices (2026-09-27, M8-T2)
+Context: M8-T2 implements CON-01..05, CON-07..09 and CON-11..16 (ADR-061). A few points were open or did not work
+as written.
+Decision:
+- **Folder and namespace `Blocks`, not `Construction`.** `Aurvangar.Sim.Construction` would shadow the existing
+  `Aurvangar.Sim.Buildings.Construction` static class inside every `Aurvangar.Sim.*` file. `BlockPlans`,
+  `BlockBuildSystem`, `BuildShapes` and `Support` live in `src/Aurvangar.Sim/Blocks/`. CON-04 now says so.
+- **Shared what-if flood.** `TrialFlood` (the two-sided generation flood) and `TrialCutOff` (the cut set) were pulled
+  out of `DigTrial`; `DigTrial` and the new `PlaceTrial` both use them, so dig and place strand checks cost the
+  same. `PathGrid.FlagsIfSolid` gives a column's flags with one cell made solid.
+- **Re-check re-plans.** CON-12's re-check cancels an unclaimed Build job only when its seed is gone or given up, or
+  a remaining cell is not `Ready`. Otherwise cells already placed leave the job and its source and count are
+  re-planned, so a job that failed after its pickup keeps its JOB-08 failure count (cancel-and-repost would reset it
+  and fifth-failure give-up could never trigger).
+- **Build give-up marks and the region "back" recovery.** `JobGiveUp.StrikeUnreachable`'s recovery (a mark whose cell
+  is reachable again is dropped) skips Build marks: a Build seed's own cell is often reachable while the material
+  is not (CON-15's typical case), which would drop and re-add the mark forever. Build marks clear through the other
+  JOB-12 resets (a change within the reset radius, a new storage, a completed job) or when the entry is gone.
+- **Material check.** CON-05 check 9 (`NoMaterial`) needs a storage serving a stand cell's region with at least one
+  block's cost unpromised (`StorageStock >= cost`).
+- **Step-aside and step-out scan entries.** An idle dwarf steps aside from any released entry's cell or the cell
+  below one (not only `Ready` ones: an entry is `Occupied` exactly because a dwarf stands there). `StepOut` scans
+  released entries in ascending cell order rather than jobs, because an entry that would wall a dwarf in is
+  `WouldStrand` and never gets a job.
+- **Strand anchors.** The hall's anchors are not filtered; P and P + down are simply not walkable on the what-if view,
+  so the flood never seeds from them. Same effect as CON-14's wording.
+- **Re-goal.** A GoTo(Build) fixes its goal stand cell when the move starts. When another builder's block goes into
+  that cell the PTH-16 repath fails; instead of failing the job, the step restarts (the cell is re-checked and fresh
+  stand cells are picked). It only triggers when the goal cell stopped being walkable, so it cannot loop without a
+  world change.
+- **Test worlds.** A free-standing wall's third course is out of reach from the ground (reach is one level up). The
+  wall scenarios therefore give the builders a way up, as ADR-061 requires of plans: scenario 1 has a one-high ledge
+  along the wall, and scenario 5 is a 3-long, 5-high wall with a 4-step stair against it (every stair step rests on
+  the wall beside it).
+- **Review fixes.** A Build job whose cells were all skipped does not count as a success for its give-up mark
+  (only one that placed a block clears it, CON-15). Plan support over the flood cap counts as unsupported, as CON-09
+  says. The BlockPlans save section must list cells in strictly ascending order.
+Consequences:
+- `ContentDbTests` asserts 11 block types.
+- Save format v6; v5 files are refused (SAV-04). The seed-1 goldens are unchanged: an empty plan store adds nothing to
+  the hash.

@@ -50,6 +50,7 @@ public static class ColonistPanelModel
             JobKind.Deliver => "Carrying building materials",
             JobKind.Construct => "Building",
             JobKind.Deconstruct => "Tearing down",
+            JobKind.Build => "Placing blocks",
             JobKind.OperatePump => "Working the pump",
             JobKind.Harvest => "Harvesting",
             JobKind.Plant => "Planting",

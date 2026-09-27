@@ -3,12 +3,12 @@ using Aurvangar.Sim.Core;
 namespace Aurvangar.Sim.Jobs;
 
 /// <summary>What posts a recurring job that can be given up (JOB-12): a construction site's deliveries (id = building
-/// id), a pump's OperatePump job (pump id), a pump's buffer haul (pump id), or a loose pile's haul (id = flat cell
-/// index). Never renumber: saved.</summary>
-public enum GiveUpSource : byte { Site = 1, Pump, PumpHaul, Pile }
+/// id), a pump's OperatePump job (pump id), a pump's buffer haul (pump id), a loose pile's haul (id = flat cell
+/// index), or a block plan entry's Build jobs (CON-15; id = the seed cell's flat index). Never renumber: saved.</summary>
+public enum GiveUpSource : byte { Site = 1, Pump, PumpHaul, Pile, Build }
 
 /// <summary>Strikes against one job source (JOB-12). <see cref="Cell"/> is the job target at the last strike (site
-/// entrance, pump stand cell, pump entrance, pile cell): the reset radius is measured from it.</summary>
+/// entrance, pump stand cell, pump entrance, pile cell, build seed cell): the reset radius is measured from it.</summary>
 public sealed class GiveUpMark
 {
     public GiveUpSource Source { get; init; }

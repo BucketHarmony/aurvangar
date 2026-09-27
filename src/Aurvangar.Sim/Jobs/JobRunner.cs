@@ -8,7 +8,7 @@ namespace Aurvangar.Sim.Jobs;
 /// <summary>Job selection, claiming and step execution for one agent per call (JOB-06..08, ADR-028). Called by
 /// <see cref="AgentSystem.Tick"/> in ascending agent id order. Every step that touches the world goes through
 /// <see cref="WorldActions"/>; a non-Ok result (or a failed GoTo) fails the job.</summary>
-public static class JobRunner
+public static partial class JobRunner
 {
     /// <summary>JOB-06: an idle agent looks for a job at most once per this many ticks.</summary>
     public const int SearchInterval = 5;
@@ -56,6 +56,7 @@ public static class JobRunner
             if (!Farming.FarmSystem.StillWanted(sim, job)) continue;   // ADR-047: withdrawn at the next farm step
             if (!Plants.BushHarvest.StillWanted(sim, job)) continue;   // ADR-048: withdrawn at the next plant step
             if (job.Kind == JobKind.Dig && DigStrand.StrandsOthers(sim, job.Target, a.Id)) continue;   // M7-T6
+            if (job.Kind == JobKind.Build && BuildStrandsOthers(sim, job, a)) continue;   // CON-14
             best = job;
             bestDist = dist;
         }
@@ -143,22 +144,33 @@ public static class JobRunner
         switch (step.Kind)
         {
             case StepKind.GoTo:
+                Int3? goal = null;   // the goal of a move already under way (CON-13 re-goal)
                 if (a.StepProgress == 0)
                 {
+                    if (step.Goal == GoalMode.Build && SkipsCell(sim, a, job, step)) return;   // CON-13
                     a.StepProgress = 1;
                     var goals = JobGoals.For(sim, step);
                     if (goals.Count == 0) { Fail(sim, a, job); return; }
                     sim.Agents.MoveTo(sim, a, goals);
                 }
-                else AgentMovement.Advance(sim.PathGrid, sim.Pathfinder, a, swim: job.Kind == JobKind.Flee);
+                else
+                {
+                    goal = a.Path.Length > 0 ? a.Path[^1] : a.Cell;
+                    AgentMovement.Advance(sim.PathGrid, sim.Pathfinder, a, swim: job.Kind == JobKind.Flee);
+                }
                 if (a.Move == MoveStatus.Arrived) NextStep(sim, a, job);
-                else if (a.Move != MoveStatus.Moving) Fail(sim, a, job);   // PTH-16 step failure
+                else if (a.Move != MoveStatus.Moving && !RestartsBuildGoTo(sim, a, step, goal)) Fail(sim, a, job);   // PTH-16 step failure
                 return;
             case StepKind.Work:
                 if (job.Kind == JobKind.Dig && a.StepProgress == 0
                     && (DigStrand.Strands(sim, step.Cell, a.Cell) || DigStrand.StrandsOthers(sim, step.Cell, a.Id)))
                 {
                     StandDown(sim, a, job);   // M4-T14: the world changed on the way; do not start a stranding dig
+                    return;
+                }
+                if (job.Kind == JobKind.Build && a.StepProgress == 0 && PlaceStrandsAny(sim, a, step.Cell))
+                {
+                    StandDown(sim, a, job);   // CON-14: the world changed on the way; do not start a walling-in block
                     return;
                 }
                 if (job.Kind is JobKind.Construct or JobKind.Deconstruct && Buildings.Construction.IsSiteJob(job))
@@ -203,6 +215,7 @@ public static class JobRunner
                 break;
             case StepKind.DeliverTo: r = act.DeliverTo(a.Id, new BuildingId(step.Target)); break;
             case StepKind.Consume: ConsumeStep(sim, a, job, step); return;
+            case StepKind.Place: PlaceStep(sim, a, job, step); return;
             case StepKind.Drop: r = act.Drop(a.Id, step.Cell); break;
             case StepKind.Plant: r = act.Plant(a.Id, step.Cell); break;
             case StepKind.Harvest:
@@ -282,7 +295,7 @@ public static class JobRunner
         else Fail(sim, a, job);
     }
 
-    private static void NextStep(Simulation sim, Agent a, Job job)
+    internal static void NextStep(Simulation sim, Agent a, Job job)
     {
         a.StepIndex++;
         a.StepProgress = 0;
@@ -290,7 +303,7 @@ public static class JobRunner
         sim.Jobs.ReleaseReservations(job);
         job.ClaimedBy = default;
         sim.Jobs.Remove(job);
-        JobGiveUp.OnCompleted(sim, job);   // JOB-12: the source succeeded
+        if (job.Kind != JobKind.Build || PlacedAny(sim, job)) JobGiveUp.OnCompleted(sim, job);   // JOB-12 (CON-15)
         if (job.Kind == JobKind.Dig && sim.Designations.Get(job.Target) == DesignationMark.Dig)
             sim.Designations.Set(job.Target, DesignationMark.None);   // DSG-07
         sim.Counters.JobsCompleted++;
@@ -299,7 +312,7 @@ public static class JobRunner
 
     /// <summary>JOB-08: release, count the failure, and either return the job with a cooldown or, at the fifth
     /// failure, cancel it and mark its designation unreachable (or strike its recurring source, JOB-12).</summary>
-    private static void Fail(Simulation sim, Agent a, Job job)
+    internal static void Fail(Simulation sim, Agent a, Job job)
     {
         sim.Counters.JobsFailed++;
         job.Failures++;
@@ -324,7 +337,7 @@ public static class JobRunner
     /// without a failure (it is not broken, it has to wait) and with the JOB-08 cooldown, so it is not re-taken at
     /// once; <see cref="JobGoals"/> no longer offers this stand cell. DesignationSystem marks it unreachable once no
     /// other dig can help.</summary>
-    private static void StandDown(Simulation sim, Agent a, Job job)
+    internal static void StandDown(Simulation sim, Agent a, Job job)
     {
         Unclaim(sim, a, job);
         job.RetryAfterTick = sim.Clock.Tick + Job.RetryCooldown;
@@ -353,7 +366,9 @@ public static class JobRunner
     private static void StepAside(Simulation sim, Agent a)
     {
         if (a.Move == MoveStatus.Moving || DigStrand.StepOut(sim, a)) return;   // M7-T6: out of a dig's pocket
-        if (sim.Designations.Get(a.Cell + Int3.Down) != DesignationMark.Dig) return;
+        if (PlaceStrand.StepOut(sim, a)) return;   // CON-14: out of a pocket a block would close
+        bool onEntry = InEntryWay(sim, a.Cell);   // CON-13: in a released entry's cell or its headroom
+        if (!onEntry && sim.Designations.Get(a.Cell + Int3.Down) != DesignationMark.Dig) return;
         int region = sim.Regions.RegionOf(a.Cell);
         if (region == Paths.Regions.None) return;
         var goals = new List<Int3>();
@@ -363,7 +378,7 @@ public static class JobRunner
                 {
                     var c = a.Cell + new Int3(dx, dy, dz);
                     if (c == a.Cell || !sim.PathGrid.IsWalkable(c) || sim.Regions.RegionOf(c) != region) continue;
-                    if (sim.Designations.Get(c + Int3.Down) != DesignationMark.Dig) goals.Add(c);
+                    if (sim.Designations.Get(c + Int3.Down) != DesignationMark.Dig && !InEntryWay(sim, c)) goals.Add(c);
                 }
         if (goals.Count > 0) sim.Agents.MoveTo(sim, a, goals);
     }
