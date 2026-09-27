@@ -1888,3 +1888,22 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   - Q9: defer incremental regions and the building index.
   - Q10: M7 playability pass (plus right-drag pan, label overlap, timed screenshot scripts), then M8 free-form
     construction and monuments, ending at gate G4.
+
+## M7-T1 — Right-drag pans the camera (2026-09-26)
+- Done: right-drag now moves the camera exactly like middle-drag (orbit: yaw and pitch, `OrbitRig.Drag`); middle-drag
+  is unchanged. New `ViewCore.Camera.ClickDragGesture` tells a right click from a right drag (net displacement
+  > 4 px since the press; the crossing motion hands over the accumulated delta). `CameraRig` feeds it and raises
+  `RightClicked` on a click, which GameRoot wires to `ToolController.AbortDrag` (the abort moved from right press to
+  right click release, so a right-drag no longer kills a left-button dig box). VIEW-06 in `docs/specs/view-ui.md`
+  documents it. There is no in-game controls text to update.
+- Tests: new `View/ClickDragGestureTests` (8): click without movement, jitter within the threshold, drag past it,
+  accumulated delta on crossing, net displacement for back-and-forth jitter, no press, re-press reset, and a
+  right-drag giving the same yaw/pitch as the same middle-drag motion. They failed to compile before the class
+  existed. check.sh: 521 passed, 0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-054 ("pan" read as the middle-drag camera move the human named; 4 px threshold).
+- Golden: unchanged (no sim change).
+- Perf: n/a (view input only). Screenshots re-rendered (`artifacts/screens/{overview,river,hub,slice}.png`) and
+  looked at: unchanged scene, HUD intact. The harness cannot inject mouse input, so the drag itself is covered by the
+  ViewCore tests only; worth a quick hands-on check at G4.
+- Next: M7-T2 (pump entrance one level up). If the human meant a grab-the-map translation rather than orbit, feed
+  `ClickDragGesture` into a new `OrbitRig` pan method instead of `Drag` (ADR-054).

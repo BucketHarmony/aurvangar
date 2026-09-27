@@ -5,14 +5,19 @@ using NVec3 = System.Numerics.Vector3;
 namespace Aurvangar.Client;
 
 /// <summary>Orbit camera (VIEW-06). Input only; the math lives in <see cref="OrbitRig"/> (ViewCore, unit-tested).
-/// WASD/arrows pan, Q/E rotate 90 degree steps, wheel zooms, middle-drag orbits. GameRoot calls
-/// <see cref="Init"/>; until then the camera keeps its scene transform.</summary>
+/// WASD/arrows pan, Q/E rotate 90 degree steps, wheel zooms, middle-drag or right-drag orbits (M7-T1). A right click
+/// without drag movement (<see cref="ClickDragGesture"/>) raises <see cref="RightClicked"/>, which GameRoot uses to
+/// abort a tool drag. GameRoot calls <see cref="Init"/>; until then the camera keeps its scene transform.</summary>
 public partial class CameraRig : Camera3D
 {
     public OrbitRig? Rig { get; private set; }
 
     private System.Func<int> _sliceY = () => int.MaxValue;
     private bool _dragging;
+    private readonly ClickDragGesture _right = new();
+
+    /// <summary>Right button pressed and released without passing the drag threshold.</summary>
+    public event System.Action? RightClicked;
 
     public void Init(OrbitRig rig, System.Func<int> sliceY)
     {
@@ -44,9 +49,16 @@ public partial class CameraRig : Camera3D
                 if (mb.Pressed && mb.ButtonIndex == MouseButton.WheelUp) Rig.Zoom(+1);
                 else if (mb.Pressed && mb.ButtonIndex == MouseButton.WheelDown) Rig.Zoom(-1);
                 else if (mb.ButtonIndex == MouseButton.Middle) _dragging = mb.Pressed;
+                else if (mb.ButtonIndex == MouseButton.Right)
+                {
+                    if (mb.Pressed) _right.Press();
+                    else if (_right.Release()) RightClicked?.Invoke();
+                }
                 break;
-            case InputEventMouseMotion motion when _dragging:
-                Rig.Drag(motion.Relative.X, motion.Relative.Y);
+            case InputEventMouseMotion motion:
+                if (_dragging) Rig.Drag(motion.Relative.X, motion.Relative.Y);
+                else if (_right.Move(motion.Relative.X, motion.Relative.Y) is var (dx, dy) && (dx != 0 || dy != 0))
+                    Rig.Drag(dx, dy);
                 break;
         }
     }

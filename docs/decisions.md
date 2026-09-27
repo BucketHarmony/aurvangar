@@ -1134,3 +1134,18 @@ Decision:
 Consequences: evidence for every DoD step is a test or a headless stat. check.sh gains ~15 s (Debug) for the save
 test. The survival session itself still has no reservoir pump; G3 may ask for one in the script.
 
+
+## ADR-054: Right-drag orbits like middle-drag; right click vs drag by a 4 px threshold (2026-09-26, M7-T1)
+Context: G3 play feedback: "I find I am right-clicking to pan and keep forgetting it is center mouse." M7-T1 asks
+that right-drag "pans like middle-drag (keep middle-drag)". Middle-drag orbits (yaw and pitch, ADR-019); the only
+translating pan is WASD. A right press also aborted the tool drag in progress (ADR-033), so a right-drag would have
+killed a dig box being dragged with the left button.
+Decision: right-drag does exactly what middle-drag does (`OrbitRig.Drag`): the human named the middle button as the
+control they were reaching for, so "pan" here means the middle-drag camera move. `ViewCore.Camera.ClickDragGesture`
+tells a click from a drag: a press becomes a drag once the net pointer displacement since the press is more than
+4 px; the crossing motion hands over the whole accumulated delta (no lost pixels), later motion passes through. A
+release before the threshold is a click and aborts the tool drag (`CameraRig.RightClicked` → `ToolController.AbortDrag`);
+the abort moved from right press to right click release. A right-drag leaves a left-button tool drag alive. Middle-drag
+keeps orbiting from the first pixel (no threshold). No HUD controls text exists to update.
+Consequences: a right click aborts on release instead of press (imperceptible). If the human meant a grab-the-map
+translation, `ClickDragGesture` can feed a new `OrbitRig` pan method instead of `Drag` with no other change.

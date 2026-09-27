@@ -193,7 +193,7 @@ Milestone order is by risk: world and water before anything that depends on them
 Human answers are in PROGRESS.md under "G3 answers". Q2 (pumps may stand on dry ledges) and Q9 (defer region and
 building-lookup optimisation) need no task.
 
-- [ ] **M7-T1** Right-drag pans the camera · specs: VIEW-02, VIEW-13 · deps: M6-GATE
+- [x] **M7-T1** Right-drag pans the camera · specs: VIEW-02, VIEW-13 · deps: M6-GATE
   - G3 play feedback: the human keeps right-dragging to pan. Right-button drag pans like middle-drag (keep
     middle-drag). A right click with no drag movement still aborts the tool drag in progress. Put the
     click-vs-drag threshold logic in ViewCore with unit tests. Update the controls text if any.

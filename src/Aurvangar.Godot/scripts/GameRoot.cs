@@ -97,7 +97,9 @@ public partial class GameRoot : Node3D
         var focus = hub != null
             ? new System.Numerics.Vector3(hub.Origin.X + 0.5f, hub.Origin.Y, hub.Origin.Z + 0.5f)
             : new System.Numerics.Vector3(w.SizeX / 2f, w.SizeY / 2f, w.SizeZ / 2f);
-        GetNode<CameraRig>("Camera").Init(new OrbitRig(w.SizeX, w.SizeZ, focus, focus.Y), () => SliceY);
+        var cameraRig = GetNode<CameraRig>("Camera");
+        cameraRig.Init(new OrbitRig(w.SizeX, w.SizeZ, focus, focus.Y), () => SliceY);
+        cameraRig.RightClicked += _tool.AbortDrag;
     }
 
     public override void _Process(double delta)

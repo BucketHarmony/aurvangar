@@ -27,6 +27,8 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 
 - **VIEW-06** Orbit rig: WASD/arrow pan on the XZ plane, Q/E rotate 90° steps with a 0.2 s tween, mouse wheel
   zoom (distance 10–120), middle-drag orbit pitch clamp 25°–80°. Camera focus follows slice level height.
+  Right-drag orbits exactly like middle-drag (M7-T1, ADR-054). A right press becomes a drag once the pointer has
+  moved more than 4 px (net) from the press; a right click released before that aborts the tool drag in progress.
 
 ## Water, agents, buildings, piles
 

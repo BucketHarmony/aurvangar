@@ -5,7 +5,8 @@ namespace Aurvangar.ViewCore.Camera;
 /// <summary>Engine-neutral orbit camera state (VIEW-06). The camera orbits <see cref="Focus"/> at
 /// <see cref="Distance"/>, <see cref="Pitch"/> degrees above the horizon, <see cref="Yaw"/> degrees around +Y
 /// (yaw 0 = camera on the +Z side of the focus, looking toward -Z). WASD pans the focus on the XZ plane relative to
-/// the view direction, Q/E rotate in 90 degree steps tweened over 0.2 s, the wheel zooms, middle-drag orbits.
+/// the view direction, Q/E rotate in 90 degree steps tweened over 0.2 s, the wheel zooms, middle-drag
+/// (or right-drag, M7-T1) orbits.
 /// The focus height eases toward the slice level when the slice is below the base height (ADR-019).</summary>
 public sealed class OrbitRig
 {
@@ -82,7 +83,7 @@ public sealed class OrbitRig
     public void Zoom(int steps) =>
         Distance = Math.Clamp(Distance * MathF.Pow(ZoomFactor, steps), MinDistance, MaxDistance);
 
-    /// <summary>Middle-drag orbit: horizontal pixels turn the yaw, vertical pixels change the pitch (clamped).</summary>
+    /// <summary>Middle- or right-drag orbit: horizontal pixels turn the yaw, vertical pixels change the pitch (clamped).</summary>
     public void Drag(float dxPixels, float dyPixels)
     {
         SetYaw(Yaw - dxPixels * DragDegreesPerPixel);
