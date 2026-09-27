@@ -25,8 +25,12 @@ public partial class GameRoot
                 else
                 {
                     _build.Release();
-                    if (_tool.Release(Hover, SliceY) is { } command) Sim.Enqueue(command);
+                    if (_tool.Tool == ToolKind.Blocks) BlockRelease();
+                    else if (_tool.Release(Hover, SliceY) is { } command) Sim.Enqueue(command);
                 }
+                break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel:
+                BlockWheel(wheel);
                 break;
             // A right click (no drag movement) aborts the tool drag: CameraRig.RightClicked, wired in _Ready (M7-T1).
         }
@@ -40,6 +44,7 @@ public partial class GameRoot
             case Key.Pageup or Key.Bracketright: Slice.Step(+1, Remesh); return;
             case Key.Pagedown or Key.Bracketleft: Slice.Step(-1, Remesh); return;
         }
+        if (BlockKey(key)) return;   // Tab, P, +/- with the block tool (+/- repeat)
         if (key.Echo) return;
         switch (key.Keycode)
         {
@@ -63,7 +68,9 @@ public partial class GameRoot
     {
         _tool.SetTool(tool);
         _build.Release();
+        _blocks.Reset();
         _hud.SetTool(tool, _build.Def.Name);
+        SyncBlockHud();
     }
 
     /// <summary>VIEW-16: a click on a colonist row centers the camera on that dwarf.</summary>

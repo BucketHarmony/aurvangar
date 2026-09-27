@@ -2330,3 +2330,39 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   - A Released entry is not re-validated. If the entry under it is still Planned, it shows `BelowFirst`, so a
     partial release of an upper slice waits for the rest.
   - The Godot CS0108 warning (`BuildingRenderer.Scale`) is still there.
+
+## M8-T5 — Godot: block build tool, plan view, material totals (2026-09-27)
+- Done: VIEW-21..23 and the CON-01 colours in the view.
+  - ViewCore `BlockTool`: shape modes (Tab), height from the slice or +/- / Ctrl + wheel, plan mode (P), a ghost
+    coloured by material with invalid cells red and a reason, a tooltip, and no command when no cell is valid.
+  - `ToolController`: Blocks (K) and Release (L). Release and Deconstruct take column-box drags up to the slice.
+    `ReleaseAll`.
+  - `PlanGhostMesher`: translucent plan ghosts, lighter for Planned and red when stuck, plus hover status text.
+  - `BlockGhostMesher` draws the tool ghost.
+  - `TopBarModel.PlanText`: "Building: … · Planned: …" with short items flagged.
+  - Godot: `GameRoot.Blocks.cs`, `PlanRenderer`, `TranslucentMesh`, the HUD block picker and options row (bottom
+    left), and a second top-bar row.
+  - Sim: batched `BlockPlans.CanPlanAll` and `Statuses` (read-only, about 35 lines).
+  - The CS0108 warning is fixed (`BuildingRenderer.Scale` was renamed to `LabelScale`).
+- Tests: the 6 M8-T5 placeholders moved to `View/BlockToolTests` with bodies, plus 2 new tests (tool ghost mesh and
+  the `blocks` script on seed 1). They first failed to compile (the API was missing).
+  `ChunkMesher_ConstructionBlocksUsePaletteColours` would have passed before, because the mesher already used the
+  palette. check.sh: 589 passed, 4 skipped (M8-T6), 0 failed. The Godot build has 0 warnings.
+- Decisions: ADR-065.
+- sim-reviewer: not run (Aurvangar.Sim change about 35 lines, read-only queries).
+- Golden: unchanged. Headless `--seed 1 --script survival --ticks 24000`: hash `4caa8837b195f900` (unchanged),
+  5,192 ticks/s.
+- Perf: n/a (no water, path or tick-loop change); perf.sh not run.
+- Screenshots (`SCRIPT=blocks`):
+  - `artifacts/screens/m8t5_700/blocks.png` (tick 700): the planks wall is being built. Released Stone ghosts and the
+    planned Polished stone box ghosts are visible, with the tool ghost and tooltip. The top bar reads "Building: log
+    12/30, stone 18/0 · Planned: stone 128", with stone in orange.
+  - `artifacts/screens/m8t5_2500/blocks.png` (tick 2500): the planks are built, and the tool drag across them reads
+    "Something solid is there (2 cells skipped)".
+  - The Stone wall stays unbuilt (NoMaterial), because the 2-deep pit yields no stone (GEN-04). The red cells of the
+    tool ghost are faint at this camera distance.
+- Next: M8-T6 (monument scenario). Notes:
+  - `MonumentScript` can follow `BlocksScript` and `ScreenshotScripts` (`PitDig`, `PitBox`, the `Find` site search
+    with `CanPlanAll`). `ScreenshotScripts.Names` now includes "blocks"; add "monument" the same way.
+  - A stone monument needs a quarry deeper than 5 cells (dirt fills h-4..h-1), or it will sit at NoMaterial.
+  - `BlockPlans.Statuses` is the cheap way to count entries by status in scenario asserts.

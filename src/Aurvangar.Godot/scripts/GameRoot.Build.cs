@@ -68,11 +68,16 @@ public partial class GameRoot
             }
             case ToolKind.Deconstruct:
             {
-                var (command, message) = DeconstructTool.Click(Sim, Hover);
-                if (command != null) Sim.Enqueue(command);
-                if (message != null) _hud.Toast(message);
+                // M8-T5: over a building it is the BLD-09 click; elsewhere a box drag of built blocks (CON-18).
+                var press = DeconstructTool.Press(Sim, Hover);
+                if (press.Command != null) Sim.Enqueue(press.Command);
+                if (press.Message != null) _hud.Toast(press.Message);
+                if (press.StartDrag && Hover is { } h) _tool.BeginDrag(h);
                 return true;
             }
+            case ToolKind.Blocks:
+                _blocks.Press(Hover);
+                return true;
             default:
                 return false;
         }
@@ -96,7 +101,8 @@ public partial class GameRoot
         }
         else if (_tool.Tool == ToolKind.Deconstruct)
         {
-            if (DeconstructTool.Target(Sim, Hover) is { } b)
+            if (_tool.PreviewBox(SliceY) is var (min0, max0)) _toolPreview.Show(min0, max0, DeconstructMark);
+            else if (DeconstructTool.Target(Sim, Hover) is { } b)
             {
                 var (min, max) = BuildingVisuals.Bounds(b);
                 _toolPreview.Show(min, max, DeconstructTool.Refusal(Sim, b) == null ? DeconstructMark : GhostBad);
@@ -109,6 +115,7 @@ public partial class GameRoot
     private string? ClickToolTooltip()
     {
         if (_tool.Tool == ToolKind.Build && Ghost is { } g) return BuildTool.Tooltip(Sim, g);
+        if (_tool.Tool == ToolKind.Deconstruct && _tool.Dragging) return "Take down the built blocks in these columns (up to the view level)";
         if (_tool.Tool == ToolKind.Deconstruct && DeconstructTool.Target(Sim, Hover) is { } b) return DeconstructTool.Tooltip(Sim, b);
         return null;
     }

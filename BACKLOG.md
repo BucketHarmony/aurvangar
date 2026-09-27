@@ -253,7 +253,7 @@ record the new ADR in M8-T1.
   - The player can lay out a design as planned blocks that dwarves do NOT build yet. The plan shows the total
     material needed against what is stored. A command releases the whole plan (or a selected part) to the builders.
     Plans are saved and hashed.
-- [ ] **M8-T5** Godot: block build tool, plan view, material totals · specs: VIEW-21..23, CON-01 colours · deps: M8-T3, M8-T4
+- [x] **M8-T5** Godot: block build tool, plan view, material totals · specs: VIEW-21..23, CON-01 colours · deps: M8-T3, M8-T4
   - A tool with shape modes, height set by drag or the slice level, and ghost blocks coloured by material. Invalid
     cells are red with a reason. Plan blocks render as translucent ghosts; built blocks render as terrain. The HUD
     shows material needed versus stored. Keep logic in ViewCore with tests. Render screenshots and look.

@@ -22,6 +22,40 @@ public sealed partial class BlockPlans
         return Support.PlanSupported(sim, list).Contains(sim.World.Index(cell)) ? PlanResult.Ok : PlanResult.Unsupported;
     }
 
+    /// <summary>CON-08 for a whole command's cells with one plan-support flood (the view's ghost, VIEW-21, M8-T5):
+    /// <c>result[k] == CanPlan(sim, cells[k], cells)</c>. <see cref="CanPlan"/> floods once per call, so the view must
+    /// not call it per ghost cell.</summary>
+    public static PlanResult[] CanPlanAll(Simulation sim, IReadOnlyList<Int3> cells)
+    {
+        var result = new PlanResult[cells.Count];
+        var valid = new List<Int3>();
+        for (int k = 0; k < cells.Count; k++)
+        {
+            result[k] = CheckCell(sim, cells[k]);
+            if (result[k] == PlanResult.Ok) valid.Add(cells[k]);
+        }
+        var supported = Support.PlanSupported(sim, valid);
+        for (int k = 0; k < cells.Count; k++)
+            if (result[k] == PlanResult.Ok && !supported.Contains(sim.World.Index(cells[k]))) result[k] = PlanResult.Unsupported;
+        return result;
+    }
+
+    /// <summary>CON-05 for every entry at or below <paramref name="maxY"/> with one shared scan (the view's plan ghosts,
+    /// VIEW-22, M8-T5): each status equals <see cref="StatusOf(Simulation, Int3)"/>. Ascending cell index.</summary>
+    public List<(Int3 Cell, PlanEntry Entry, BuildStatus Status)> Statuses(Simulation sim, int maxY = int.MaxValue)
+    {
+        var list = new List<(Int3, PlanEntry, BuildStatus)>();
+        if (_entries.Count == 0) return list;
+        var scan = new BuildScan(sim, BlockBuildSystem.HeldCells(sim));
+        foreach (var (i, e) in _entries)
+        {
+            var c = _world.CellOf(i);
+            if (c.Y > maxY) break;   // ascending index is ascending y
+            list.Add((c, e, StatusOf(scan, c, e, default, out _)));
+        }
+        return list;
+    }
+
     /// <summary>CON-08 checks 1..5 (everything but plan support).</summary>
     internal static PlanResult CheckCell(Simulation sim, Int3 cell)
     {

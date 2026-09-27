@@ -42,6 +42,8 @@ public partial class ScreenshotRunner : Node
             root.PickOverride = ghost;          // M5-T6: show the build ghost and its tooltip in the shots
             root.SetTool(Aurvangar.ViewCore.Tools.ToolKind.Build);
         }
+        if (args.Script == "blocks" && Aurvangar.ViewCore.Scripts.BlocksScript.GhostDrag(root.Sim) is { } drag)
+            root.ShowBlockDrag(drag.From, drag.To, Aurvangar.Sim.World.BlockId.Masonry, Aurvangar.Sim.Blocks.BuildShape.Wall);   // M8-T5
 
         int failures = 0;
         foreach (var name in args.Shots)

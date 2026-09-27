@@ -1,5 +1,6 @@
 using Aurvangar.Sim;
 using Aurvangar.Sim.Agents;
+using Aurvangar.Sim.Blocks;
 using Aurvangar.Sim.Buildings;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Jobs;
@@ -77,6 +78,32 @@ public static class TopBarModel
             GiveUpSource.PumpHaul => $"{building} output",
             _ => building,
         };
+    }
+
+    /// <summary>VIEW-23 (M8-T5): the plan's material against stock, empty with no entries. Items in ascending item id.
+    /// A Building item is short when the Released need exceeds the stock; a Planned item when the Released plus Planned
+    /// need does (what releasing the whole plan would take; ADR-065). O(entries + buildings): call it at most every
+    /// few frames (CON-06).</summary>
+    public static PlanText PlanText(Simulation sim)
+    {
+        if (sim.Plans.Count == 0) return new PlanText(Array.Empty<PlanItem>(), Array.Empty<PlanItem>());
+        var totals = Totals(sim);   // index i - 1 is item id i
+        int StockOf(ItemId item) => item.Value >= 1 && item.Value <= totals.Count ? totals[item.Value - 1].Count : 0;
+        string NameOf(ItemId item) => sim.Content.ItemDef(item).Name.ToLowerInvariant();
+
+        var released = sim.Plans.Needed(PlanState.Released);
+        var releasedNeed = new Dictionary<int, int>();   // lookups only
+        var building = new List<PlanItem>(released.Count);
+        foreach (var (item, need) in released)
+        {
+            releasedNeed[item.Value] = need;
+            int stock = StockOf(item);
+            building.Add(new PlanItem(NameOf(item), need, stock, need > stock));
+        }
+        var planned = new List<PlanItem>();
+        foreach (var (item, need) in sim.Plans.Needed(PlanState.Planned))
+            planned.Add(new PlanItem(NameOf(item), need, null, need + releasedNeed.GetValueOrDefault(item.Value) > StockOf(item)));
+        return new PlanText(building, planned);
     }
 
     /// <summary>ECO-18: "Wet season, 5 days left" / "Drought, 1 day left".</summary>

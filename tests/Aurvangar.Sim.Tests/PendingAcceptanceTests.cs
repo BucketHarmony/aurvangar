@@ -18,20 +18,6 @@ namespace Aurvangar.Sim.Tests.Scenarios
     }
 }
 
-namespace Aurvangar.Sim.Tests.View
-{
-    [Trait("Category", "Unit")]
-    public class BlockToolTests
-    {
-        [Fact(Skip = "M8-T5")] public void Ghost_UsesBuildShapes_InvalidCellsRedWithReason() => Placeholder.Write("VIEW-21: the tool's ghost cells equal BuildShapes.Cells for each shape; the anchor is the air cell on the picked face; cells failing CanPlan are red with the CON-08 reason text; release sends DesignateBuild with the chosen block and Plan flag (P toggles)");
-        [Fact(Skip = "M8-T5")] public void Height_FromSliceAndKeys() => Placeholder.Write("VIEW-21: Wall/Box height starts at SliceY - A.Y + 1 with the slice active, else 3; +/- change it by 1 within 1..32; Single/Line/Floor/Stair ignore it");
-        [Fact(Skip = "M8-T5")] public void ReleaseAndDeconstructTools_SendCommands() => Placeholder.Write("VIEW-21: the Release tool sends ReleasePlan for the dragged box and 'Release all' a world box; the Deconstruct tool dragged over no building sends DesignateDeconstructBlocks");
-        [Fact(Skip = "M8-T5")] public void PlanGhosts_AlphaByState_RedWhenStuck() => Placeholder.Write("VIEW-22: Released ghosts alpha 0.45, Planned 0.25 and lighter, GivenUp/NoAccess/WouldStrand/NoSupport red, hidden above SliceY; hover text names the label and status");
-        [Fact(Skip = "M8-T5")] public void TopBar_PlanMaterialText() => Placeholder.Write("VIEW-23: TopBarModel.PlanText is empty with no entries, else 'Building: stone 120/64 · Planned: stone 70, log 12' with short items flagged orange");
-        [Fact(Skip = "M8-T5")] public void ChunkMesher_ConstructionBlocksUsePaletteColours() => Placeholder.Write("VIEW-03, CON-01: a chunk with Masonry, Planks and PolishedStone meshes each with its palette colour (never the magenta missing colour) and they do not merge with Stone");
-    }
-}
-
 namespace Aurvangar.Sim.Tests.Perf
 {
     [Trait("Category", "Perf")]

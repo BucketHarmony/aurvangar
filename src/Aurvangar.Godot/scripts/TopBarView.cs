@@ -4,7 +4,7 @@ using Godot;
 namespace Aurvangar.Client;
 
 /// <summary>HUD top bar (VIEW-15) at the top right: day, season and days left (ECO-18; orange in a drought), speed,
-/// stored totals and red alerts (no food, no water, dry pump). Shows a <see cref="TopBar"/> built by <see cref="TopBarModel"/> (ViewCore).</summary>
+/// stored totals and red alerts (no food, no water, dry pump); below them the plan's material line (VIEW-23, M8-T5). Shows a <see cref="TopBar"/> built by <see cref="TopBarModel"/> (ViewCore).</summary>
 public partial class TopBarView : PanelContainer
 {
     private static readonly Color WetColor = new(0.6f, 0.85f, 1f);
@@ -15,6 +15,9 @@ public partial class TopBarView : PanelContainer
     private Label _speed = null!;
     private Label _totals = null!;
     private Label _alerts = null!;
+    private HBoxContainer _plan = null!;
+    private string _planText = "";
+    private static readonly Color ShortColor = new(1f, 0.65f, 0.25f);
 
     public override void _Ready()
     {
@@ -27,6 +30,7 @@ public partial class TopBarView : PanelContainer
         OffsetTop = 8f;
         GrowHorizontal = GrowDirection.Begin;
         SelfModulate = new Color(0, 0, 0, 0.6f);
+        var rows = new VBoxContainer();
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 18);
         _day = AddLabel(row, Colors.White);
@@ -34,7 +38,22 @@ public partial class TopBarView : PanelContainer
         _speed = AddLabel(row, new Color(0.8f, 0.85f, 1f));
         _totals = AddLabel(row, Colors.White);
         _alerts = AddLabel(row, new Color(1f, 0.35f, 0.3f));
-        AddChild(row);
+        rows.AddChild(row);
+        _plan = new HBoxContainer { Name = "Plan", Visible = false };
+        _plan.AddThemeConstantOverride("separation", 0);
+        rows.AddChild(_plan);
+        AddChild(rows);
+    }
+
+    /// <summary>VIEW-23: the plan's material against stock on a second line, short items orange; hidden when empty.</summary>
+    public void ShowPlan(PlanText plan)
+    {
+        string text = plan.Text;
+        if (text == _planText) return;
+        _planText = text;
+        foreach (var child in _plan.GetChildren()) { _plan.RemoveChild(child); child.QueueFree(); }
+        foreach (var (run, isShort) in plan.Segments()) AddLabel(_plan, isShort ? ShortColor : Colors.White).Text = run;
+        _plan.Visible = !plan.IsEmpty;
     }
 
     public void Show(TopBar bar)

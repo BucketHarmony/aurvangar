@@ -46,6 +46,7 @@ public partial class CameraRig : Camera3D
                 else if (key.Keycode == Key.E) Rig.RotateStep(+1);
                 break;
             case InputEventMouseButton mb:
+                if (mb.CtrlPressed && mb.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown) break;   // Ctrl + wheel: block height (M8-T5)
                 if (mb.Pressed && mb.ButtonIndex == MouseButton.WheelUp) Rig.Zoom(+1);
                 else if (mb.Pressed && mb.ButtonIndex == MouseButton.WheelDown) Rig.Zoom(-1);
                 else if (mb.ButtonIndex == MouseButton.Middle) _dragging = mb.Pressed;

@@ -4,9 +4,10 @@ using Aurvangar.ViewCore.Picking;
 
 namespace Aurvangar.ViewCore.Tools;
 
-/// <summary>Player tools (VIEW-12). Dig, Chop, Farm (M6-T5) and Cancel are drag tools (this class); Build and
-/// Deconstruct are click tools (<see cref="BuildTool"/>, <see cref="DeconstructTool"/>, M5-T6).</summary>
-public enum ToolKind : byte { Select, Dig, Chop, Cancel, Build, Deconstruct, Farm }
+/// <summary>Player tools (VIEW-12). Dig, Chop, Farm (M6-T5), Cancel and Release (M8-T5) are drag tools (this class);
+/// Build is a click tool (<see cref="BuildTool"/>); Deconstruct clicks a building or, over no building, drags a box of
+/// built blocks (<see cref="DeconstructTool"/>, M8-T5); Blocks is the block tool (<see cref="BlockTool"/>, VIEW-21).</summary>
+public enum ToolKind : byte { Select, Dig, Chop, Cancel, Build, Deconstruct, Farm, Blocks, Release }
 
 /// <summary>Tool state and drag boxes (VIEW-12, VIEW-13, ADR-033). Engine-neutral: the Godot layer feeds it mouse
 /// presses, picks and key presses, draws <see cref="PreviewBox"/>, and enqueues the command a release returns.
@@ -20,7 +21,8 @@ public sealed class ToolController
     private PickHit? _start;
     private PickHit? _end;
 
-    /// <summary>VIEW-12 hotkeys: G dig, C chop, F farm, Z cancel, B build, X deconstruct. Null for any other key.</summary>
+    /// <summary>VIEW-12 hotkeys: G dig, C chop, F farm, Z cancel, B build, X deconstruct, K blocks, L release plan
+    /// (VIEW-21). Null for any other key.</summary>
     public static ToolKind? ForHotkey(char key) => char.ToUpperInvariant(key) switch
     {
         'G' => ToolKind.Dig,
@@ -29,11 +31,14 @@ public sealed class ToolController
         'Z' => ToolKind.Cancel,
         'B' => ToolKind.Build,
         'X' => ToolKind.Deconstruct,
+        'K' => ToolKind.Blocks,
+        'L' => ToolKind.Release,
         _ => null,
     };
 
-    /// <summary>Dig, Chop, Farm and Cancel define a box by dragging.</summary>
-    public static bool IsDragTool(ToolKind tool) => tool is ToolKind.Dig or ToolKind.Chop or ToolKind.Farm or ToolKind.Cancel;
+    /// <summary>Dig, Chop, Farm, Cancel and Release define a box by dragging.</summary>
+    public static bool IsDragTool(ToolKind tool) =>
+        tool is ToolKind.Dig or ToolKind.Chop or ToolKind.Farm or ToolKind.Cancel or ToolKind.Release;
 
     /// <summary>Switches tool; any drag in progress is dropped without a command.</summary>
     public void SetTool(ToolKind tool)
@@ -48,6 +53,15 @@ public sealed class ToolController
     public void Press(PickHit? hit)
     {
         if (!IsDragTool(Tool) || hit is null) return;
+        _start = hit;
+        _end = hit;
+    }
+
+    /// <summary>Starts a drag for any tool but Select, when the caller decides (Deconstruct over no building,
+    /// <see cref="DeconstructTool.Press"/>).</summary>
+    public void BeginDrag(PickHit hit)
+    {
+        if (Tool == ToolKind.Select) return;
         _start = hit;
         _end = hit;
     }
@@ -80,6 +94,8 @@ public sealed class ToolController
     /// <item>Farm (ECO-11): the XZ rectangle of the two picks; the sim takes each column's top surface.</item>
     /// <item>Cancel (DSG-06): the dig box raised one cell at the top, so trees standing on the dragged ground (their
     /// base is the cell above the picked block) are included.</item>
+    /// <item>Release (VIEW-21) and Deconstruct over no building (CON-18): the columns under the drag from the lower
+    /// pick up to the slice level (<see cref="ColumnBox"/>, ADR-065).</item>
     /// </list></summary>
     public static ICommand? CommandFor(ToolKind tool, PickHit first, PickHit second, int sliceY)
     {
@@ -91,8 +107,26 @@ public sealed class ToolController
             ToolKind.Chop => new DesignateChop(a.X, a.Z, b.X, b.Z),
             ToolKind.Farm => new DesignateFarm(a.X, a.Z, b.X, b.Z),
             ToolKind.Cancel => CancelCommand(a, b),
+            ToolKind.Release => new ReleasePlan(ColumnBox(first, second, sliceY).Min, ColumnBox(first, second, sliceY).Max),
+            ToolKind.Deconstruct => new DesignateDeconstructBlocks(ColumnBox(first, second, sliceY).Min, ColumnBox(first, second, sliceY).Max),
             _ => null,
         };
+    }
+
+    /// <summary>VIEW-21 "Release all": one <c>ReleasePlan</c> over the whole world.</summary>
+    public static ReleasePlan ReleaseAll(Aurvangar.Sim.World.VoxelWorld world) =>
+        new(new Int3(0, 0, 0), new Int3(world.SizeX - 1, world.SizeY - 1, world.SizeZ - 1));
+
+    /// <summary>Release and Deconstruct-blocks box: the X/Z rectangle of the picks, from the lower picked cell up to
+    /// <paramref name="sliceY"/> (planned blocks and built blocks stand above the picked ground; the slice limits a
+    /// release to the courses in view).</summary>
+    public static (Int3 Min, Int3 Max) ColumnBox(PickHit first, PickHit second, int sliceY)
+    {
+        var a = first.Cell;
+        var b = second.Cell;
+        int y0 = Math.Min(a.Y, b.Y);
+        return (new Int3(Math.Min(a.X, b.X), y0, Math.Min(a.Z, b.Z)),
+                new Int3(Math.Max(a.X, b.X), Math.Max(y0, sliceY), Math.Max(a.Z, b.Z)));
     }
 
     /// <summary>Inclusive cell box of a drag, min corner first. Chop covers the tree-base layer above the picks.</summary>
@@ -105,9 +139,13 @@ public sealed class ToolController
             ToolKind.Dig or ToolKind.Farm => Sorted(a, b),
             ToolKind.Chop => Sorted(a + Int3.Up, b + Int3.Up),
             ToolKind.Cancel => CancelBox(a, b),
+            // The column box reaches the slice; the preview shows its footprint one cell above the lower pick.
+            ToolKind.Release or ToolKind.Deconstruct => ColumnPreview(ColumnBox(first, second, sliceY)),
             _ => null,
         };
     }
+
+    private static (Int3 Min, Int3 Max) ColumnPreview((Int3 Min, Int3 Max) box) => (box.Min, box.Max with { Y = box.Min.Y + 1 });
 
     private static Int3 SecondCorner(PickHit second, int sliceY) =>
         second.Cell with { Y = Math.Min(second.Cell.Y, sliceY) };

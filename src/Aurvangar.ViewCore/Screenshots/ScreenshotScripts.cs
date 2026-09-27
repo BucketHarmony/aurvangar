@@ -28,10 +28,13 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// <item><c>survival</c> (M7-T7): the timed <see cref="SurvivalScript"/> (seed 1); <see cref="Run"/> enqueues each
 /// command at its tick. <c>--ticks 7400</c> shows the flooded hill tunnel, 9000 its breach levees, 14400 the drought
 /// (the <c>tunnel</c> and <c>reservoir</c> presets).</item>
+/// <item><c>blocks</c> (M8-T5): the <c>digchop</c> pit (stone) plus <see cref="BlocksScript"/>: a planks wall, a stone
+/// wall and a planned polished-stone box by the hub, and a block-tool drag held over them. <c>--ticks 2500</c> shows
+/// the planks wall built and the stone wall going up; the <c>blocks</c> preset looks at it.</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -53,20 +56,9 @@ public static class ScreenshotScripts
             case "survival":   // timed: its commands are enqueued at their ticks by Run
                 return Array.Empty<ICommand>();
             case "digchop":
-            {
-                var hub = sim.Buildings.All.FirstOrDefault()
-                    ?? throw new InvalidOperationException("digchop script needs the pre-placed hub");
-                int maxX = int.MinValue;
-                foreach (var c in hub.FootprintCells()) maxX = Math.Max(maxX, c.X);
-                var focus = ScreenshotPresets.HubFocus(sim);
-                int cx = (int)focus.X, cz = (int)focus.Z, floor = hub.Origin.Y - 1;
-                int x0 = maxX + 1 + PitGap, half = PitWidth / 2;
-                return new ICommand[]
-                {
-                    new DesignateDig(new Int3(x0, floor - PitDepth + 1, cz - half), new Int3(x0 + PitLength - 1, floor, cz + half)),
-                    ChopNearHub(sim),
-                };
-            }
+                return new ICommand[] { PitDig(sim), ChopNearHub(sim) };
+            case "blocks":
+                return BlocksScript.Commands(sim);
             case "build":
                 return BuildScript(sim);
             case "farm":
@@ -74,6 +66,26 @@ public static class ScreenshotScripts
             default:
                 throw new ArgumentException($"unknown screenshot script '{name}' (known: {string.Join(",", Names)})");
         }
+    }
+
+    /// <summary>The <c>digchop</c> pit: <see cref="PitDepth"/> deep, <see cref="PitLength"/> x <see cref="PitWidth"/>
+    /// cells, starting <see cref="PitGap"/> cells east of the hub.</summary>
+    public static DesignateDig PitDig(Simulation sim)
+    {
+        var (min, max) = PitBox(sim);
+        return new DesignateDig(min, max);
+    }
+
+    public static (Int3 Min, Int3 Max) PitBox(Simulation sim)
+    {
+        var hub = sim.Buildings.All.FirstOrDefault()
+            ?? throw new InvalidOperationException("the pit needs the pre-placed hub");
+        int maxX = int.MinValue;
+        foreach (var c in hub.FootprintCells()) maxX = Math.Max(maxX, c.X);
+        var focus = ScreenshotPresets.HubFocus(sim);
+        int cz = (int)focus.Z, floor = hub.Origin.Y - 1;
+        int x0 = maxX + 1 + PitGap, half = PitWidth / 2;
+        return (new Int3(x0, floor - PitDepth + 1, cz - half), new Int3(x0 + PitLength - 1, floor, cz + half));
     }
 
     /// <summary>True for a script whose commands have their own ticks (<c>survival</c>).</summary>

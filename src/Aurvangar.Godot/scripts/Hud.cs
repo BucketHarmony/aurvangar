@@ -1,3 +1,5 @@
+using Aurvangar.Sim.Blocks;
+using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Hud;
 using Aurvangar.ViewCore.Tools;
 using Godot;
@@ -7,7 +9,8 @@ namespace Aurvangar.Client;
 /// <summary>Player HUD: the tool bar (VIEW-12) with the Build menu (Warehouse / Pump / Levee), the top bar (VIEW-15),
 /// the colonist panel (VIEW-16), a short-lived message line (quick save / load results, refused commands) and the
 /// label that follows the mouse (pile counts VIEW-10, build and deconstruct tooltips VIEW-14, farm tiles and the farm
-/// tool's moisture hint, M6-T5).</summary>
+/// tool's moisture hint, M6-T5). M8-T5 adds the Blocks menu (block picker), the Release tool and the block options row
+/// (shape modes, Plan, height, Release all; VIEW-21).</summary>
 public partial class Hud : CanvasLayer
 {
     public const double ToastSeconds = 3.0;
@@ -17,14 +20,29 @@ public partial class Hud : CanvasLayer
     /// <summary>A building picked in the Build menu (its definition id).</summary>
     public event System.Action<string>? BuildChosen;
 
+    /// <summary>A construction block picked in the Blocks menu.</summary>
+    public event System.Action<BlockId>? BlockChosen;
+    public event System.Action<BuildShape>? ShapeChosen;
+    public event System.Action? PlanToggled;
+    public event System.Action? ReleaseAllPressed;
+
     public ColonistPanel Colonists { get; private set; } = null!;
     public TopBarView TopBar { get; private set; } = null!;
 
     /// <summary>Buildable (id, name) pairs for the Build menu; set by GameRoot before the node enters the tree.</summary>
     public IReadOnlyList<(string Id, string Name)> Buildable { get; set; } = System.Array.Empty<(string, string)>();
 
+    /// <summary>Construction blocks (id, label) for the Blocks menu; set by GameRoot before the node enters the tree.</summary>
+    public IReadOnlyList<(BlockId Id, string Label)> BlockTypes { get; set; } = System.Array.Empty<(BlockId, string)>();
+
     private readonly Dictionary<ToolKind, Button> _toolButtons = new();
     private MenuButton _buildButton = null!;
+    private MenuButton _blocksButton = null!;
+    private HBoxContainer _blockRow = null!;
+    private readonly Dictionary<BuildShape, Button> _shapeButtons = new();
+    private Button _planButton = null!;
+    private Label _heightLabel = null!;
+    private Label _blockLabel = null!;
     private Label _toast = null!;
     private Label _hoverLabel = null!;
     private double _toastLeft;
@@ -39,9 +57,12 @@ public partial class Hud : CanvasLayer
         AddTool(bar, ToolKind.Chop, "Chop (C)");
         AddTool(bar, ToolKind.Farm, "Farm (F)");
         AddBuildMenu(bar);
+        AddBlocksMenu(bar);
+        AddTool(bar, ToolKind.Release, "Release (L)");
         AddTool(bar, ToolKind.Deconstruct, "Deconstruct (X)");
         AddTool(bar, ToolKind.Cancel, "Cancel (Z)");
         AddChild(bar);
+        AddBlockRow();
 
         TopBar = new TopBarView();
         AddChild(TopBar);
@@ -65,6 +86,7 @@ public partial class Hud : CanvasLayer
 
     public override void _Process(double delta)
     {
+        if (_blockRow.Visible) _blockRow.Position = new Vector2(8, GetViewport().GetVisibleRect().Size.Y - 76);
         if (!_toast.Visible) return;
         _toastLeft -= delta;
         if (_toastLeft <= 0) _toast.Visible = false;
@@ -75,6 +97,25 @@ public partial class Hud : CanvasLayer
     {
         foreach (var (kind, button) in _toolButtons) button.SetPressedNoSignal(kind == tool);
         _buildButton.Text = tool == ToolKind.Build && buildName != null ? $"Build: {buildName} (B)" : "Build (B)";
+    }
+
+    /// <summary>VIEW-21: the block options row shows while the Blocks or Release tool is active; the Blocks button
+    /// starts with the block's label, "Plan: Stone wall" in plan mode. It sits at the bottom left, above the toast.</summary>
+    public void SetBlockOptions(ToolKind tool, string blockLabel, BuildShape shape, bool plan, int? height)
+    {
+        bool blocks = tool == ToolKind.Blocks;
+        _blockRow.Visible = blocks || tool == ToolKind.Release;
+        _blockLabel.Visible = blocks;
+        _blockLabel.Text = plan ? $"Plan: {blockLabel}" : blockLabel;
+        foreach (var (s, b) in _shapeButtons)
+        {
+            b.Visible = blocks;
+            b.SetPressedNoSignal(s == shape);
+        }
+        _planButton.Visible = blocks;
+        _planButton.SetPressedNoSignal(plan);
+        _heightLabel.Visible = blocks && height.HasValue;
+        if (height is { } h) _heightLabel.Text = $"Height {h} (+/-)";
     }
 
     /// <summary>Shows a message at the bottom left for a few seconds.</summary>
@@ -110,6 +151,51 @@ public partial class Hud : CanvasLayer
         b.Pressed += () => ToolChosen?.Invoke(kind);
         bar.AddChild(b);
         _toolButtons[kind] = b;
+    }
+
+    /// <summary>VIEW-21 block picker: a menu button listing the construction blocks by label.</summary>
+    private void AddBlocksMenu(HBoxContainer bar)
+    {
+        _blocksButton = new MenuButton { Text = "Blocks (K)", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, Flat = false };
+        var popup = _blocksButton.GetPopup();
+        for (int i = 0; i < BlockTypes.Count; i++) popup.AddItem(BlockTypes[i].Label, i);
+        popup.IdPressed += id => BlockChosen?.Invoke(BlockTypes[(int)id].Id);
+        bar.AddChild(_blocksButton);
+        _toolButtons[ToolKind.Blocks] = _blocksButton;
+    }
+
+    /// <summary>VIEW-21 options row under the toolbar: shape modes (Tab cycles), Plan (P), height, Release all.</summary>
+    private void AddBlockRow()
+    {
+        _blockRow = new HBoxContainer { Name = "BlockOptions", Visible = false };
+        _blockRow.AddThemeConstantOverride("separation", 4);
+        _blockLabel = OutlinedLabel("");
+        _blockLabel.AddThemeFontSizeOverride("font_size", 16);
+        _blockRow.AddChild(_blockLabel);
+        foreach (var shape in BlockTool.Shapes)
+        {
+            var b = new Button { Text = BlockTool.ShapeName(shape), ToggleMode = true, FocusMode = Control.FocusModeEnum.None };
+            b.Pressed += () => ShapeChosen?.Invoke(shape);
+            _blockRow.AddChild(b);
+            _shapeButtons[shape] = b;
+        }
+        _planButton = new Button { Text = "Plan (P)", ToggleMode = true, FocusMode = Control.FocusModeEnum.None };
+        _planButton.Pressed += () => PlanToggled?.Invoke();
+        _blockRow.AddChild(_planButton);
+        _heightLabel = OutlinedLabel("Height 3 (+/-)");
+        _blockRow.AddChild(_heightLabel);
+        var releaseAll = new Button { Text = "Release all", FocusMode = Control.FocusModeEnum.None };
+        releaseAll.Pressed += () => ReleaseAllPressed?.Invoke();
+        _blockRow.AddChild(releaseAll);
+        AddChild(_blockRow);
+    }
+
+    private static Label OutlinedLabel(string text)
+    {
+        var l = new Label { Text = text, VerticalAlignment = VerticalAlignment.Center };
+        l.AddThemeColorOverride("font_outline_color", Colors.Black);
+        l.AddThemeConstantOverride("outline_size", 4);
+        return l;
     }
 
     /// <summary>VIEW-12 "Build ▸ Warehouse / Pump / Levee": a menu button whose items choose the building.</summary>

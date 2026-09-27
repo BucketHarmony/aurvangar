@@ -85,8 +85,10 @@ public partial class GameRoot : Node3D
         _overlay = new DebugOverlay { Name = "DebugOverlay" };
         AddChild(_overlay);
         ReadyBuildTools();
-        _hud = new Hud { Name = "Hud", Buildable = _build.Buildable.Select(d => (d.Id, d.Name)).ToList() };
+        ReadyBlockTools();
+        _hud = new Hud { Name = "Hud", Buildable = _build.Buildable.Select(d => (d.Id, d.Name)).ToList(), BlockTypes = BlockTypes() };
         AddChild(_hud);
+        WireBlockHud();
         _hud.ToolChosen += SetTool;
         _hud.BuildChosen += ChooseBuilding;
         _hud.Colonists.Clicked += CenterOnAgent;
@@ -99,7 +101,7 @@ public partial class GameRoot : Node3D
             : new System.Numerics.Vector3(w.SizeX / 2f, w.SizeY / 2f, w.SizeZ / 2f);
         var cameraRig = GetNode<CameraRig>("Camera");
         cameraRig.Init(new OrbitRig(w.SizeX, w.SizeZ, focus, focus.Y), () => SliceY);
-        cameraRig.RightClicked += _tool.AbortDrag;
+        cameraRig.RightClicked += () => { _tool.AbortDrag(); _blocks.AbortDrag(); };
     }
 
     public override void _Process(double delta)
@@ -128,14 +130,17 @@ public partial class GameRoot : Node3D
     public override void _PhysicsProcess(double delta)
     {
         Hover = PickingEnabled ? PickUnderMouse() : PickOverride;
-        _hoverMarker.SetHit(_tool.Tool == ToolKind.Select || !_tool.Dragging ? Hover : null);
+        _hoverMarker.SetHit(_tool.Tool == ToolKind.Select || !(_tool.Dragging || _blocks.Dragging) ? Hover : null);
         _tool.Move(Hover);
-        if (!ToolController.IsDragTool(_tool.Tool) && _tool.Tool != ToolKind.Select) UpdateClickToolPreview();
+        if (_tool.Tool != ToolKind.Blocks) ShowBlockGhost(null);
+        if (_tool.Tool == ToolKind.Blocks) UpdateBlockPreview();
+        else if (!ToolController.IsDragTool(_tool.Tool) && _tool.Tool != ToolKind.Select) UpdateClickToolPreview();
         else if (_tool.PreviewBox(SliceY) is var (min, max))
             _toolPreview.Show(min, max, _tool.Tool switch
             {
                 ToolKind.Cancel => new Color(1f, 0.25f, 0.2f, 0.3f),
                 ToolKind.Farm => new Color(0.55f, 0.85f, 0.3f, 0.3f),
+                ToolKind.Release => ReleaseMark,
                 _ => new Color(1f, 0.6f, 0.24f, 0.3f),
             });
         else _toolPreview.Visible = false;
@@ -166,6 +171,7 @@ public partial class GameRoot : Node3D
         foreach (int ci in _batch) WaterView.Remesh(ci, SliceY);
         RefreshEntities(0f);
         UpdateHud();
+        UpdatePlanText(now: true);
     }
 
     /// <summary>Screenshot preset (VIEW-20): slice level, full remesh, camera view.</summary>
@@ -209,6 +215,7 @@ public partial class GameRoot : Node3D
             _pilesBuiltSlice = SliceY;
         }
         DesignationView.Refresh(SliceY);
+        PlanView.Refresh(SliceY);
         BuildingView.Refresh(BuildingVisuals.Build(Sim, SliceY, _entityColors));
         UpdatePileLabels();
     }
@@ -223,7 +230,9 @@ public partial class GameRoot : Node3D
     {
         _hud.Colonists.SetRows(ColonistPanelModel.Build(Sim));
         _hud.TopBar.Show(TopBarModel.Build(Sim, TickAccumulator.Speeds[SpeedIndex]));
-        string? label = ClickToolTooltip();
+        UpdatePlanText(now: false);
+        SyncBlockHud();
+        string? label = ClickToolTooltip() ?? BlockTooltip();
         if (label == null && _tool.Tool == ToolKind.Farm) label = FarmTool.Tooltip(Sim, Hover, _tool.PreviewBox(SliceY));
         if (label == null && Hover is { } h && PileMesher.AtPick(Sim, h, SliceY) is { } pile)
             label = PileMesher.Label(Content, pile.Stack);

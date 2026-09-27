@@ -1474,3 +1474,38 @@ Decision:
 Consequences:
 - No save format or hash change: the new command is only a `CommandCodec` entry (tag `ReleasePlan`, two Int3).
 - Seed-1 goldens are unchanged.
+
+## ADR-065: Block build tool, plan view and material totals: implementation choices (2026-09-27, M8-T5)
+Context: M8-T5 builds the view side of construction (VIEW-21..23). The spec leaves several details open, and the
+ghosts and HUD need the plan statuses often enough that a per-cell query would be too slow.
+Decision:
+- **Two batched sim queries.** `BlockPlans.CanPlanAll(sim, cells)` gives the same result per cell as
+  `CanPlan(sim, cell, cells)` but runs one support flood. `BlockPlans.Statuses(sim, maxY)` gives every entry's CON-05
+  status from one `BuildScan` and stops above `maxY` (cells are y-major). Both are read-only, so there is no state,
+  save or hash change.
+- **Refresh rates.** The tool ghost is rechecked when the command changes or every 5 ticks. Plan ghosts rebuild when
+  the entries or the slice change, or every 10 ticks while entries exist. The plan line in the top bar rebuilds every
+  10 frames and after a remesh flush.
+- **Clicks.** A block drag with no valid cell sends no command and shows the reason as a toast. Shift keeps the tool,
+  as BuildTool does. Invalid cells are skipped by the sim (CON-08), so a partly red drag still builds the green cells.
+- **Height.** With the slice active, the start height reaches the slice (`SliceY - A.Y + 1`, clamped to 1..32);
+  without it, the start height is 3. +/- or Ctrl + wheel sets an override, kept until the tool is changed or reset.
+  The camera ignores Ctrl + wheel.
+- **Release (L) and Deconstruct box.** Both drag an XZ rectangle. The box runs from the lower pick's Y up to the
+  slice level, and the preview draws only its footprint. A Deconstruct press on a building still deconstructs the
+  building; elsewhere it starts the block drag. "Release all" is `ReleasePlan((0,0,0), world max)`.
+- **Hover** reads the entry in the cell the picked face looks into (`hover.Adjacent`), so an entry is found by
+  pointing at the face under or beside it as well as at the ghost.
+- **Material line.** "Building" compares the released need with stock. "Planned" is flagged short when the released
+  plus planned need exceeds stock, since the released blocks take the stock first. Stock is `TopBarModel.Totals`,
+  which is right after a load.
+- **Stuck ghosts** (GivenUp, NoAccess, WouldStrand, NoSupport) are tinted red. Waiting states (BelowFirst, NoMaterial,
+  Occupied) keep the block colour.
+- **Layout.** The block options row (block, shapes, Plan, height, Release all) sits at the bottom left, clear of the
+  colonist panel and the top bar.
+- **Screenshots.** A new `blocks` script and preset. The script builds a planks wall, a released Stone wall and a
+  planned Polished stone box on a flat site next to the hub. The harness holds a Stone wall drag across the planks.
+Consequences:
+- Seed-1 goldens and the survival hash are unchanged.
+- On seed 1 the Stone wall does not get built in the `blocks` shot: the digchop pit is 2 deep, and stone starts 5
+  below the surface (GEN-04). The top bar shows this as a short "stone 18/0", which is useful to see.

@@ -27,11 +27,13 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// seed-1 cells), sliced at the tunnel's headroom so the hill above it is cut away.</item>
 /// <item><c>reservoir</c> (M7-T7): the survival session's levee reservoir and the farm field beside it, with the river
 /// past its mouth.</item>
+/// <item><c>blocks</c> (M8-T5): the <see cref="BlocksScript"/> site (walls, planned box, tool ghost) and the top bar's
+/// plan line; the hub when there is no site.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -41,6 +43,7 @@ public static class ScreenshotPresets
     /// <summary>Camera yaws of the survival presets (M7-T7), chosen by looking at the shots.</summary>
     public const float TunnelYaw = 90f;
     public const float ReservoirYaw = 0f;
+    public const float BlocksYaw = 30f;
 
     public static CameraShot For(string name, Simulation sim)
     {
@@ -83,6 +86,12 @@ public static class ScreenshotPresets
                 var focus = new Vector3((SurvivalScript.Farm.X0 + r.X + 1) / 2f, r.Y + 1,
                     (r.Z + SurvivalScript.ReservoirMouth.Z + 1) / 2f);
                 return new CameraShot(name, focus, ReservoirYaw, 60f, 20f, top);
+            }
+            case "blocks":
+            {
+                if (BlocksScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
+                var focus = new Vector3(s.X + BlocksScript.SiteW / 2f, s.Y + 1, s.Z + BlocksScript.SiteD / 2f);
+                return new CameraShot(name, focus, BlocksYaw, 50f, 18f, top);
             }
             case "slice":
             {

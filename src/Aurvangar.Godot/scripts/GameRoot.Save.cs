@@ -41,7 +41,7 @@ public partial class GameRoot
     /// drag. The slice level carries over; the colony-lost modal follows the new colony.</summary>
     public void AttachSimulation(Simulation sim)
     {
-        foreach (Node? old in new Node?[] { Terrain, WaterView, PlantView, CropView, AgentView, PileView, DesignationView, BuildingView })
+        foreach (Node? old in new Node?[] { Terrain, WaterView, PlantView, CropView, AgentView, PileView, DesignationView, PlanView, BuildingView })
         {
             if (old == null) continue;
             RemoveChild(old);
@@ -63,6 +63,8 @@ public partial class GameRoot
         PileView.Init(Sim, _entityColors);
         DesignationView = Add(new DesignationRenderer { Name = "Designations" });
         DesignationView.Init(Sim, _entityColors);
+        PlanView = Add(new PlanRenderer { Name = "Plans" });
+        PlanView.Init(Sim, _blockColors, _entityColors);
         BuildingView = Add(new BuildingRenderer { Name = "Buildings" });
 
         var w = Sim.World;
@@ -76,6 +78,7 @@ public partial class GameRoot
         _pilesDirty = true;
         _tool.AbortDrag();
         _build.Release();
+        _blocks.AbortDrag();
         SyncLostModal();
     }
 

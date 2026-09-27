@@ -71,7 +71,7 @@ public partial class BuildingRenderer : Node3D
         _labelRects.Clear();
         _labelNodes.Clear();
         if (GetViewport().GetCamera3D() is not { } camera) return;
-        float scale = Scale(camera);
+        float scale = LabelScale(camera);
         foreach (var s in _slots)
         {
             s.Label.Offset = Vector2.Zero;
@@ -84,14 +84,14 @@ public partial class BuildingRenderer : Node3D
         for (int i = 0; i < lifts.Length; i++) _labelNodes[i].Offset = new Vector2(0, lifts[i] / scale);
     }
 
-    private float Scale(Camera3D camera) =>
+    private float LabelScale(Camera3D camera) =>
         LabelLayout.BillboardScale(PileRenderer.LabelPixelSize, GetViewport().GetVisibleRect().Size.Y, camera.Fov);
 
     /// <summary>Screen rectangles of the visible billboards (name/progress labels, progress bars, NO WATER icons), for
     /// the mouse label to keep clear of (M7-T7, <see cref="LabelLayout.PlaceTooltip"/>).</summary>
     public void CollectBillboardRects(Camera3D camera, List<ScreenRect> into)
     {
-        float scale = Scale(camera);
+        float scale = LabelScale(camera);
         foreach (var s in _slots)
         {
             if (!s.Root.Visible) continue;
