@@ -77,10 +77,11 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
      - `WaitSupport` (M10-T1, ADR-071): CON-09 plan support holds for the cell (through entries of either state), so
        it will be supported once the entries it leans on are built;
      - `NoSupport` otherwise: the plan can never hold it up.
-  6. `CourseBelow` (M9-T2, ADR-068): a Build job holds a cell one course down (y - 1) within
-     `BlockPlans.CourseRadius` (8) horizontally (Chebyshev). A structure then rises course by course, and a whole
-     course turns `Ready` together, so it goes out in full batches. Only held cells count, so a stuck entry below
-     never holds anything up. The re-check and the run of a job ignore the job's own cells.
+  6. `CourseBelow` (M9-T2, ADR-068; local since M10-T4, ADR-074): a Build job holds a cell one course down (y - 1)
+     within `BlockPlans.CourseRadius` (1) horizontally (Chebyshev), that is, a cell under it or diagonally under it.
+     The next course starts where the course below is already built around it, while other parts of the lower
+     course are still in jobs; the CON-12 small-batch hold keeps the trips full. Only held cells count, so a stuck
+     entry below never holds anything up. The re-check and the run of a job ignore the job's own cells.
   7. `Occupied`: one of these is in the way:
      - a living agent holds the cell, or the cell below it (the headroom; `Agents.AnyHolds`);
      - a pile is in the cell;
@@ -215,6 +216,11 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
       and each new entry joins at the end (M9-T2, ADR-068: a batch follows a wall course instead of stopping at a box
       around the seed). The members after the seed are then stably sorted by y, so lower cells are built first.
     - One Build job is posted per batch, and it holds its cells until they are placed, skipped or cancelled.
+    - **Small-batch hold** (M10-T4, ADR-074): a batch of fewer than 60% of a full load (`floor(10 / cost)`; 6 of 10
+      for Masonry) is not posted while a Build job holds a cell one course below the seed within
+      `BlockBuildSystem.HoldRadius` (8) horizontally (Chebyshev). More of the course above turns `Ready` as those
+      cells are placed, so the trip waits to fill up. Its cells read `Ready` meanwhile. With nothing held below
+      nearby (the last course, a lone block), any batch is posted.
   - **Limits**: at most 8 new Build jobs per tick, and at most 32 unclaimed Build jobs at a time.
   - **Re-check**: each tick, an unclaimed Build job with a cell that is no longer `Ready` (ignoring its own hold and
     its own cells in the course check, and ignoring agents in the `Occupied` check, M9-T2: a dwarf walking over a wall

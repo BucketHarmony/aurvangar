@@ -19,6 +19,15 @@ public static partial class BlockBuildSystem
     /// <summary>CON-12: Chebyshev distance from a batch member within which entries join the batch.</summary>
     public const int BatchRadius = 4;
 
+    /// <summary>CON-12 small-batch hold (M10-T4, ADR-074): a batch under <see cref="FullEnough"/> is not posted while a
+    /// Build job holds a cell one course below its seed within this many cells horizontally (Chebyshev): more of the
+    /// course above will turn Ready as those cells are built, so the trip waits to fill up.</summary>
+    public const int HoldRadius = 8;
+
+    /// <summary>CON-12: a batch of <paramref name="count"/> cells out of a full load of <paramref name="max"/> is
+    /// posted even while the course below is held nearby: at least 60% of a load.</summary>
+    public static bool FullEnough(int count, int max) => count * 10 >= max * 6;
+
     public static void Tick(Simulation sim)
     {
         var plans = sim.Plans;
@@ -145,6 +154,7 @@ public static partial class BlockBuildSystem
             int max = Math.Max(ItemsCarried / cost, 1);
             Join(sim, scan, cell, e.Block, stands!, max, batch);
             SortByCourse(batch);
+            if (!FullEnough(batch.Count, max) && scan.HeldBelowWithin(cell, HoldRadius)) continue;
             if (!Source(sim, scan, promised, e.Block, cell, stands!, batch.Count, out var src, out int take)) continue;
             batch.RemoveRange(take, batch.Count - take);
             var job = sim.Jobs.Post(JobKind.Build, cell, Steps(sim, src, item, cost, e.Block, batch),

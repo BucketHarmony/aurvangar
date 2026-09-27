@@ -125,7 +125,9 @@ the survival scenario (`SurvivalScenarioTests`), and `run-headless.sh --script s
 `Scripts.MonumentScript` (M8-T6, ADR-066) is the monument session on seed 1: chop, a pump, a corridor and quarry
 room dug into the hill's stone with two warehouses inside it, and a planned hollow 7×7, 8-high Masonry tower (door,
 inner stair) plus a courtyard wall. The whole plan is released at tick 9600, as a player's "Release all" does
-(M9-T2, ADR-068); the CON-05 course check and CON-12 batching raise it course by course in full trips. Used by `MonumentScenarioTests`, CON-P1 and
+(M9-T2, ADR-068); the CON-05 course check and CON-12 batching raise it course by course in full trips, and the next
+course starts where the one below is built (M10-T4, ADR-074: at most 15% idle dwarf time from the release to
+completion, `Seed1_Monument_FewIdleBuildersBetweenCourses`). Used by `MonumentScenarioTests`, CON-P1 and
 `run-headless.sh --script monument`.
 
 `run-headless.sh --script digchop` (also `none`, `build`, `farm`, `survival` and `monument`) runs the screenshot harness's `ScreenshotScripts` command list

@@ -32,12 +32,19 @@ public sealed class MonumentRun
     public int BuildTrips { get; }
     /// <summary>M10-T1: every entry's CON-05 status at the G5 screenshot ticks (11,000 and 14,000).</summary>
     public Dictionary<long, List<(Int3 Cell, PlanEntry Entry, BuildStatus Status)>> StatusesAt { get; } = new();
+    /// <summary>M10-T4: living agent-ticks from the whole-plan release to completion, and how many of them were
+    /// <see cref="Agents.AgentState.Idle"/> (the M9-T2 measure, ADR-068).</summary>
+    public long AgentTicks { get; }
+    public long IdleAgentTicks { get; }
+    /// <summary>The tick of the script's single ReleasePlan.</summary>
+    public long ReleaseTick { get; }
 
     public MonumentRun()
     {
         Sim = WorldFactory.Create(MonumentScript.Seed, TestContent.Db);
         var hub = Sim.Buildings.All.First();
         var tripOf = new Dictionary<int, int>();   // agent id -> the Build job it is counted on (lookups only)
+        ReleaseTick = MonumentScript.Commands.First(c => c.Command is ReleasePlan).Tick;
         for (long i = 0; i < Ticks; i++)
         {
             MonumentScript.EnqueueDue(Sim);
@@ -52,6 +59,13 @@ public sealed class MonumentRun
             }
             foreach (var e in Sim.Events.Drain())
                 if (e is CommandRejected r) Rejected.Add($"tick {Sim.Clock.Tick}: {r.Command} {r.Reason}");
+            if (CompletedAt < 0 && Sim.Clock.Tick > ReleaseTick)
+                foreach (var a in Sim.Agents.All)
+                {
+                    if (!a.IsAlive) continue;
+                    AgentTicks++;
+                    if (a.State == Agents.AgentState.Idle) IdleAgentTicks++;
+                }
             if (Sim.Clock.Tick is 11000 or 14000) StatusesAt[Sim.Clock.Tick] = Sim.Plans.Statuses(Sim);
             if (Sim.Clock.Tick % 100 != 0) continue;
             int hall = Sim.Regions.RegionOf(hub.EntranceCell);
@@ -123,6 +137,19 @@ public class MonumentScenarioTests : IClassFixture<MonumentRun>
         double perTrip = (double)MonumentScript.PlannedCells.Count / Math.Max(_run.BuildTrips, 1);
         _out.WriteLine($"monument: {_run.BuildTrips} build trips, {perTrip:F2} blocks per trip, complete at tick {_run.CompletedAt}");
         Assert.True(perTrip >= 4.0, $"{perTrip:F2} blocks per trip ({_run.BuildTrips} trips)");
+    }
+
+    /// <summary>M10-T4 (G5 issue 2; CON-05, CON-12): from the whole-plan release to completion, at most 15% of the
+    /// living dwarves' ticks are idle (27% at G5): the next course starts where the course below is built locally.
+    /// Trips stay full (<see cref="Seed1_Monument_WholePlanRelease_FullTrips"/>).</summary>
+    [Fact]
+    public void Seed1_Monument_FewIdleBuildersBetweenCourses()
+    {
+        double idle = (double)_run.IdleAgentTicks / Math.Max(_run.AgentTicks, 1);
+        _out.WriteLine($"monument: idle {_run.IdleAgentTicks} of {_run.AgentTicks} agent-ticks ({idle:P1}) from tick "
+            + $"{_run.ReleaseTick} to {_run.CompletedAt}; {_run.BuildTrips} trips");
+        Assert.True(_run.CompletedAt > 0, "the monument never completed");
+        Assert.True(idle <= 0.15, $"idle share {idle:P1}");
     }
 
     /// <summary>M10-T1 (G5 issue 5; CON-05, VIEW-22, ADR-071): after the whole-plan release, the inner stair steps

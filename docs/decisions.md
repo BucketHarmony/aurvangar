@@ -1749,3 +1749,42 @@ Decision:
 - **Screenshots.** A new `wall` script and preset: the `paint` drags, with the harness holding a vertical Wood planks
   drag (4 wide, 6 high) beside the L. It needs 24 logs with 20 free, so its top row is amber.
 Consequences: the controls text and the HUD hint name both drags. Goldens are unchanged (no sim change).
+
+## ADR-074: The course check is local, and CON-12 holds small batches while the course below is held nearby (amends ADR-068) (2026-09-27, M10-T4)
+Context: G5 issue 2. After a whole-plan release of the monument, about 27% of dwarf time was idle (measured here as
+29.1%: 11,051 of 38,000 living agent-ticks with `AgentState.Idle` from the release at tick 9,600 to completion at
+17,200). ADR-068's course check (radius 8) held a whole course back until every cell of the course below was placed,
+so only one course was ever in jobs: 10, 10, 3 and 1 blocks for 5 dwarves. M10-T4 asks for at most 15% idle while
+keeping at least 4 blocks per trip and the monument's checks (done by day 10, no dwarf walled in, no floating block,
+all 5 alive).
+Decision:
+- **CON-05 check 6 is local:** `BlockPlans.CourseRadius` 8 -> 1. An entry waits only while a cell under it or
+  diagonally under it is held by a Build job. So a cell whose supports are built may start while other parts of the
+  course below are still in jobs (the task's wording). Radius 0 (no check) put a stair step into a red status mid-build,
+  so the local check stays.
+- **CON-12 small-batch hold:** a batch under 60% of a full load (`FullEnough`: 6 of 10 for Masonry) is not posted
+  while a Build job holds a cell one course below its seed within `BlockBuildSystem.HoldRadius` = 8 (ADR-068's old
+  radius). Those cells turn the course above `Ready` as they are placed, so the trip waits to fill. A small batch with
+  nothing held below nearby (the last course, a lone hand-placed block) goes out at once. Its cells read `Ready`
+  meanwhile (a batch property, not a per-cell one), so no new status.
+- **Measured** on the monument (seed 1, whole release). Local radius / hold threshold -> idle share, blocks per trip,
+  completion tick:
+  - ADR-068 (8, none): 29.1%, 4.80, 17,200.
+  - Radius only, no hold: 1 -> 37.6%, 1.92, never done; 2 -> 24.6%, 2.10, never done; 3 -> 6.1%, 2.83, 18,000;
+    4 -> 13.5%, 3.20, 17,800. Small trips everywhere: an idle dwarf takes each newly Ready cell alone.
+  - Radius 1 with the hold at a batch of 4 / 5 / **6** / 7 / 8 -> 7.6% / 7.9% / **11.1%** / 20.8% / 24.3% idle,
+    4.09 / 4.09 / **4.25** / 5.39 / 5.02 blocks per trip, 15,900 / 16,300 / **16,200** / 15,500 / 16,500.
+  - Radius 2 with the hold at 5 or 6: about 23% idle.
+  - 6 was taken: the lowest idle share with a margin on both limits (11.1% against 15%, 4.25 against 4.0).
+Consequences:
+- Monument, whole release: 52 trips, 4.25 blocks per trip, complete at tick 16,200 (day 6.75; 17,200 before), idle
+  11.1% (3,649 of 33,000 agent-ticks). All 5 alive, no dwarf walled in, no floating block, no stair step red at 11,000
+  or 14,000.
+- Two courses of a structure are often in jobs at once, and a batch can span them (CON-12 `Join` already allowed it).
+- `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the ledge 5 cells from the held column now reads `Ready` (it read
+  `CourseBelow` under ADR-068) and is not posted while that column's lower block is held (a 1-block batch). The
+  assertion was updated to the new rule. `UpperCourse_WaitsForHeldCourseBelow` was replaced by
+  `UpperCell_WaitsForHeldCellsBesideBelow` (the local check) and
+  `UpperCourse_FullEnoughBatchStarts_SmallOneWaitsForHeldCourseBelow` (the hold; fails under ADR-068).
+- The remaining idle time is mostly the last course and the door lintel (few cells left), and short waits while a
+  held-back batch fills.

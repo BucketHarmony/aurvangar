@@ -102,8 +102,12 @@ public partial class BlockBuildScenarioTests
         Assert.Equal(BuildStatus.Occupied, sim.Plans.StatusOf(sim, occupied));
         Assert.Equal(BuildStatus.NoAccess, sim.Plans.StatusOf(sim, noAccess));
         Assert.Equal(BuildStatus.InJob, sim.Plans.StatusOf(sim, column));   // the Ready ones got jobs
-        // M9-T2 (ADR-068): the column's first block, 5 cells away one course down, is held, so the ledge waits.
-        Assert.Equal(BuildStatus.CourseBelow, sim.Plans.StatusOf(sim, new Int3(5, G + 1, 5)));
+        // M10-T4 (ADR-074): the column's first block, 5 cells away one course down, is held. That is beyond the local
+        // course check (M9-T2 had CourseBelow here), so the ledge reads Ready; as a 1-block batch it is not posted
+        // while that course below is held (CON-12 small-batch hold).
+        var ledge = new Int3(5, G + 1, 5);
+        Assert.Equal(BuildStatus.Ready, sim.Plans.StatusOf(sim, ledge));
+        Assert.False(BlockBuildSystem.HeldCells(sim).ContainsKey(sim.World.Index(ledge)));
         Assert.Null(sim.Plans.StatusOf(sim, new Int3(3, G, 3)));
 
         var held = BlockBuildSystem.HeldCells(sim);

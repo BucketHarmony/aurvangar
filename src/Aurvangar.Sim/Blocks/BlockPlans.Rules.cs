@@ -9,10 +9,12 @@ namespace Aurvangar.Sim.Blocks;
 /// across ticks.</summary>
 public sealed partial class BlockPlans
 {
-    /// <summary>CON-05 check 6 (M9-T2, ADR-068): an entry waits while a Build job holds a cell one course down within
-    /// this many cells horizontally (Chebyshev), so a structure rises course by course and a whole course turns Ready
-    /// together (full CON-12 batches, and no wall top cut off by a section built too high).</summary>
-    public const int CourseRadius = 8;
+    /// <summary>CON-05 check 6 (M9-T2, ADR-068; made local by M10-T4, ADR-074): an entry waits while a Build job holds a
+    /// cell one course down within this many cells horizontally (Chebyshev), so nothing is built on a course whose
+    /// cells around it are still to come (no wall top cut off by a section built too high). Farther held cells no
+    /// longer hold an entry back: the next course starts where the course below is already built, and CON-12 keeps
+    /// the trips full (<see cref="BlockBuildSystem.HoldRadius"/>).</summary>
+    public const int CourseRadius = 1;
 
     /// <summary>CON-08: whether <paramref name="cell"/> may get an entry, given the command's own cells
     /// <paramref name="pending"/> (for plan support; null for none). The first failing check is the answer.</summary>
@@ -155,7 +157,11 @@ internal sealed class BuildScan
     /// <summary>CON-05 course check (M9-T2, ADR-068): a cell one course down within
     /// <see cref="BlockPlans.CourseRadius"/> horizontally (Chebyshev) is held by a Build job other than
     /// <see cref="Self"/>.</summary>
-    public bool CourseBelow(Int3 cell)
+    public bool CourseBelow(Int3 cell) => HeldBelowWithin(cell, BlockPlans.CourseRadius);
+
+    /// <summary>A cell one course down within <paramref name="radius"/> horizontally (Chebyshev) is held by a Build job
+    /// other than <see cref="Self"/> (the course check, and the CON-12 small-batch hold, M10-T4).</summary>
+    public bool HeldBelowWithin(Int3 cell, int radius)
     {
         if (_heldByY is null)
         {
@@ -169,7 +175,7 @@ internal sealed class BuildScan
         }
         if (!_heldByY.TryGetValue(cell.Y - 1, out var below)) return false;
         foreach (var c in below)
-            if (Math.Abs(c.X - cell.X) <= BlockPlans.CourseRadius && Math.Abs(c.Z - cell.Z) <= BlockPlans.CourseRadius)
+            if (Math.Abs(c.X - cell.X) <= radius && Math.Abs(c.Z - cell.Z) <= radius)
                 return true;
         return false;
     }

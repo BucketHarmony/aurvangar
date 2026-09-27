@@ -3062,3 +3062,43 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Decisions: ADR-073.
 - Next: M10-T4 (idle builders between courses). For G6, the vertical-painting shot is `SCRIPT=wall SHOTS=wall
   TICKS=1500`. Open question for G6: should Deconstruct's drag also go vertical from a side face?
+
+## M10-T4 — Fewer idle builders between courses (2026-09-27)
+- Done: G5 issue 2 (ADR-074, amends ADR-068). The next course starts where the course below is built locally, and
+  trips stay full.
+  - **CON-05 check 6 is local:** `BlockPlans.CourseRadius` 8 -> 1. An entry waits (`CourseBelow`) only while a cell
+    under it or diagonally under it is held by a Build job. `BuildScan.HeldBelowWithin(cell, radius)` is the shared
+    scan.
+  - **CON-12 small-batch hold:** `BlockBuildSystem.Post` skips a batch under 60% of a load (`FullEnough`: 6 of 10
+    Masonry) while a Build job holds a cell one course below the seed within `HoldRadius` = 8. A small batch with
+    nothing held below nearby posts at once. The held-back cells read `Ready` (no new status).
+  - Docs: construction.md (CON-05 check 6, CON-12 hold) and testing.md.
+- Measure (the M9-T2 one): living agent-ticks with `AgentState.Idle` from the release tick (9,600) to the 100-tick
+  check that sees the monument complete. Before: 29.1% (11,051 of 38,000; G5 quoted about 27%).
+- Tests:
+  - New `MonumentScenarioTests.Seed1_Monument_FewIdleBuildersBetweenCourses` (idle ≤ 15%). `MonumentRun` now counts
+    `AgentTicks` and `IdleAgentTicks`. It failed before the change at 29.1%.
+  - `UpperCourse_WaitsForHeldCourseBelow` was replaced by `UpperCell_WaitsForHeldCellsBesideBelow` (the local check;
+    a Rubble cell diagonally above a held Masonry line waits, then builds) and
+    `UpperCourse_FullEnoughBatchStarts_SmallOneWaitsForHeldCourseBelow` (a 6-cell ridge course starts while the line
+    below is held, a lone cell 6 away waits as `Ready` and unheld until the line is placed, a far one posts at once).
+  - `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the ledge 5 cells from the held column reads `Ready` and is not
+    held (was `CourseBelow`; the new rule, ADR-074).
+  - check.sh: 631 passed, 0 skipped, 0 failed. 0 warnings.
+- Numbers (monument, seed 1, whole release):
+  - idle 11.1% (3,649 of 33,000 agent-ticks);
+  - 52 build trips, 4.25 blocks per trip (limit 4.0; 4.80 before);
+  - complete at tick 16,200 (day 6.75; 17,200 before);
+  - all 5 alive, no dwarf walled in, no floating block, no red stair step at 11,000 or 14,000.
+  - The sweep is in ADR-074. A lower hold threshold (4 or 5) gives about 7.7% idle, but only 4.09 blocks per trip.
+- sim-reviewer: not run (the Aurvangar.Sim diff is about 30 lines).
+- Golden: unchanged (the survival session has no plan entries). Headless `--script monument --ticks 24000`: hash
+  `0c344974bf9aea8f`, 5 alive, 2 failed jobs (1 before). Headless seed 1: hash `6cef6aa7d84e85dd`.
+- Perf (perf.sh, serial, all 9 pass):
+  - CON-P1: median 0.074 ms, p95 1.01 ms, max 3.37 ms (budget 8 ms);
+  - the build poster takes 33 ms over 500 ticks (3.3 ms before). A held-back seed runs its `Join` again every tick,
+    and so does each of its members. That is still about 0.07 ms per tick.
+- Screenshots: not rendered (no view change). The G6 monument shots (11,000 and 14,000) will show two courses in
+  jobs at once.
+- Next: M10-T5 (the materials script keeps its colony alive). The monument now completes at 16,200, so the
+  `monument` 17,400 screenshot still shows it complete.

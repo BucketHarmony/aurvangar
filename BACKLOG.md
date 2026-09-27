@@ -321,7 +321,7 @@ Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is de
     so a wall face (a column or a rectangle of cells the cursor passes) can be painted in one drag. A drag from a
     top face stays horizontal. Cells are sent bottom-up, so each has support.
   - Put the logic in ViewCore with tests. Amend ADR-067. Render screenshots and look at them.
-- [ ] **M10-T4** Fewer idle builders between courses · specs: CON-*, JOB-* · deps: M9-GATE
+- [x] **M10-T4** Fewer idle builders between courses · specs: CON-*, JOB-* · deps: M9-GATE
   - G5 issue 2: about 27% of dwarf time is idle at the end of each layer after a whole-plan release.
   - Let the next course start where the course below is already built locally (for example, a cell whose supports
     are all built may start even while other parts of the lower course are still in jobs). Keep ADR-068's full
