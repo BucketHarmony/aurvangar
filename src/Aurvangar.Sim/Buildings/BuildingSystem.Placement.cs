@@ -43,7 +43,7 @@ public sealed partial class BuildingSystem
             if (!ground) return PlacementResult.NotOnGround;
         }
 
-        if (!EntranceOk(entrance, stacked)) return PlacementResult.EntranceBlocked;
+        if (!EntranceOk(def, entrance, stacked)) return PlacementResult.EntranceBlocked;
 
         if (def.Placement == "waterEdge")
         {
@@ -81,21 +81,43 @@ public sealed partial class BuildingSystem
         return null;
     }
 
+    /// <summary>The cell a builder or worker would stand on for <paramref name="def"/> at this spot (the build ghost
+    /// shows it): the entrance when it is free, else for a stackable building the cell below it (ADR-040), else for a
+    /// <c>waterEdge</c> building the cell above it (ADR-055), else the entrance. A read-only query.</summary>
+    public Int3 PlannedStandCell(BuildingDef def, Int3 origin, int rotation)
+    {
+        var e = BuildingShape.Entrance(def, origin, rotation);
+        if (FreeStand(e)) return e;
+        if (def.Stackable && FreeStand(e + Int3.Down)) return e + Int3.Down;
+        if (RaisesStand(def) && FreeStand(e + Int3.Up)) return e + Int3.Up;
+        return e;
+    }
+
+    /// <summary>ADR-055 (M7-T2, G3 answer 3b): a <c>waterEdge</c> building (the pump) whose entrance cell is taken by
+    /// the next bank step may use the cell one level up; the footprint is still in reach from there (ARCH-07).</summary>
+    internal static bool RaisesStand(BuildingDef def) => def.Placement == "waterEdge";
+
+    private bool FreeStand(Int3 c) => BuildingAt(c) is null && _paths.IsStandable(c);
+
+    /// <summary>A building's entrance, or for a <c>waterEdge</c> building also the cell above it (its possible raised
+    /// stand cell, ADR-055): no footprint may cover either.</summary>
     private bool IsAnyEntrance(Int3 c)
     {
         foreach (var b in _buildings.Values)
-            if (b.EntranceCell == c) return true;
+        {
+            var e = b.EntranceCell;
+            if (e == c || (RaisesStand(b.Def) && e + Int3.Up == c)) return true;
+        }
         return false;
     }
 
     /// <summary>BLD-02: the entrance is standable (PTH-01) and not inside any building. A stacked building
     /// (BLD-04) may instead use the cell one level below its entrance, from which the upper footprint cell is in
-    /// reach (ARCH-07); ADR-040.</summary>
-    private bool EntranceOk(Int3 entrance, bool stacked)
+    /// reach (ARCH-07); ADR-040. A <c>waterEdge</c> building may use the cell one level above it (ADR-055).</summary>
+    private bool EntranceOk(BuildingDef def, Int3 entrance, bool stacked)
     {
-        if (BuildingAt(entrance) is null && _paths.IsStandable(entrance)) return true;
-        if (!stacked) return false;
-        var lower = entrance + Int3.Down;
-        return BuildingAt(lower) is null && _paths.IsStandable(lower);
+        if (FreeStand(entrance)) return true;
+        if (stacked && FreeStand(entrance + Int3.Down)) return true;
+        return RaisesStand(def) && FreeStand(entrance + Int3.Up);
     }
 }

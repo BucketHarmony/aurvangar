@@ -1149,3 +1149,29 @@ the abort moved from right press to right click release. A right-drag leaves a l
 keeps orbiting from the first pixel (no threshold). No HUD controls text exists to update.
 Consequences: a right click aborts on release instead of press (imperceptible). If the human meant a grab-the-map
 translation, `ClickDragGesture` can feed a new `OrbitRig` pan method instead of `Drag` with no other change.
+
+
+## ADR-055: A pump may use the stand cell one level above its entrance (2026-09-26, M7-T2)
+Context: G3 answer 3b. On seed 1 the river banks rise one level per cell, so a pump whose intake is over the water
+has its entrance inside the next bank step (`EntranceBlocked`); 0 of the valid pump sites were wet and a player had to
+dig a notch first (ADR-044). The human chose "the pump may use a stand cell one level up, the way levees stack".
+Decision:
+- The rule applies to `waterEdge` buildings (the pump) only. Other buildings keep BLD-02; a warehouse whose entrance is
+  blocked stays red. `BuildingSystem.RaisesStand(def)` is the one switch.
+- Placement (BLD-03): the entrance passes when it is free (standable, no building), or for a stacked building the cell
+  below is (ADR-040), or for a `waterEdge` building the cell above is. The footprint stays in reach from there
+  (ARCH-07, 26 neighbours: dy = -1 and one step across). The cell above a pump's entrance is reserved like an
+  entrance: no footprint may cover it (`Overlaps`), whether or not the pump uses it.
+- Stand cell (`Construction.StandCell`, dynamic from the current grid): the entrance if standable, else the cell below
+  if standable (stacked levees), else for a `waterEdge` building the cell above if standable, else the entrance. The
+  OperatePump job's `GoTo(Exact)` and its target now use the stand cell; an unclaimed job whose stand cell moved (the
+  bank step was dug later) is cancelled and posted anew. Refunds, agents moved out of a site, and the build ghost's
+  white stand tile (`BuildingSystem.PlannedStandCell`) use the same cell.
+- The SurvivalScript keeps its tick-0 notch (the task allows it): with it dug the entrance is standable, so the
+  script's pump behaves exactly as before and the golden hashes do not change.
+- The screenshot `build` script now puts its pump at the nearest wet site (falling back to the nearest valid site), so
+  the shots show a working pump instead of a NoWater one.
+Consequences: on seed 1 (pre-settled river, no digging) 354 wet pump sites with a stand cell in the Great Hall's region
+exist, all using the raised cell; the nearest is the survival script's own site (40,18,80). No new state, no save or
+hash change. The stand cell is not stored, so if the bank step is dug the pump's worker simply moves down to the
+entrance.

@@ -45,7 +45,10 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 - **BLD-03** `waterEdge` placement (pump): as `ground`, plus the cell in front of the pump's intake side
   (the side opposite the entrance) must be non-solid; the intake cell is that cell one level down and must also
   be non-solid (a bank edge; water is not required at placement, ADR-040). The pump reads
-  `Water.GetLevel(intake)` when producing.
+  `Water.GetLevel(intake)` when producing. When the entrance cell is not standable (on a stepped bank it is inside
+  the next bank step), a `waterEdge` building may use the standable cell one level above it instead, like stacked
+  levees use the cell below (ADR-055, M7-T2). That cell is its stand cell: builders deliver and work from it, the
+  pump's worker stands there (BLD-13), and no footprint may cover it.
 - **BLD-04** Levee may be placed on top of a completed or blueprinted levee (placement checks the stack
   ordering: construction of an upper levee cannot start until the one below is complete). Data: `stackable`.
   A stacked building whose entrance cell is not standable may use the standable cell one level below it
@@ -83,7 +86,7 @@ materials, are built by colonists, then operate. Definitions live in `data/build
 ## Pump production (BLD-13..14)
 
 - **BLD-13** A complete pump with internal buffer < 10 keeps one OperatePump job open. The worker stands at the
-  entrance and does `Work` in 30-tick cycles; each cycle checks intake level ≥ 256 and, if so, removes 64 units
+  entrance (or the raised stand cell, BLD-03) and does `Work` in 30-tick cycles; each cycle checks intake level ≥ 256 and, if so, removes 64 units
   from the intake cell (water leaves the world; counted in `WaterStats.Pumped`) and adds 1 water to the buffer.
   If intake is too low, the cycle produces nothing and the building flags `NoWater` (HUD icon).
   NoWater is also refreshed from the intake level every tick, and no OperatePump job is kept while it is set.

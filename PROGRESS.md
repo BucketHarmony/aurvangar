@@ -1907,3 +1907,29 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   ViewCore tests only; worth a quick hands-on check at G4.
 - Next: M7-T2 (pump entrance one level up). If the human meant a grab-the-map translation rather than orbit, feed
   `ClickDragGesture` into a new `OrbitRig` pan method instead of `Drag` (ADR-054).
+
+## M7-T2 — Pump entrance may stand one level up (2026-09-26)
+- Done: a `waterEdge` building (the pump) whose entrance cell is not free may use the standable cell one level above
+  it (on a stepped bank the entrance is inside the next bank step). `CanPlace` accepts it, the cell above a pump's
+  entrance is reserved against footprints, `Construction.StandCell` returns it (deliveries, refunds, agents moved out
+  of a site), and the OperatePump job walks to it (reposted if the stand cell moves). New read-only
+  `BuildingSystem.PlannedStandCell`, used by the build ghost's white stand tile. BLD-03/BLD-13 updated in
+  docs/specs/buildings.md. The screenshot `build` script now places its pump at the nearest wet site.
+- Tests: new `Scenarios/PumpSiteScenarioTests` (2): seed 1 has wet pump sites reachable from the hall without any dig
+  (354, all using the raised cell; was 0), and the colonists build a pump at the nearest one (entrance cell solid) and
+  work it from the raised cell, with water hauled and 0 failed jobs. New `BuildingPlacementTests.Pump_EntranceInside
+  BankStep_UsesTheStandCellOneLevelUp` (stepped bank: Ok with the raised cell, blocked headroom still rejected, a
+  levee still rejected, the raised cell reserved). `ScreenshotScriptTests` build test now asserts the pump has water.
+  All failed before the change for the right reason (EntranceBlocked / no sites). check.sh: 524 passed, 0 skipped,
+  0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-055. The SurvivalScript keeps its tick-0 notch (with it dug the entrance is standable, so nothing
+  changes); the nearest raised site is the script's own pump site (40,18,80), so M7-T3 may drop the notch if it wants.
+- Golden: unchanged. Headless `--seed 1 --script survival --ticks 24000`: hash `7344b913cc2909c9` (same), 5,558
+  ticks/s, 5/5 alive, pump dry 5,004 ticks (unchanged; M7-T3 adds the reservoir).
+- Perf: perf.sh 8/8 passed (run serially). No path code changed; the extra placement check is one standable lookup.
+- Screenshots: `artifacts/screens/m7t2/{hub,river,overview}.png` (SCRIPT=build, TICKS=1600), looked at. The pump
+  now stands at the river's edge, Althjofr is "Working the pump", and the top bar no longer shows "Pump has no
+  water"; the NO WATER billboard (and its overlap with the hub ghost tooltip) is gone from `hub`. The first render
+  after the ViewCore edit came out stale (identical to the old pump); a second run rendered the change.
+- Next: M7-T3 (levee reservoir for the survival pump and farm). The pump may now be placed on any stepped bank edge
+  without a notch; `ScreenshotScripts.FindSite(..., wet: true)` finds wet sites.

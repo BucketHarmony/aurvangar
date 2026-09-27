@@ -197,7 +197,7 @@ building-lookup optimisation) need no task.
   - G3 play feedback: the human keeps right-dragging to pan. Right-button drag pans like middle-drag (keep
     middle-drag). A right click with no drag movement still aborts the tool drag in progress. Put the
     click-vs-drag threshold logic in ViewCore with unit tests. Update the controls text if any.
-- [ ] **M7-T2** Pump entrance may stand one level up · specs: BLD-03, BLD-13 · deps: M6-GATE
+- [x] **M7-T2** Pump entrance may stand one level up · specs: BLD-03, BLD-13 · deps: M6-GATE
   - G3 answer 3b: when the pump's entrance cell is blocked by the next bank step, the pump may use a stand cell one
     level up, the way levees stack. On seed 1 there must be wet pump sites that need no hand-dug notch (test it).
     Keep the SurvivalScript notch unless removing it is needed; if goldens change, record why. ADR.

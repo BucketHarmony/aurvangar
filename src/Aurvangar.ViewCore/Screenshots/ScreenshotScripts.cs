@@ -132,8 +132,11 @@ public static class ScreenshotScripts
         var content = sim.Content;
         var taken = new HashSet<Int3>();
         var list = new List<ICommand> { ChopNearHub(sim) };
-        foreach (var id in new[] { "warehouse", "pump" })
-            if (FindSite(sim, content.Building(id), taken) is { } site) list.Add(site);
+        if (FindSite(sim, content.Building("warehouse"), taken) is { } wh) list.Add(wh);
+        // The pump goes to the nearest site with water at its intake (on seed 1 a bank site that uses the stand cell
+        // one level up, ADR-055), else to the nearest valid one.
+        var pump = content.Building("pump");
+        if ((FindSite(sim, pump, taken, wet: true) ?? FindSite(sim, pump, taken)) is { } ps) list.Add(ps);
         // A levee line: the first site, then the cells beside it (across the entrance direction, so no levee covers
         // another's entrance) while they stay valid and clear of the earlier buildings.
         var levee = content.Building("levee");
@@ -156,8 +159,9 @@ public static class ScreenshotScripts
 
     /// <summary>The nearest valid site (ring by ring around the hub center, Chebyshev distance from
     /// <see cref="BuildGap"/> + hub half-size, rotations 0/90/180/270) that does not touch the cells already
-    /// <paramref name="taken"/> (footprints and entrances of earlier picks, with a one-cell margin). Deterministic.</summary>
-    public static PlaceBuilding? FindSite(Simulation sim, BuildingDef def, HashSet<Int3> taken)
+    /// <paramref name="taken"/> (footprints and entrances of earlier picks, with a one-cell margin). With
+    /// <paramref name="wet"/>, only sites whose producer intake holds at least its <c>minIntakeLevel</c>. Deterministic.</summary>
+    public static PlaceBuilding? FindSite(Simulation sim, BuildingDef def, HashSet<Int3> taken, bool wet = false)
     {
         var focus = ScreenshotPresets.HubFocus(sim);
         int cx = (int)focus.X, cz = (int)focus.Z;
@@ -172,6 +176,8 @@ public static class ScreenshotScripts
                     for (int rot = 0; rot < 360; rot += 90)
                     {
                         if (sim.Buildings.CanPlace(def, origin, rot) != PlacementResult.Ok || !Free(sim, def, origin, rot, taken)) continue;
+                        if (wet && (def.Producer is not { } p
+                            || sim.Water.GetLevel(BuildingShape.Intake(def, origin, rot)) < p.MinIntakeLevel)) continue;
                         Take(sim, def, origin, rot, taken);
                         return new PlaceBuilding(def.Id, origin, rot);
                     }

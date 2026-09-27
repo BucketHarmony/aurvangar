@@ -8,7 +8,8 @@ using Aurvangar.ViewCore.Picking;
 namespace Aurvangar.ViewCore.Tools;
 
 /// <summary>The build ghost under the cursor (VIEW-14): the footprint box (inclusive cells, min first), the entrance
-/// cell, and the sim's placement verdict. Green when <see cref="Ok"/>, red otherwise with <see cref="Reason"/>.</summary>
+/// cell (where the builder and worker will stand: <see cref="BuildingSystem.PlannedStandCell"/>, one level up for a
+/// pump on a stepped bank, ADR-055), and the sim's placement verdict. Green when <see cref="Ok"/>, red otherwise with <see cref="Reason"/>.</summary>
 public readonly record struct BuildGhost(BuildingDef Def, Int3 Origin, int Rotation, Int3 Min, Int3 Max, Int3 Entrance,
     PlacementResult Result)
 {
@@ -70,7 +71,7 @@ public sealed class BuildTool
     /// <summary>The ghost for the current definition and rotation at the pick, or null over nothing.</summary>
     public BuildGhost? Ghost(Simulation sim, PickHit? hit) => hit is { } h ? GhostAt(sim, Def, h.Adjacent, Rotation) : null;
 
-    /// <summary>The ghost of <paramref name="def"/> at an origin: footprint box, entrance and
+    /// <summary>The ghost of <paramref name="def"/> at an origin: footprint box, stand cell and
     /// <see cref="BuildingSystem.CanPlace"/> (a read-only query).</summary>
     public static BuildGhost GhostAt(Simulation sim, BuildingDef def, Int3 origin, int rotation)
     {
@@ -81,7 +82,7 @@ public sealed class BuildTool
             min = new Int3(Math.Min(min.X, c.X), Math.Min(min.Y, c.Y), Math.Min(min.Z, c.Z));
             max = new Int3(Math.Max(max.X, c.X), Math.Max(max.Y, c.Y), Math.Max(max.Z, c.Z));
         }
-        return new BuildGhost(def, origin, rotation, min, max, BuildingShape.Entrance(def, origin, rotation),
+        return new BuildGhost(def, origin, rotation, min, max, sim.Buildings.PlannedStandCell(def, origin, rotation),
             sim.Buildings.CanPlace(def, origin, rotation));
     }
 

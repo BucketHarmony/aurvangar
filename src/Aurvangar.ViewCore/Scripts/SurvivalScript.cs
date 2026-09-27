@@ -9,7 +9,8 @@ namespace Aurvangar.ViewCore.Scripts;
 /// <c>GoldenHashTests</c>, the survival scenarios and <c>run-headless.sh --script survival</c> (ADR-045, ADR-051).
 /// <list type="number">
 /// <item>Tick 0: dig the one-cell notch <see cref="PumpNotch"/> in the river bank (ADR-044: on seed 1 every wet pump
-/// site has its entrance inside the next bank step).</item>
+/// site has its entrance inside the next bank step). Since M7-T2 (ADR-055) the pump could use the stand cell one level
+/// up instead; the notch is kept so the command log and the golden hashes stay as they are.</item>
 /// <item>Tick <see cref="PumpTick"/> (the notch is dug by tick ~416, after the first berry picking, M6-T3): the Water
 /// Pump on the bank at <see cref="PumpOrigin"/>, facing north, its intake in the river (level 1024). Then chop the
 /// trees around the Great Hall (<see cref="ChopTick"/>; at tick 0 the chops would hold up the notch dig, ADR-048).</item>

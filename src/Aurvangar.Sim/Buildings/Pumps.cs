@@ -77,14 +77,15 @@ public static class Pumps
     private static void KeepOperate(Simulation sim, Building b, ProducerDef p, Job? job)
     {
         bool want = !b.NoWater && WorldActions.StoredCount(b, sim.Content.Item(p.Output)) < p.Buffer;
-        if (job is null)
+        var stand = Construction.StandCell(sim, b);   // the entrance, or the cell above it on a stepped bank (ADR-055)
+        if (job is not null && !job.IsClaimed && (!want || job.Steps[0].Cell != stand))
         {
-            if (want)
-                sim.Jobs.Post(JobKind.OperatePump, b.EntranceCell,
-                    new[] { JobStep.GoTo(b.EntranceCell, GoalMode.Exact), JobStep.WorkOn(b.Id, p.CycleTicks) });
-            return;
+            JobRunner.Cancel(sim, job);   // not wanted, or the stand cell moved (the bank step was dug): post it anew
+            job = null;
         }
-        if (!want && !job.IsClaimed) JobRunner.Cancel(sim, job);
+        if (job is null && want)
+            sim.Jobs.Post(JobKind.OperatePump, stand,
+                new[] { JobStep.GoTo(stand, GoalMode.Exact), JobStep.WorkOn(b.Id, p.CycleTicks) });
     }
 
     /// <summary>BLD-14: one Haul job while the buffer stock not promised to a claimed haul is at least <c>haulAt</c>.

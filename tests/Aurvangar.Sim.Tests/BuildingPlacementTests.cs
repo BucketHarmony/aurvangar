@@ -136,6 +136,38 @@ public class BuildingPlacementTests
         Assert.Equal(PlacementResult.NeedsWaterEdge, sim.Buildings.CanPlace(pump, new Int3(10, G, 12), 0));
     }
 
+    /// <summary>M7-T2 (ADR-055): a stepped bank. The row z = 12 is one level higher (stone at y = G), so a pump at
+    /// the trench edge has its entrance inside that step. It may use the stand cell one level up instead.</summary>
+    [Fact]
+    public void Pump_EntranceInsideBankStep_UsesTheStandCellOneLevelUp()
+    {
+        var sim = Flat(b =>
+        {
+            b.FillBox(new Int3(0, G - 2, 14), new Int3(31, G - 1, 16), BlockId.Air);
+            for (int x = 0; x < 32; x++)
+                for (int z = 14; z <= 16; z++)
+                    for (int y = G - 2; y <= G - 1; y++) b.Water(new Int3(x, y, z), WaterGrid.Full);
+            b.FillBox(new Int3(0, G, 12), new Int3(31, G, 12), BlockId.Stone);          // the next bank step
+            b.FillBox(new Int3(20, G + 1, 12), new Int3(20, G + 1, 12), BlockId.Stone);  // no headroom on it here
+        });
+        var pump = Def("pump");
+
+        var origin = new Int3(10, G, 13);
+        Assert.Equal(new Int3(10, G, 12), BuildingShape.Entrance(pump, origin, 0));
+        Assert.Equal(PlacementResult.Ok, sim.Buildings.CanPlace(pump, origin, 0));
+        Assert.Equal(new Int3(10, G + 1, 12), sim.Buildings.PlannedStandCell(pump, origin, 0));
+        // The cell above the step is not standable (a block on it): still blocked.
+        Assert.Equal(PlacementResult.EntranceBlocked, sim.Buildings.CanPlace(pump, new Int3(20, G, 13), 0));
+        // Only the pump gets the raised stand cell; other buildings keep BLD-02 (the warehouse test above).
+        Assert.Equal(PlacementResult.EntranceBlocked, sim.Buildings.CanPlace(Def("levee"), new Int3(10, G, 13), 0));
+
+        // The raised stand cell is reserved like an entrance: no footprint may cover it.
+        Assert.Equal(PlacementResult.Ok, Blueprint(sim, "pump", origin));
+        Assert.Equal(PlacementResult.Overlaps, sim.Buildings.CanPlace(Def("levee"), new Int3(10, G + 1, 12), 0));
+        var b = sim.Buildings.All.Single(x => x.Def.Id == "pump");
+        Assert.Equal(new Int3(10, G + 1, 12), Construction.StandCell(sim, b));
+    }
+
     [Fact]
     public void Rotation_RotatesFootprintAndEntrance()
     {

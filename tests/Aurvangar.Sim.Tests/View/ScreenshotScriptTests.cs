@@ -73,5 +73,9 @@ public class ScreenshotScriptTests
         Assert.True(states.Count >= 2, $"states at tick 500: {string.Join(",", states)}");
         sim.RunTicks(1100);
         Assert.All(sim.Buildings.All, b => Assert.Equal(BuildingState.Complete, b.State));
+        // M7-T2: the pump stands on a wet bank site with no dug notch (its worker stands one level up), so it runs.
+        var pump = sim.Buildings.All.Single(b => b.Def.Id == "pump");
+        Assert.False(pump.NoWater, "the build-script pump has no water");
+        Assert.Equal(pump.EntranceCell + Aurvangar.Sim.Core.Int3.Up, Construction.StandCell(sim, pump));
     }
 }

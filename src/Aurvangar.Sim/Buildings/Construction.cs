@@ -86,12 +86,15 @@ public static partial class Construction
     /// <summary>JOB-05: Work ticks of a Deconstruct job, half the build ticks (at least 1).</summary>
     public static int DeconstructTicks(BuildingDef def) => Math.Max(def.BuildTicks / 2, 1);
 
-    /// <summary>Where refunds land and agents are moved to: the entrance cell, or for a stacked building whose entrance
-    /// is not standable, the cell below it (ADR-040).</summary>
+    /// <summary>Where refunds land, agents are moved to and a pump's worker stands: the entrance cell; when it is not
+    /// standable, the cell below it (stacked levees, ADR-040), else for a <c>waterEdge</c> building (the pump) the
+    /// cell above it when standable (the entrance is inside the next bank step, ADR-055).</summary>
     public static Int3 StandCell(Simulation sim, Building b)
     {
         var e = b.EntranceCell;
-        if (!sim.PathGrid.IsStandable(e) && sim.PathGrid.IsStandable(e + Int3.Down)) return e + Int3.Down;
+        if (sim.PathGrid.IsStandable(e)) return e;
+        if (sim.PathGrid.IsStandable(e + Int3.Down)) return e + Int3.Down;
+        if (BuildingSystem.RaisesStand(b.Def) && sim.PathGrid.IsStandable(e + Int3.Up)) return e + Int3.Up;
         return e;
     }
 
