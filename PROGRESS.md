@@ -3319,3 +3319,16 @@ Block building controls (M9-T1, M10-T2, M10-T3):
 5. **Anything else** from your play session: bugs, confusions, or things you wanted to build and could not.
 
 Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
+
+### G6 answers (human, 2026-09-27)
+
+- **Play:** "I played the game, it is a good start, interesting to watch." Gate G6 is closed.
+- **Levees:** "Not sure why levees have doors, what are they for?" The "door" is the entrance tile that every
+  building gets from the shared building template, where a builder or worker stands. A levee has no worker, so it
+  needs none. -> M11-T1.
+- **Stone:** "I dont know where to get stone from. can they arrive with a wagon full of building resources for us
+  to start with?" -> M11-T2, a starting wagon. The start currently has no stone, and stone lies 5 or more layers
+  down with no hint.
+- **Gameplay:** "There are missing overall gameplay elements." Asked which matters most, the human picked
+  **economy and crafting**: workshops that refine materials (sawmill, stonecutter), and trade wagons. -> M11-T3..T7.
+- **Not taken up:** surface stone (the starting wagon and trade answer the stone question) and vertical deconstruct.

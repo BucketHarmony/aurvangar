@@ -333,6 +333,60 @@ Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is de
   - G5 issue: the `materials` script has no pump, and the colony dies of thirst on day 6.
   - Give the script a pump (and a levee if it needs one, as SurvivalScript does), so all 5 are alive at day 10.
     Add a test. Keep the six material samples built by tick 12000.
-- [ ] **M10-GATE HUMAN-GATE G6: construction feel review** · deps: M10-T1, M10-T2, M10-T3, M10-T4, M10-T5
+- [x] **M10-GATE HUMAN-GATE G6: construction feel review** · deps: M10-T1, M10-T2, M10-T3, M10-T4, M10-T5
   - Report with screenshots of vertical painting, the shortage display and the monument's stair steps mid-build,
     plus the perf table and open issues. Ask again about surface stone (G5 Q3) and the next direction. Stop.
+
+## M11 — Starting wagon, economy and crafting (G6 answers)
+
+Human answers are in PROGRESS.md under "G6 answers". Surface stone and vertical deconstruct are not taken up. The
+starting wagon answers "I dont know where to get stone from".
+
+- [ ] **M11-T1** Levees have no entrance · specs: BLD-01, BLD-02 · deps: M10-GATE
+  - G6: "Not sure why levees have doors, what are they for?" A levee has no worker, so it needs no entrance.
+  - Buildings with no workers and no storage (the levee) have no entrance in data. The builder may stand on any
+    standable cell next to the footprint, or on one a level up or down as for stacked levees. The ghost shows no
+    entrance tile.
+  - Scenario tests: a levee can be built with only one side reachable; stacked levees still build. Keep the
+    survival session's reservoir working. Regenerate goldens if needed, and record why. ADR.
+- [ ] **M11-T2** Starting wagon with building supplies · specs: ECO-*, BLD-* · deps: M11-T1
+  - G6: "can they arrive with a wagon full of building resources for us to start with?"
+  - The colony starts with a Wagon, a prebuilt storage building next to the Great Hall, defined in data. It holds
+    building supplies: at least 60 stone and 40 logs, plus the current food and water. It takes no new stock after
+    the start, and dwarves may haul out of it. When it is empty the player may deconstruct it for logs.
+  - The HUD shows it like other storage. Starting stock is data-driven (move `WorldFactory.StartStock` into data).
+  - Update the scripts that depended on quarrying if the new stone lets them start sooner, but keep their tests.
+    Regenerate goldens and record why. Render the wagon and look at it.
+- [ ] **M11-T3** Economy and crafting spec and ADR · deps: M11-T2
+  - G6: the human picked economy and crafting as the missing gameplay element.
+  - Write `docs/specs/crafting.md` with rule IDs (CRF-xx), and update docs/00-overview.md scope. The spec covers:
+    - Workshops: buildings with a worker and a list of recipes in data. Include at least a Sawmill (log -> planks
+      item) and a Stonecutter (stone -> cut stone item).
+    - Recipes: inputs, outputs and work ticks.
+    - Orders: per workshop, "make N" or "keep at least N in stock". Inputs are hauled to the workshop and outputs
+      are hauled to storage.
+    - Refined building blocks: some construction blocks cost refined items (planks block from planks, polished
+      stone and slate from cut stone). Rough blocks keep raw costs.
+    - A trade wagon: a data-defined wagon arrives on a schedule at the map edge or the hub. It offers fixed-rate
+      swaps (for example logs or food for stone). The player accepts offers, dwarves load and unload it, and it
+      leaves.
+    - Save, hash and determinism notes.
+  - Add placeholder acceptance tests with `Skip = "M11-Tn"` for the tasks below.
+- [ ] **M11-T4** Workshops, recipes and craft jobs · specs: CRF-* · deps: M11-T3
+  - Sawmill and Stonecutter in data. Commands with CommandCodec entries set workshop orders. Craft jobs fetch the
+    inputs, work and output a pile or haul it to storage. Refined items exist, and block costs move to them per
+    the spec. Saved (bump FormatVersion) and hashed. Scenario tests.
+- [ ] **M11-T5** Trade wagon · specs: CRF-* · deps: M11-T4
+  - Trade wagons arrive on schedule with data-defined offers. A command accepts an offer. Dwarves haul the goods
+    and the wagon leaves on time. Saved and hashed. Scenario test: stone can be bought with logs.
+- [ ] **M11-T6** Godot: workshop orders and trade panel · specs: CRF-*, VIEW-* · deps: M11-T5
+  - Click a workshop to see its recipes and set orders (make N or keep N). A trade panel appears when a wagon is
+    in, showing offers, what we have and accept buttons. The HUD shows refined items. Keep logic in ViewCore with
+    tests. Render screenshots and look at them.
+- [ ] **M11-T7** Economy scenario · deps: M11-T6
+  - An EconomyScript for seed 1 builds a Sawmill and a Stonecutter, keeps planks and cut stone stocked, trades
+    with one wagon and builds a small hall from refined blocks. Test: done by day 10 with all 5 alive. Run
+    perf.sh; the full tick stays within budget. Headless and screenshot support for `--script economy`.
+- [ ] **M11-GATE HUMAN-GATE G7: economy review** · deps: M11-T7
+  - Report with screenshots of the starting wagon, the workshops working, the trade panel and refined-block
+    buildings, plus the perf table and open issues. Ask the human to play: start, craft, trade, build. Stop.
