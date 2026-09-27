@@ -9,15 +9,6 @@ using Xunit;
 namespace Aurvangar.Sim.Tests.Scenarios
 {
     [Trait("Category", "Scenario")]
-    public class BlockPlanScenarioTests
-    {
-        [Fact(Skip = "M8-T4")] public void PlannedEntries_NotBuilt() => Placeholder.Write("construction.md scenario 8, CON-04/07: DesignateBuild with Plan = true adds Planned entries; no Build job is posted in 2000 ticks with stone in stock; StatusOf == Planned");
-        [Fact(Skip = "M8-T4")] public void ReleasePlan_Box_ReleasesOnlyInside() => Placeholder.Write("CON-07 ReleasePlan: releasing half the plan builds that half only; the rest stays Planned; a box with no Planned entry is rejected with NothingToRelease; a world-sized box releases the rest");
-        [Fact(Skip = "M8-T4")] public void MaterialTotals_NeededVersusStored() => Placeholder.Write("CON-06: Needed(Planned), Needed(Released) and Needed(null) per item match the entries' costs (PolishedStone counts 2 stone) and drop by the cost as each block is placed");
-        [Fact(Skip = "M8-T4")] public void PlannedState_SavedAndHashed() => Placeholder.Write("CON-04: Planned vs Released changes the hash; save/load keeps states; after load ReleasePlan behaves the same as in the uninterrupted run (hash equal at +1000 ticks)");
-    }
-
-    [Trait("Category", "Scenario")]
     public class MonumentScenarioTests
     {
         [Fact(Skip = "M8-T6")] public void Seed1_Monument_CompleteByDay10_AllAlive() => Placeholder.Write("M8-T6: MonumentScript (seed 1) plans and releases a hollow Masonry tower at least 7x7 and 8 high with a door and an inner stair, plus a walled courtyard, and digs a hill quarry; by tick 24000 every entry is built and all 5 dwarves are alive");

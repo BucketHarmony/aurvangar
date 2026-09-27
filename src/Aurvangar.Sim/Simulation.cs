@@ -75,7 +75,7 @@ public sealed class Simulation
         DigTrial = new DigTrial(PathGrid);
         PlaceTrial = new PlaceTrial(PathGrid);
         Agents = new AgentSystem(Events);
-        Plans = new BlockPlans(World);
+        Plans = new BlockPlans(World, content);
         Buildings = new BuildingSystem(World, Plants, PathGrid, Plans);
         Piles = new ItemPiles(World, Events);
         Jobs = new JobBoard(World);

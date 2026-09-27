@@ -21,6 +21,7 @@ internal static class CommandCodec
             case DesignateBuild c:
                 w.Write((byte)c.Shape); w.Write(c.A); w.Write(c.B); w.Write(c.Height); w.Write((byte)c.Block); w.Write(c.Plan);
                 break;
+            case ReleasePlan c: w.Write(c.A); w.Write(c.B); break;
             default:
                 throw new NotSupportedException(
                     $"SaveGame: command '{command.Tag}' ({command.GetType().Name}) has no save codec; add it to CommandCodec.");
@@ -41,6 +42,7 @@ internal static class CommandCodec
             nameof(Deconstruct) => new Deconstruct(new Core.BuildingId(r.ReadInt32())),
             nameof(DesignateBuild) => new DesignateBuild(r.ReadEnum<Blocks.BuildShape>("build shape"), r.ReadInt3(), r.ReadInt3(),
                 r.ReadInt32(), (World.BlockId)r.ReadByte(), r.ReadBoolean()),
+            nameof(ReleasePlan) => new ReleasePlan(r.ReadInt3(), r.ReadInt3()),
             _ => throw new InvalidDataException($"Save file contains unknown command tag '{tag}'."),
         };
     }

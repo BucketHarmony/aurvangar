@@ -12,3 +12,15 @@ public sealed record DesignateBuild(BuildShape Shape, Int3 A, Int3 B, int Height
 
     public void Apply(Simulation sim) => BlockBuildSystem.Designate(sim, this);
 }
+
+/// <summary>CON-07 (M8-T4): every <c>Planned</c> entry in the box (corners in any order) becomes <c>Released</c>.
+/// Rejected with <c>NothingToRelease</c> when the box holds no Planned entry.</summary>
+public sealed record ReleasePlan(Int3 A, Int3 B) : ICommand
+{
+    public string Tag => "ReleasePlan";
+
+    public void Apply(Simulation sim)
+    {
+        if (sim.Plans.Release(A, B) == 0) sim.Events.Emit(new Events.CommandRejected(Tag, "NothingToRelease"));
+    }
+}

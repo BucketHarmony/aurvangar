@@ -121,6 +121,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     cells before releasing.
   - `ReleasePlan(Int3 A, Int3 B)` (M8-T4): every `Planned` entry in the box becomes `Released`. With none it is
     rejected with `NothingToRelease`. To release the whole plan, use a box that covers the world.
+    The box is inclusive with its corners in any order; the command walks the entries, not the box's cells, so a
+    world-sized box is cheap. Released entries are not re-validated; they show their CON-05 status (ADR-064).
   - `CancelDesignation(A, B)` (DSG-06) also removes every entry in the box, in either state, and cancels the Build
     jobs that hold them. A claimed job is released: the dwarf drops what it carries (JOB-07), and the pile is hauled
     back (JOB-10). Blocks already placed stay. Nothing unplaced was spent, so nothing is refunded.

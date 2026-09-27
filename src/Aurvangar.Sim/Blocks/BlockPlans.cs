@@ -1,3 +1,4 @@
+using Aurvangar.Sim.Content;
 using Aurvangar.Sim.Core;
 using Aurvangar.Sim.World;
 
@@ -22,9 +23,10 @@ public enum BuildStatus : byte { Planned, InJob, GivenUp, BelowFirst, NoSupport,
 public sealed partial class BlockPlans
 {
     private readonly VoxelWorld _world;
+    private readonly ContentDb _content;
     private readonly SortedDictionary<int, PlanEntry> _entries = new();
 
-    public BlockPlans(VoxelWorld world) { _world = world; }
+    public BlockPlans(VoxelWorld world, ContentDb content) { _world = world; _content = content; }
 
     public int Count => _entries.Count;
 
@@ -53,6 +55,40 @@ public sealed partial class BlockPlans
     public bool Remove(Int3 c) => _world.InBounds(c) && _entries.Remove(_world.Index(c));
 
     public void Clear() => _entries.Clear();
+
+    /// <summary>CON-06: for each item, the cost summed over the entries in <paramref name="state"/> (all entries when
+    /// null), ascending item id; items with no cost are left out. O(entries), no cache.</summary>
+    public IReadOnlyList<(ItemId Item, int Count)> Needed(PlanState? state)
+    {
+        var sums = new SortedDictionary<int, int>();
+        foreach (var e in _entries.Values)
+        {
+            if (state is { } s && e.State != s) continue;
+            var (item, cost) = _content.CostOf(e.Block);
+            if (cost <= 0) continue;
+            sums[item.Value] = sums.GetValueOrDefault(item.Value) + cost;
+        }
+        var result = new List<(ItemId, int)>(sums.Count);
+        foreach (var (item, n) in sums) result.Add((new ItemId(item), n));
+        return result;
+    }
+
+    /// <summary>CON-07 <c>ReleasePlan</c>: every Planned entry in the box spanned by <paramref name="a"/> and
+    /// <paramref name="b"/> (corners in any order, inclusive) becomes Released. O(entries). Returns how many.</summary>
+    public int Release(Int3 a, Int3 b)
+    {
+        var min = new Int3(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), Math.Min(a.Z, b.Z));
+        var max = new Int3(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y), Math.Max(a.Z, b.Z));
+        var hits = new List<int>();
+        foreach (var (i, e) in _entries)
+        {
+            if (e.State != PlanState.Planned) continue;
+            var c = _world.CellOf(i);
+            if (c.X >= min.X && c.X <= max.X && c.Y >= min.Y && c.Y <= max.Y && c.Z >= min.Z && c.Z <= max.Z) hits.Add(i);
+        }
+        foreach (var i in hits) _entries[i] = _entries[i] with { State = PlanState.Released };
+        return hits.Count;
+    }
 
     /// <summary>SaveGame load.</summary>
     internal void Restore(int index, PlanEntry e) => _entries[index] = e;

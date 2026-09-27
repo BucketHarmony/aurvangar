@@ -249,7 +249,7 @@ record the new ADR in M8-T1.
 - [x] **M8-T3** Deconstruct placed blocks · specs: CON-10, CON-17, CON-18 · deps: M8-T2
   - A dig or deconstruct on a player-built block returns its material as a pile. It never removes a block that
     other built blocks depend on for support; those wait, or come down top-first.
-- [ ] **M8-T4** Plan layer for monuments · specs: CON-04, CON-05 (Planned), CON-06, CON-07 (ReleasePlan) · deps: M8-T2
+- [x] **M8-T4** Plan layer for monuments · specs: CON-04, CON-05 (Planned), CON-06, CON-07 (ReleasePlan) · deps: M8-T2
   - The player can lay out a design as planned blocks that dwarves do NOT build yet. The plan shows the total
     material needed against what is stored. A command releases the whole plan (or a selected part) to the builders.
     Plans are saved and hashed.

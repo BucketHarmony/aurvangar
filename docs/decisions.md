@@ -1456,3 +1456,21 @@ Consequences:
 - A tall single-column pillar comes down strictly top-first and a cantilever from its free end. A wide structure is
   only biased top-down (DSG-04): a lower block goes whenever its neighbours stay grounded without it.
 - Seed-1 goldens are unchanged (no built blocks in the survival session).
+
+## ADR-064: Plan layer: implementation choices (2026-09-27, M8-T4)
+Context: M8-T4 implements CON-06 and CON-07 `ReleasePlan`. The `Planned` state, its save byte and hash, and the
+poster ignoring it already came with M8-T2. A few details were open.
+Decision:
+- **Both are O(entries).** `ReleasePlan` walks the plan entries and tests each against the box; it never walks the
+  box's cells, so a world-sized box costs the same as a small one. `Needed` sums over the entries on every call, as
+  CON-06 says (no cache). Both scale to a monument plan of thousands of entries.
+- **The box** is inclusive, and its corners may be given in any order. Out-of-world corners are allowed. Only
+  `Planned` entries count, so a box holding only Released entries is rejected with `NothingToRelease`.
+- **Released entries are not re-checked.** Release changes the state and nothing else. An entry whose support or
+  access changed since it was planned just shows its CON-05 status (for example `BelowFirst` when the entry under it
+  is still Planned, `NoSupport` when its support was dug away). The player sees why it waits in M8-T5.
+- **`Needed`** returns `(ItemId, Count)` pairs in ascending item id and leaves out items with a zero sum.
+  `BlockPlans` now takes the `ContentDb` in its constructor to read block costs.
+Consequences:
+- No save format or hash change: the new command is only a `CommandCodec` entry (tag `ReleasePlan`, two Int3).
+- Seed-1 goldens are unchanged.

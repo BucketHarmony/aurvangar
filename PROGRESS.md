@@ -2303,3 +2303,30 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
     still hauled.
   - check.sh shows a pre-existing Godot CS0108 warning (`BuildingRenderer.Scale` hides `Node3D.Scale`, since M7-T7);
     it does not fail the build. Worth a rename in M8-T5.
+
+## M8-T4 — Plan layer for monuments (2026-09-27)
+- Done: CON-06 and CON-07 `ReleasePlan`, and the `Planned` state end to end (the stored state, save byte, hash and
+  poster skip came with M8-T2).
+  - New command `ReleasePlan(A, B)` (`Commands/BlockCommands.cs`, CommandCodec entry): every Planned entry in the
+    inclusive box (corners in any order) becomes Released; `NothingToRelease` when there are none.
+    `BlockPlans.Release` walks the entries, not the box, so a world-sized box is O(entries).
+  - `BlockPlans.Needed(PlanState? state)`: `(ItemId, Count)` per cost item in ascending item id, summed over the
+    entries each call (O(entries), no cache). `BlockPlans` now takes `ContentDb` in its constructor.
+  - No new state: save format (v6) and hash unchanged.
+- Tests: the 4 M8-T4 placeholders moved to `Scenarios/BlockPlanScenarioTests` with bodies (removed from
+  PendingAcceptanceTests). With a no-op `ReleasePlan` and an empty `Needed`, 3 failed for the right reason (entries
+  stayed Planned, totals 0, nothing built after release). `PlannedEntries_NotBuilt` passed from the start, because the
+  M8-T2 poster already ignores Planned entries. check.sh: 581 passed, 10 skipped (M8-T5/T6), 0 failed.
+- Decisions: ADR-064. construction.md CON-07 has a note on the box and on no re-validation.
+- sim-reviewer: not run (Aurvangar.Sim change about 50 lines).
+- Golden: unchanged. Headless `--seed 1 --script survival --ticks 24000`: hash `4caa8837b195f900` (unchanged),
+  5,640 ticks/s, 0 trapped.
+- Perf: n/a (no water, path or tick-loop change); perf.sh not run.
+- Screenshots: none (no rendering or Godot change).
+- Next: M8-T5 (Godot block tool, plan ghosts, material totals). Notes:
+  - The HUD reads `sim.Plans.Needed(PlanState.Released)` and `Needed(PlanState.Planned)` against `Storage.Totals`
+    (`BuildingSystem.Totals`, keyed by item id value).
+  - "Release all" is `ReleasePlan((0,0,0), world max)`.
+  - A Released entry is not re-validated. If the entry under it is still Planned, it shows `BelowFirst`, so a
+    partial release of an upper slice waits for the rest.
+  - The Godot CS0108 warning (`BuildingRenderer.Scale`) is still there.
