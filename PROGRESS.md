@@ -3125,3 +3125,197 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Decisions: ADR-075.
 - Next: M10-GATE (HUMAN-GATE G6). The materials shot is `SCRIPT=materials TICKS=12000 SHOTS=materials`; the colony
   now survives a 24,000-tick run.
+
+## M10-GATE — HUMAN-GATE G6: construction feel review (2026-09-27)
+
+**Status: waiting for human review. The gate box in BACKLOG.md is NOT checked; check it after review.**
+All M10 tasks are checked. The backlog has nothing after this gate. No code changed for this report.
+
+### Verdict in one paragraph
+The G5 answers are in. A drag from a side face now paints a whole wall face in one drag, and the cells are sent
+bottom-up (M10-T3). A held drag shows the cells beyond the free stock in amber, and the tooltip says how many are
+short, before release (M10-T2). Released stair steps that lean on planned walls read "waiting for support" and are
+no longer red (M10-T1). Builders idle less between courses: 11.1% of dwarf time from release to completion instead
+of 29.1%. Trips still carry 4.25 blocks, and the monument finishes at tick 16,200 (day 6.75) instead of 17,200
+(M10-T4). The materials script now has a pump, and its colony lives to day 10 (M10-T5). Every perf budget passes
+with at least 3x headroom. The weak points left are the world (stone 5 layers down, no dirt block), the drought
+pumps, and a few small view issues. **Nobody has built by hand yet with vertical painting or the amber shortage.**
+That is the main question of this gate.
+
+### Build and test results (this run, HEAD = M10-T5 `576ad85`)
+- `./scripts/check.sh`: **OK**. 632 passed, 0 skipped, 0 failed (non-Perf, Debug). The solution and the Godot
+  csproj both build with 0 warnings.
+- `./scripts/perf.sh` (run serially, Release): **OK**. 9 of 9 passed. SAV-05 (save size) runs in check.sh and
+  passed.
+
+| ID | What | Budget | Measured | Use |
+|---|---|---|---|---|
+| WAT-P1 | water step, 192×128 sustained (≥ 23,048 active) | ≤ 4 ms | median 1.27 ms, p95 1.34 | 32% |
+| WAT-P1 | water step, 128×128 (15,494 active) | ≤ 4 ms | median 0.85 ms, p95 0.89 | 21% |
+| WAT-P2 | seed-1 settled river, active cells at tick 1200 | ≤ 3,000 | 699 (step median 0.031 ms) | 23% |
+| PTH-P1 | A*, 200 paths of 90..110 cells | p95 ≤ 1.5 ms | median 0.245, p95 0.607, max 0.784 ms | 40% |
+| PTH-P2 | region rebuild, seed 1 | ≤ 25 ms | warm 2.10 ms, cold 2.39 ms | 10% |
+| ECO-16 | moisture recompute | ≤ 3 ms | median 0.888 ms, p95 1.075 | 30% |
+| MESH-P1 | chunk (3,0,2), 581 quads | ≤ 6 ms | median 0.648 ms, p95 0.775 (slice 0.546) | 11% |
+| SIM-P1 | full tick, survival script, ticks 12,000-12,499 (drought) | median ≤ 8 ms | median 2.424, p95 2.603, max 3.59 ms | 30% |
+| CON-P1 | full tick, monument script, ticks 13,000-13,499 | median ≤ 8 ms | median 0.064, p95 1.004, max 3.27 ms | < 1% |
+| SAV-05 | save at day 5 | ≤ 3 MB | 31,781 bytes (M6-T7) | 1% |
+
+Nothing is within 20% of its limit. CON-P1 now covers blocks 134 → 151 of 221. Over its 500 ticks, the build poster
+takes 35.2 ms (G5: 3.2 ms), regions take 39 ms and water takes 0 ms. The poster grew because of M10-T1's
+plan-support flood and M10-T4's held-back seeds, which re-run `Join` each tick. That is about 0.07 ms per tick.
+SIM-P1: region rebuilds take 934 ms of the 500 ticks (409 rebuilds). They are still the largest share of a drought
+tick.
+
+### Headless runs (this run, `--seed 1 --ticks 24000`)
+- `--script survival`: hash **`e1ddb97096eb0267`** (same as G4 and G5), 3,102 ticks/s, tick median 0.083 ms, p95
+  1.89 ms. **5/5 alive at day 10**. 444 jobs done, **0 failed**. 73 of 73 cells dug, 23 of 23 trees felled. 60 crops
+  harvested, 0 withered. The pump is dry on 855 ticks, 0 of them in the drought. Stored at day 10: log 74, stone 22,
+  berries 65, potato 160, water 110.
+- `--script monument`: hash **`0c344974bf9aea8f`** (same as M10-T4), 1,991 ticks/s, tick median 0.114 ms, p95
+  3.83 ms. **5/5 alive at day 10**. 665 jobs done, **2 failed**. 250 of 250 cells dug, 7 of 7 trees felled, 0 items
+  on the ground, 0 trapped. Stored at day 10: log 6, stone 6, berries 69, water 110. **The pump is dry on 5,015
+  ticks (4,704 in the drought).** The colony lives on stored water through the drought. From the scenario tests in
+  this run: the monument is complete at tick **16,200**, with 52 build trips, **4.25 blocks per trip** and **11.1%
+  idle** (3,649 of 33,000 agent-ticks from the release at 9,600).
+- `--script materials`: hash **`3cee28d02761b2b7`** (same as M10-T5), 1,706 ticks/s. **5/5 alive at day 10** (G5:
+  colony lost at tick 15,295). 937 jobs done, 1 failed. 700 of 704 cells dug (3 unreachable, 1 still marked). The
+  new pump is dry on 5,015 ticks (4,704 in the drought), like the monument's. Stored at day 10: log 6, stone 63,
+  berries 65, water 110.
+- `--script paint --ticks 1500` and `--script wall --ticks 1500`: both hash `fea5d0cffabc5ca6` (same as G5; the wall
+  drag is only held, not sent). 15 jobs done, 1 failed.
+
+### Plan statuses in the monument (MonumentScenarioTests, this run)
+- tick 11,000: InJob 14, BelowFirst 107, WaitSupport 4, CourseBelow 7, Ready 4. **No red cell.**
+- tick 14,000: InJob 17, BelowFirst 27, WaitSupport 1, CourseBelow 4, Ready 4. **No red cell.**
+- G5 had NoSupport 6 (red) at 11,000, and NoSupport 2 with CourseBelow 11 at 14,000. The `Ready 4` at both ticks
+  are small batches that CON-12 holds back until the course below is placed (issue 2).
+
+### Screenshots (Godot 4.6.2 .NET, Forward+, seed 1; rendered for this gate and looked at)
+- `artifacts/screens/g6_wall/wall.png` (`SCRIPT=wall SHOTS=wall TICKS=1500`, day 1). **Vertical painting.** At the
+  end of the built planks L's short arm, a held Wood-planks drag stands as a 4-wide, 6-high ghost wall in one
+  vertical plane. The top row of 4 is amber with a dark outline; the rest are tan ghosts in the palette colour. The
+  tooltip reads "Build Wood planks (24 blocks, 24 log) / Only 20 log free: 4 blocks short (amber) / Click a face:
+  one block. Drag from a top face: a course; from a side face: a wall. P plan". The HUD hint names both drags and
+  fits left of "Plan (P)". The lower cells of the ghost wall are faint against the grass, so the wall reads mostly
+  by its amber top.
+- `artifacts/screens/g6_paint/paint.png` (`SCRIPT=paint SHOTS=paint TICKS=1500`). **Shortage display.** The held
+  Stone-wall drag, with Stone 0 in store, shows 9 amber outlined cells and 1 red outlined cell where it crosses the
+  built L. The label reads "Build Stone wall (10 blocks, 10 stone) / No stone free: 10 blocks short (amber) /
+  Something solid is there". Amber and red are easy to tell apart. The planned second course of the L shows as pale
+  ghosts. All 5 dwarves are Idle.
+- `artifacts/screens/g6_monument_11000/monument.png` (day 5, whole plan released at tick 9,600). The 2-high
+  courtyard wall with its gate is up in grey Masonry, and so are the tower's first course or two. The rest of the
+  tower is plain grey released ghosts. **No red outlined cell** (G5: 3). The top bar reads "Building: stone 136/129"
+  in orange (7 short, and the quarry is still running). 3 dwarves are "Placing blocks" and 2 are Idle.
+- `artifacts/screens/g6_monument_14000/monument.png` (day 6, drought). The tower is about 5 to 6 courses high, and
+  its top edge is uneven. The back wall is a course ahead of the front, so two courses are going up at once
+  (M10-T4). Dwarves stand on the wall top. **No red cell** (G5: 1). The top bar shows "Pump has no water" in red and
+  "Building: stone 53/50". 4 dwarves are placing and 1 is Idle. From this camera the inner stair steps are hidden
+  inside the tower; their statuses are in the list above.
+- `artifacts/screens/g6_monument_17400/monument.png` (day 8). The tower is finished: a hollow 8-high box with the
+  door and the courtyard gate at the front. No ghosts remain. 2 dwarves stand on the top, 1 works the pump, and the
+  rest are Idle. Stone 6 is left, and Water is 90.
+- `artifacts/screens/g6_materials_12000/materials.png` (`SCRIPT=materials TICKS=12000 SHOTS=materials`, day 6,
+  drought). The six built samples, left to right: Stone wall, Wood planks, Polished stone, Rough stone, Wood beam and
+  Slate tiles. The faint planned course is on top ("Planned: log 6, stone 14"). The top bar reads **Water 100** (G5:
+  Water 0). All 5 dwarves are "Hauling stone" from the quarry.
+
+### What was built since G5 (M10, construction feel)
+- M10-T1 (ADR-071): a new CON-05 status, `WaitSupport`. A released cell that the plan will hold up waits and draws
+  as a normal ghost, with the hover text "waiting for support". `NoSupport` (red) now means the plan can never hold
+  it up.
+- M10-T2 (ADR-072): free stock is what is stored minus what released blocks need (and, in plan mode, minus what the
+  plan needs too). Cells of a held drag beyond it are amber, and the tooltip says how many are short. Short cells
+  are still sent and wait as `NoMaterial`.
+- M10-T3 (ADR-073, amends 067 and 072): a drag from a side face paints that face's vertical plane. Cells are sent
+  bottom-up, and the amber cells are the top ones (sent last). Deconstruct stays horizontal. There is a new `wall`
+  screenshot script.
+- M10-T4 (ADR-074, amends 068): the course check is local (radius 1). CON-12 holds back a batch under 60% of a load
+  while the course below is held within 8 cells. Idle went from 29.1% to 11.1%, blocks per trip from 4.80 to 4.25,
+  and the monument is done at 16,200.
+- M10-T5 (ADR-075): the materials script builds a river-bank pump (no levee). Its colony lives to day 10.
+
+### What is weak (open issues, with evidence)
+1. **Deconstruct drags stay horizontal** (ADR-073). An X drag from a side face still removes one course at a time,
+   while the block tool paints a whole wall face. See Q3.
+2. **Held-back blocks read "Ready" with no job** (ADR-074). A small batch held by CON-12 has status `Ready`, but no
+   job posts until the course below is placed (4 entries at both 11,000 and 14,000). A player hovering them sees
+   "Ready" and may wonder why nobody comes. A text like "waiting for the course below" would be clearer.
+3. **Idle time versus full trips.** The CON-12 hold threshold is a trade-off (ADR-074 sweep). A hold at 4 or 5 of
+   10 gives about 7.7% idle at 4.09 blocks per trip. The current 6 of 10 gives 11.1% idle at 4.25. Both meet the
+   targets (at most 15% idle, at least 4 per trip). The current setting favours full trips.
+4. **Quarry depth.** On seed 1, grass and 4 dirt layers cover the stone, so stone lies 5 or more layers down. A
+   player must quarry first. The monument digs 250 cells for 221 blocks, and at 11,000 it is still 7 stone short.
+   See Q2.
+5. **The monument and materials pumps run dry in the drought** (4,704 drought ticks each). Neither has a levee or a
+   reservoir. Both colonies live on about 110 stored water, which lasts the 2 drought days (lowest 90 in M10-T5).
+   Only the survival session's reservoir pump keeps running.
+6. **Refund piles can float.** A deconstruct pile is left in mid-air when the block under it is dug later, as with
+   natural digs. It is still hauled away.
+7. **No dirt or clay block** (ADR-070). Dirt drops no item, so a dirt or clay block needs a new item and a drop rule
+   first.
+8. **The red cell under the cursor shows through hills.** Invalid cells are drawn without a depth test on purpose
+   (ADR-069), so a red cell behind terrain still shows.
+9. **New: the lower cells of a vertical ghost wall are faint** (`g6_wall`). Ghosts are translucent tan, so against
+   grass and the planks L a 6-high ghost wall reads mostly by its amber top row. A wall with no amber cells is paler
+   still.
+10. **New: the build poster costs more.** CON-P1's poster total went from 3.2 ms (G5) to 35.2 ms per 500 ticks,
+    from the plan-support flood and the re-joined held seeds. That is about 0.07 ms per tick and far inside budget,
+    but it grows with plan size and would matter for much bigger monuments.
+11. **Stair steps are hard to see.** The monument camera looks at the tower from outside, so the inner stair steps
+    (the point of M10-T1) are hidden in every shot. The proof is the status list above and the scenario test, not a
+    picture.
+12. **Not played by hand.** Everything in M10 is proven by tests and scripts. Vertical painting and the amber
+    shortage have only been seen in screenshots, with a drag held by the harness.
+
+### ADRs made since G5 (5)
+071 released entries the plan will support wait instead of reading NoSupport, 072 amber cells beyond the free
+stock, 073 vertical painting from a side face (amends 067), 074 local course check and CON-12 small-batch hold
+(amends 068), 075 the materials script gets a pump and no levee.
+
+### How to play
+Launch the game (PowerShell):
+
+```powershell
+& "C:\tools\godot\Godot_v4.6.2-stable_mono_win64.exe" --path "E:\ai\aurvangar\src\Aurvangar.Godot"
+```
+
+Block building controls (M9-T1, M10-T2, M10-T3):
+- **K**: block tool. Pick the material from the Blocks menu: Stone wall, Wood planks, Polished stone, Rough stone,
+  Wood beam or Slate tiles.
+- **Click** a block face to place one block in the cell that face looks into. A top face stacks up, and a side face
+  places beside.
+- **Drag from a top face** to paint one block into each cell the cursor passes, on that layer (a course).
+- **Drag from a side face** to paint in that face's vertical plane: up, down and along the wall. One drag paints a
+  wall face (a column, a rectangle, or a staircase of the cells the cursor passes). The cells are built bottom-up.
+- **Amber cells** while dragging are beyond the free stock. They will be placed, but they wait for material. The
+  tooltip says how many are short. **Red cells** are invalid, and the tooltip gives the reason.
+- **P**: plan mode. Planned blocks are not built until they are released. In plan mode, the amber count is against
+  what the whole plan leaves.
+- **L**: release a box of the plan. **Release all** (button) releases the whole plan.
+- **X**: deconstruct, by click or drag per built block (drags are horizontal), with a full refund. A click on a
+  building tears it down. **Z**: cancel.
+- **G**: dig. You need it for a stone quarry (stone is 5 or more layers down on seed 1).
+- **Esc** leaves the tool. The tool stays active between clicks.
+- Camera: right-drag (or middle-drag) orbits. A right click cancels the current drag.
+
+### Questions for the human
+1. **Build by hand** and tell me how vertical painting and the amber shortage display felt. Useful points: was it
+   easy to start a drag on a side face? Did the wall plane go where you expected? Did amber read as "short, will
+   wait" and not as an error? Did the builders keep up and start the next course soon enough?
+2. **Surface stone** (asked at G5, deferred): should worldgen expose stone outcrops, or a thinner dirt layer on the
+   hills, so stone can be had without a deep quarry? This would move the scripted layouts (survival, monument,
+   materials) and their goldens.
+3. **Deconstruct drag vertical?** Should an X drag from a side face also take down a wall face in one drag, like the
+   block tool?
+4. **Next direction.** Options:
+   - more construction feel: vertical deconstruct, clearer "held back" text, stronger ghost walls (issues 1, 2
+     and 9);
+   - world and materials: surface stone, a dirt or clay item and block (issues 4 and 7);
+   - colony depth, bigger maps, or monuments with a purpose (from docs/00-overview.md and the wish to build great
+     constructs).
+   Which should come next?
+5. **Anything else** from your play session: bugs, confusions, or things you wanted to build and could not.
+
+Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
