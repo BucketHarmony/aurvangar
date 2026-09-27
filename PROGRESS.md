@@ -2399,3 +2399,173 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Next: M8-GATE (HUMAN-GATE G4). Show the monument shots (TICKS 11000/15000/18600). Known weak spots for the gate:
   idle dwarves between courses, small Build batches when a whole plan is released at once (ADR-066), the HUD
   overlap above.
+
+## M8-GATE — HUMAN-GATE G4: build a monument (2026-09-27)
+
+**Status: waiting for human review. The gate box in BACKLOG.md is NOT checked; check it after review.**
+All M7 and M8 tasks are checked. The backlog has nothing after this gate. No code changed for this report.
+
+### Verdict in one paragraph
+Free-form construction works end to end on seed 1. The player can paint blocks in six shapes, keep them as a plan,
+see the stone needed against the stone stored, and release the plan in parts. Dwarves quarry stone, haul it and
+place it bottom-up. They never float a block or wall a dwarf in. The scripted monument is a hollow 7×7, 8-high
+Masonry tower with a door and an inner stair, plus a walled courtyard with a gate (221 blocks). It is complete at
+tick 18,316 (day 7.6) with all 5 dwarves alive. It is deterministic, including a save/load mid-build. Every perf
+budget passes with at least 3x headroom. The weak points are pacing and feel. When a whole plan is released at
+once, dwarves carry about one block per trip. The script releases one course at a time, and then dwarves stand
+idle between courses. On seed 1 the player must quarry 5 levels down before building in stone. **Nobody has built
+anything by hand yet.** That is the main question of this gate.
+
+### Build and test results (this run, HEAD = M8-T6 `8132490`)
+- `./scripts/check.sh`: **OK**. 595 passed, 0 skipped, 0 failed (non-Perf, Debug). Solution and Godot csproj both
+  build with 0 warnings.
+- `./scripts/perf.sh`: **OK**. 9 of 9 passed (Release). SAV-05 (save size) runs in check.sh and passed.
+
+| ID | What | Budget | Measured | Use |
+|---|---|---|---|---|
+| WAT-P1 | water step, 192×128 sustained (≥ 23,048 active) | ≤ 4 ms | median 1.26 ms, p95 1.31 | 32% |
+| WAT-P1 | water step, 128×128 (15,494 active) | ≤ 4 ms | median 0.87 ms, p95 0.92 | 22% |
+| WAT-P2 | seed-1 settled river, active cells at tick 1200 | ≤ 3,000 | 699 (step median 0.031 ms) | 23% |
+| PTH-P1 | A*, 200 paths of 90..110 cells | p95 ≤ 1.5 ms | median 0.242, p95 0.613, max 0.796 ms | 41% |
+| PTH-P2 | region rebuild, seed 1 | ≤ 25 ms | warm 2.11 ms, cold 2.42 ms | 10% |
+| ECO-16 | moisture recompute | ≤ 3 ms | median 0.873 ms | 29% |
+| MESH-P1 | chunk (3,0,2), 581 quads | ≤ 6 ms | median 0.629 ms, p95 0.695 (slice 0.541) | 10% |
+| SIM-P1 | full tick, survival script, ticks 12,000-12,499 (drought) | median ≤ 8 ms | median 2.386, p95 2.620, max 3.57 ms | 30% |
+| CON-P1 | full tick, monument script, ticks 13,000-13,499 | median ≤ 8 ms | median 0.087, p95 1.100, max 3.42 ms | 1% |
+| SAV-05 | save at day 5 | ≤ 3 MB | 31,781 bytes (M6-T7) | 1% |
+
+Nothing is within 20% of its limit. CON-P1 covers blocks 97 → 113 of 221. Over its 500 ticks, the Build poster
+takes 50.1 ms, regions take 37 ms and water takes 0 ms. The place trial makes 677 exact checks and 6 cut computes.
+SIM-P1: region rebuilds take 922 ms of the 500 ticks (409 rebuilds). That is still the largest share of a drought
+tick, as at G3.
+
+### Headless runs (this run)
+- `./scripts/run-headless.sh --seed 1 --script monument --ticks 24000`: hash **`f4e783f7bf7e8725`** (same as
+  M8-T6), 3,931 ticks/s, tick median 0.067 ms, p95 2.21 ms. **5/5 alive at day 10**. 688 jobs done, **1 failed**.
+  250 of 250 cells dug (corridor and quarry), 7 of 7 trees felled. 0 items on the ground. 1,272 path searches,
+  1,318 region rebuilds, 0 trapped. Stored at day 10: log 6, stone 6, berries 65, water 110. The monument itself is
+  complete at tick 18,316 (from M8-T6, and `MonumentScenarioTests` asserts it by day 10 in this check.sh run).
+  **The pump is dry on 5,015 ticks (4,704 in the drought).** The monument script has no reservoir, so the colony
+  lives on stored water through the drought (see `g4_15000`).
+- `./scripts/run-headless.sh --seed 1 --script survival --ticks 24000`: hash **`e1ddb97096eb0267`** (same as
+  M8-T6), 5,338 ticks/s, tick median 0.041 ms, p95 0.97 ms. **5/5 alive at day 10**. 444 jobs done, **0 failed**.
+  73 of 73 cells dug, 23 of 23 trees felled. 60 crops harvested, **0 withered** (the G3 run had 41 withered).
+  **The pump is dry on 855 ticks, 0 in the drought** (G3: 4,712 in the drought). The levee reservoir (M7-T3) works.
+  Stored at day 10: log 74, stone 22, berries 65, potato 160, water 110.
+
+### Screenshots (Godot 4.6.2 .NET, Forward+, seed 1; rendered for this gate and looked at)
+- `artifacts/screens/g4_11000/monument.png` (`SCRIPT=monument SHOTS=monument TICKS=11000`, day 5). The first two
+  courses of the tower are up in gray Masonry, with the 2-high door gap. The courtyard wall is 2 high with its
+  gate. The rest of the tower is a stack of white translucent plan ghosts. The top bar reads "Building: stone
+  2/155 · Planned: stone 149" (2 stone needed by released cells, 155 stored). **3 of 5 dwarves are Idle**, waiting
+  for the next course to be released. The other 2 are "Placing blocks".
+- `artifacts/screens/g4_15000/monument.png` (day 7, drought). The tower is about 5 of 8 courses high, with ghosts
+  above it. All 5 dwarves are "Placing blocks". The top bar reads "Building: stone 25/80 · Planned: stone 49" and
+  "Pump has no water" in red. **The top bar overlaps the toolbar: "Day 7" is drawn over "Cancel (Z)".** One faint
+  red ghost cell (a stuck plan entry, shown red per VIEW-22) is at the top right of the tower and is hard to see.
+- `artifacts/screens/g4_18600/monument.png` (day 8). The tower is finished: a hollow 8-high box, with the top of
+  the inner stair visible as a notch in the far inside corner, and the door and courtyard gate at the front. No
+  ghosts remain, and the plan line is gone from the top bar. Stone 6 is left. The dwarves are back to harvesting
+  and drinking.
+- `artifacts/screens/g4_700/blocks.png` (`SCRIPT=blocks SHOTS=blocks TICKS=700`, day 1). This shows the block tool.
+  The Stone-wall tool is active with the options row at the bottom left: "Stone wall · Single · Line · **Wall** ·
+  Floor · Box · Stair · Plan (P) · Height 3 (+/-) · Release all". The tool ghost has the tooltip "Build Stone wall:
+  Wall, height 3 (12 blocks, 12 stone) / Tab shape, +/- height, P plan, Shift keeps the tool". A planks wall is
+  being built (released ghosts), and a planned Polished-stone box is visible. The top bar reads "Building: log
+  12/30, stone 18/0 · Planned: stone 128", with the short stone in orange.
+- The quarry is inside the hill and does not show in any preset.
+
+### What was built since G3
+- **M7 playability pass (G3 answers):**
+  - M7-T1: right-drag orbits like middle-drag, and a right click still cancels.
+  - M7-T2: a pump may use the stand cell one level up, so there is no hand-dug notch on seed 1.
+  - M7-T3: player-held water keeps fields moist, and the survival session builds a real levee reservoir.
+  - M7-T4: dwarves eat the most plentiful food first.
+  - M7-T5: a give-up mark and HUD notice for recurring jobs that can never succeed.
+  - M7-T6: no dig strands any dwarf.
+  - M7-T7: readable labels and timed screenshot scripts.
+- **M8 free-form construction:**
+  - Three construction blocks: Masonry (1 stone), Planks (1 log) and Polished stone (2 stone).
+  - Six shapes: Single, Line, Wall, Floor, hollow Box and Stair.
+  - A plan layer, with Planned and Released entries and a material total.
+  - Rules: support (no floating blocks), bottom-up build order, and no walling a dwarf in.
+  - Batched build jobs from storage.
+  - Deconstruction with a full refund, which never ungrounds a block.
+  - The Godot block tool, plan ghosts and top-bar totals.
+  - The MonumentScript.
+
+### What is weak (open issues, with evidence)
+1. **Right-drag.** At G3 you said "I find I am right-clicking to pan". M7-T1 made right-drag *orbit* (turn the
+   camera), the same as middle-drag. If "pan" meant sliding the map sideways, the binding is wrong (see Q2).
+2. **Small build batches** (ADR-066). A job is posted as soon as one cell is Ready. When a whole plan is released
+   at once, cells become Ready one at a time as the courses below finish. Batches then average about 1.3 blocks,
+   so a dwarf walks to the warehouse for nearly every block. The monument script works around this by releasing
+   course by course. A player pressing "Release all" gets the slow behaviour.
+3. **Idle dwarves between courses.** With a course-by-course release, 3 of 5 dwarves stand idle while the last
+   cells of a course finish (`g4_11000`). Issues 2 and 3 have one root cause: the poster does not gather work
+   ahead of the build front.
+4. **Top-bar overlap.** A long plan line pushes the top bar left over the toolbar (`g4_15000`: "Day 7" over
+   "Cancel (Z)").
+5. **Faint red cells.** Invalid tool-ghost cells and stuck plan cells are a faint red at normal camera distance
+   (`g4_15000`, and the M8-T5 shots).
+6. **Reach.** Dwarves reach only 1 level up from where they stand, so anything taller needs a stair (CON-11). The
+   tower has two inner stair flights for that reason. A free-standing Stair only keeps its bottom step, so stairs
+   must lean against a wall (M8-T2 note).
+7. **Floating piles.** A refund pile can be left in mid-air when the block under it is dug later, as with natural
+   digs. It is still hauled away.
+8. **Quarry depth.** On seed 1, dirt fills the top 4 levels, so stone lies 5 or more levels deep. A player must
+   dig a quarry before building in stone (the monument script digs 250 cells for 221 blocks). The M8-T5 `blocks`
+   shot shows a Stone wall stuck at NoMaterial after a 2-deep pit. Logs (Planks) are the only material at hand.
+9. **Support check caps.** The plan-support flood stops at 16,384 cells and the removal check at 4,096 cells per
+   neighbour (`Support.PlanFloodCap`, `Support.DependsCap`). Above a cap the answer is "unsupported" or "depends",
+   so a very large connected structure would be rejected or never come down. One shape is capped at 4,096 cells
+   (`BuildShapes.MaxCells`). Nothing in play has come near these limits.
+10. **Monument pump dry in the drought.** The monument script has no reservoir. Its pump is dry on 4,704 drought
+    ticks, and the colony lives on stored water (fine for 2 days).
+11. **Material variety.** There are three block types and two raw materials. There is no colour choice, no
+    glass, no roofs or slopes, and no decoration.
+12. **Not played by hand.** Every M8 rule is proven by tests and a script. The block tool has only been seen in
+    screenshots.
+
+### ADRs made since G3 (13)
+054 right-drag orbit, 055 pump stand one level up, 056 survival reservoir, 057 most plentiful food, 058 give-up
+marks, 059 strand rule for every dwarf, 060 readable labels and timed screenshot scripts, 061 free-form
+construction (amends ADR-001), 062 build-block jobs, 063 deconstructing built blocks, 064 plan layer, 065 block
+tool / plan view / totals, 066 monument session (buffer haul priority, reachable stand cells, course-by-course
+release).
+
+### How to play
+Launch the game (PowerShell):
+
+```powershell
+& "C:\tools\godot\Godot_v4.6.2-stable_mono_win64.exe" --path "E:\ai\aurvangar\src\Aurvangar.Godot"
+```
+
+Block building controls:
+- **K**: block tool. Pick the material (Stone wall, Wood planks, Polished stone) in the picker at the bottom left.
+- **Tab**: cycle shapes (Single, Line, Wall, Floor, Box, Stair).
+- **+ / -** or **Ctrl + wheel**: set the height. The slice level also sets it.
+- **P**: toggle plan mode. Planned blocks are not built until they are released.
+- **L**: release a box of the plan. **Release all** (button) releases the whole plan.
+- **X**: deconstruct built blocks, with a full refund. **Z**: cancel.
+- **G**: dig, which you need for a stone quarry (stone is 5 or more levels down on seed 1).
+- Camera: right-drag or middle-drag orbits, and a right click cancels the current drag.
+
+### Questions for the human
+1. **Build something by hand**, such as a wall, a tower or a planned monument, and tell me how it felt. Useful
+   points: was the block tool easy to aim? Were the shapes and height controls clear? Did plan, then release, feel
+   like planning a monument? Was waiting on the dwarves fun or tedious? Was quarrying stone first a chore?
+2. **Right-drag: orbit or slide?** Right-drag now orbits, like middle-drag. When you said "pan", did you mean
+   sliding the map sideways (moving the camera's focus point) instead? If so, right-drag should slide, and
+   middle-drag should keep orbiting.
+3. **Next milestone.** My recommendation is a short construction follow-up first:
+   - Build batching: gather Ready cells ahead of the build front, so "Release all" gives full batches and no idle
+     dwarves (issues 2 and 3).
+   - The top-bar overlap and stronger red cells (issues 4 and 5).
+   - More materials, and possibly easier stone on the surface (issue 8).
+
+   Should the next milestone do that, or move on to something else (scale and robustness, or the long-term
+   direction in docs/00-overview.md)?
+4. **Anything else** from your play session: bugs, confusions, or things you wanted to build and could not.
+
+Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
