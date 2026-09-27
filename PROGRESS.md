@@ -2085,3 +2085,50 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   - `PathGrid.WalkChanges` is a per-tick list of the cells whose walkability changed. Reuse it for anything that
     needs "the world changed near X".
   - A new recurring job type must be added to `JobGiveUp.SourceOf` and must check `sim.GiveUps` in its poster.
+
+## M7-T6 — No dig strands any dwarf (2026-09-26)
+- Done: the ADR-037 strand rule now protects every living dwarf, not only the digger.
+  - A dig is not taken, started or finished while it would cut another dwarf off from the Great Hall. The dwarf's
+    cell (or the cell it is stepping into) must reach the hall now and not after the dig.
+  - Where: `JobRunner.Select` (last filter), Work start and the Dig step (stand down, no failure). The logic is in
+    `DigStrand.StrandsOthers`.
+  - One check per candidate dig. New `DigTrial.MayCut` (`Paths/DigTrial.Pockets.cs`) computes the cells a dig cuts
+    off and caches them per block until walkability changes (with the `MaySplit` cache). It floods from each move
+    neighbor of the cell on top of the dug block against the hall anchors; neighbors met by an earlier flood share the
+    answer. Only digs that `MaySplit` flags pay for this. The two-sided flood now reports which side ran out.
+  - Deadlock guard: `DigStrand.StepOut`. An idle dwarf with nothing to do whose cell an open dig would cut off walks
+    towards the hall (two dwarves in one pocket would otherwise each hold the dig up for the other).
+  - DSG-09 give-up is unchanged: a dig held up only by another dwarf waits and is never turned red for it.
+  - DSG-09 and JOB-09 specs updated. No new state, so no save or hash change.
+- Tests: all failed before the change (the scenarios with a dwarf cut off at tick 79).
+  - New `Scenarios/StrandAnyDwarfScenarioTests` (3):
+    - `SecondDwarfWorkingInsidePit_GapDigWaitsUntilItLeaves`: a walled yard whose only way in is a gap with a shaft
+      under its floor. One dwarf digs out the yard and hauls its stone while the other is sent to dig the gap from
+      outside. The gap is dug only after the yard, nobody ever leaves the hub region, and there are 0 failures.
+    - `IdleDwarvesInsidePocket_WalkOut_ThenGapIsDug`: fails without `StepOut` (checked).
+    - `DwarfAlreadyApart_DoesNotBlockDig`.
+  - New `DigTrialTests.ExitStep_StrandsOtherDwarfInTrench`.
+  - check.sh: 539 passed, 0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-059 (ADR-037 annotated).
+- sim-reviewer: no required fixes. Two optional suggestions applied:
+  - The cell on top of the dug block never counts as cut. DSG-08 owns it, and it is now the same in both flood
+    outcomes.
+  - A comment for the case where no anchor is walkable.
+- Golden: unchanged.
+- Headless `--seed 1 --script survival --ticks 24000`: hash `4caa8837b195f900` (unchanged), 5,210 ticks/s, 5/5 alive,
+  441 jobs completed, 0 failed.
+- Perf: perf.sh 8/8 passed.
+
+  | Test | Measured |
+  |---|---|
+  | WAT-P1 | 1.30 ms (23,048 active); 0.86 ms at 128×128 |
+  | WAT-P2 | 699 active |
+  | ECO-16 | 0.876 ms |
+  | SIM-P1 | median 2.361 ms, p95 2.533 ms |
+  | PTH-P1 | p95 0.620 ms |
+  | PTH-P2 | warm 2.14 ms, cold 2.44 ms |
+  | MESH-P1 | 0.644 ms |
+- Screenshots: none (no rendering or Godot change).
+- Next: M7-T7 (readable labels, timed screenshot scripts). For M8: "no walling a dwarf in" can reuse
+  `DigStrand.StrandsOthers`/`DigTrial.MayCut`, but a placed block removes a cell rather than a floor, so it needs a
+  what-if view for placement. Deconstruction still protects only the worker (ADR-059).

@@ -55,6 +55,7 @@ public static class JobRunner
             if (job.Kind == JobKind.Dig && sim.Agents.AnyHolds(job.Target + Int3.Up, a.Id)) continue;   // DSG-08
             if (!Farming.FarmSystem.StillWanted(sim, job)) continue;   // ADR-047: withdrawn at the next farm step
             if (!Plants.BushHarvest.StillWanted(sim, job)) continue;   // ADR-048: withdrawn at the next plant step
+            if (job.Kind == JobKind.Dig && DigStrand.StrandsOthers(sim, job.Target, a.Id)) continue;   // M7-T6
             best = job;
             bestDist = dist;
         }
@@ -154,7 +155,8 @@ public static class JobRunner
                 else if (a.Move != MoveStatus.Moving) Fail(sim, a, job);   // PTH-16 step failure
                 return;
             case StepKind.Work:
-                if (job.Kind == JobKind.Dig && a.StepProgress == 0 && DigStrand.Strands(sim, step.Cell, a.Cell))
+                if (job.Kind == JobKind.Dig && a.StepProgress == 0
+                    && (DigStrand.Strands(sim, step.Cell, a.Cell) || DigStrand.StrandsOthers(sim, step.Cell, a.Id)))
                 {
                     StandDown(sim, a, job);   // M4-T14: the world changed on the way; do not start a stranding dig
                     return;
@@ -184,7 +186,11 @@ public static class JobRunner
                     Fail(sim, a, job);
                     return;
                 }
-                if (DigStrand.Strands(sim, step.Cell, a.Cell)) { StandDown(sim, a, job); return; }   // M4-T14
+                if (DigStrand.Strands(sim, step.Cell, a.Cell) || DigStrand.StrandsOthers(sim, step.Cell, a.Id))
+                {
+                    StandDown(sim, a, job);   // M4-T14 (the digger), M7-T6 (any other dwarf)
+                    return;
+                }
                 r = act.Dig(a.Id, step.Cell);
                 break;
             case StepKind.Chop: r = act.Chop(a.Id, new PlantId(step.Target)); break;
@@ -346,7 +352,8 @@ public static class JobRunner
     /// walks to a nearby cell of its region (5×3×5 box) whose floor is not marked, so the dig is not deferred forever.</summary>
     private static void StepAside(Simulation sim, Agent a)
     {
-        if (a.Move == MoveStatus.Moving || sim.Designations.Get(a.Cell + Int3.Down) != DesignationMark.Dig) return;
+        if (a.Move == MoveStatus.Moving || DigStrand.StepOut(sim, a)) return;   // M7-T6: out of a dig's pocket
+        if (sim.Designations.Get(a.Cell + Int3.Down) != DesignationMark.Dig) return;
         int region = sim.Regions.RegionOf(a.Cell);
         if (region == Paths.Regions.None) return;
         var goals = new List<Int3>();

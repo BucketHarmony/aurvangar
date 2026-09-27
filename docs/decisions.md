@@ -658,7 +658,7 @@ Decision:
   no stand cells at all is left as before. Re-designating turns the mark back into Dig (DSG-02), which re-tries.
 - The dug cell counts as dry in the what-if view (water has not flowed in yet).
 Consequences: a pit dug top-down keeps its last step out per level; in the 10x7x5 seed-1 pit 347 of 350 cells were
-dug and 2 turned red. Other dwarves are not protected by this rule (only the digger); in pits they stay connected
+dug and 2 turned red. Other dwarves are not protected by this rule (only the digger; extended to every dwarf by ADR-059); in pits they stay connected
 through the digger's side in practice. The cost is a small flood per candidate dig whose top cell is walkable,
 cached until walkability changes; perf budgets and the golden hash are unchanged.
 
@@ -1266,3 +1266,33 @@ Consequences:
 - A source whose own cell is reachable but whose other leg is not (a pile haul to a storage in another region) is
   recovered by the region check and struck again. Its notice can come and go about every 200 ticks. This is cheap
   (no A*, no failures) and accepted.
+
+## ADR-059: The strand rule protects every dwarf: one cached cut set per dig, idle dwarves step out (2026-09-26, M7-T6)
+Context: G3 answer 8. ADR-037 only kept the digger's own stand cell connected to the Great Hall; another dwarf working
+inside a pit could be cut off by a dig made from outside. The backlog asks for one region check per candidate dig.
+Decision:
+- A dig also waits while it would cut any other living dwarf off from the hall: a dwarf whose cell (or, mid-step, the
+  cell it steps into) reaches the hall now and would not after the dig. Dwarves already apart from the hall do not
+  count. The digger itself stays under the ADR-037 stand-cell rule (its current cell does not count, since it walks
+  to a safe stand cell).
+- Checked where ADR-037 checks the digger: job selection (`JobRunner.Select` skips the dig, last filter, so only for a
+  candidate that would win), Work start and the Dig step (stand down: back to the board with the JOB-08 cooldown, no
+  failure). DSG-09's give-up is unchanged: a dig held up only by another dwarf still has a safe stand cell, so it is
+  never turned red for that reason; it waits.
+- One check per dig: `DigTrial.MayCut` computes, per dug block, the cells the dig cuts off, and caches it until
+  `WalkabilityVersion`/`DeepVersion` move (with the `MaySplit` cache) or the hall changes. Only digs whose local test
+  (`MaySplit`) says they may split pay for it. It floods from each move neighbor of the cell on top of the block
+  against the hall anchors on the what-if view (neighbors met by an earlier flood share its answer). A side that runs
+  out is a cut-off pocket. If the hall's side runs out first, its component is kept instead and every cell outside it
+  counts as cut. Each dwarf is then a set lookup plus a region compare (a live flood only when regions are stale).
+- Deadlock guard: two dwarves in the same pocket each hold the dig up for the other. An idle dwarf with nothing to do
+  whose cell an open, unclaimed dig would cut off walks towards the hall (`DigStrand.StepOut`, before the ADR-029
+  step-aside). A dwarf in the pocket can itself take the dig (it is not "another dwarf" for its own dig) and does it
+  from a stand cell outside the pocket.
+- Deconstruction (`Construction.WouldStrand`) keeps the digger-only rule; M8 construction reuses the strand rule for
+  walling-in and will extend it there.
+- Derived only: no new saved or hashed state. The cache is a pure function of the world, so a loaded game answers the
+  same.
+Consequences: seed-1 goldens and the survival headless hash are unchanged (no dwarf is ever inside a pocket when a
+cutting dig is taken there). A dig may lose its Work progress when another dwarf walks into its pocket before the Dig
+step; it stands down and is re-taken later.

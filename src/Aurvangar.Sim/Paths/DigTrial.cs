@@ -31,7 +31,7 @@ internal readonly struct DigTrialCells : IMoveCells
 /// <c>U</c>'s move neighbors stay connected to each other without it, nothing is cut. Both are cheap local tests.
 /// Otherwise an exact two-sided flood (stand side and anchor side, alternating, on the what-if view) decides; it
 /// costs about twice the smaller side, so a stranded pocket is found quickly.</para></summary>
-public sealed class DigTrial
+public sealed partial class DigTrial
 {
     /// <summary>Cells the local test may visit before it gives up and defers to the exact flood.</summary>
     public const int LocalBudget = 512;
@@ -63,6 +63,7 @@ public sealed class DigTrial
         if (_cacheVersion != _grid.WalkabilityVersion || _cacheDeepVersion != _grid.DeepVersion)
         {
             _splitCache.Clear();
+            _cutCache.Clear();
             _cacheVersion = _grid.WalkabilityVersion;
             _cacheDeepVersion = _grid.DeepVersion;
         }
@@ -129,21 +130,32 @@ public sealed class DigTrial
         return Connected(new LiveCells(_grid), stand, anchors);
     }
 
-    private bool Connected<TCells>(TCells trial, Int3 stand, IReadOnlyList<Int3> anchors) where TCells : struct, IMoveCells
+    private bool Connected<TCells>(TCells trial, Int3 stand, IReadOnlyList<Int3> anchors) where TCells : struct, IMoveCells =>
+        Flood(trial, stand, anchors, out _, out _, out _, out _) == FloodEnd.Met;
+
+    /// <summary>How a two-sided flood ended.</summary>
+    private enum FloodEnd : byte { Met, StandSideOut, AnchorSideOut, StandNotWalkable }
+
+    /// <summary>The alternating two-sided flood behind <see cref="Connected{TCells}"/>. When one side runs out, every
+    /// cell it reached is in its queue (<c>_qa[0..tailA)</c> for the stand side, <c>_qb[0..tailB)</c> for the anchor
+    /// side) and marked with its generation: that side's whole component on the view (M7-T6 reads it).</summary>
+    private FloodEnd Flood<TCells>(TCells trial, Int3 stand, IReadOnlyList<Int3> anchors,
+        out int genA, out int genB, out int tailA, out int tailB) where TCells : struct, IMoveCells
     {
         var world = World;
         int sizeX = world.SizeX, layer = world.SizeX * world.SizeZ;
         int standIndex = world.Index(stand);
-        if ((trial.FlagsAt(stand.X, stand.Y, stand.Z) & PathGrid.WalkableFlag) == 0) return false;   // loses its floor
-        int genA = NextGen(), genB = NextGen();
-        int headA = 0, tailA = 0, headB = 0, tailB = 0;
+        genA = 0; genB = 0; tailA = 0; tailB = 0;
+        if ((trial.FlagsAt(stand.X, stand.Y, stand.Z) & PathGrid.WalkableFlag) == 0) return FloodEnd.StandNotWalkable;
+        genA = NextGen(); genB = NextGen();
+        int headA = 0, headB = 0;
         _mark[standIndex] = genA;
         Push(ref _qa, ref tailA, standIndex);
         foreach (var c in anchors)
         {
             if (!world.InBounds(c) || (trial.FlagsAt(c.X, c.Y, c.Z) & PathGrid.WalkableFlag) == 0) continue;
             int i = world.Index(c);
-            if (_mark[i] == genA) return true;
+            if (_mark[i] == genA) return FloodEnd.Met;
             if (_mark[i] == genB) continue;
             _mark[i] = genB;
             Push(ref _qb, ref tailB, i);
@@ -151,10 +163,10 @@ public sealed class DigTrial
         Span<PathStep> steps = stackalloc PathStep[PathMoves.MaxMoves];
         while (headA < tailA && headB < tailB)
         {
-            if (Expand(trial, ref _qa, ref headA, ref tailA, genA, genB, steps, sizeX, layer)) return true;
-            if (Expand(trial, ref _qb, ref headB, ref tailB, genB, genA, steps, sizeX, layer)) return true;
+            if (Expand(trial, ref _qa, ref headA, ref tailA, genA, genB, steps, sizeX, layer)) return FloodEnd.Met;
+            if (Expand(trial, ref _qb, ref headB, ref tailB, genB, genA, steps, sizeX, layer)) return FloodEnd.Met;
         }
-        return false;
+        return headA >= tailA ? FloodEnd.StandSideOut : FloodEnd.AnchorSideOut;
     }
 
     /// <summary>Expands one cell of a side. True when it touches a cell of the other side.</summary>

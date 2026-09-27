@@ -63,4 +63,23 @@ public class DigTrialTests
         sim.Tick();
         Assert.False(DigStrand.Strands(sim, new Int3(8, 7, 12), new Int3(9, 7, 12)));
     }
+
+    /// <summary>M7-T6 (ADR-059): the exit step strands a dwarf standing on the trench floor, whoever digs it; a dwarf
+    /// on the rim is not stranded, and the digger itself is left to the stand-cell rule.</summary>
+    [Fact]
+    public void ExitStep_StrandsOtherDwarfInTrench()
+    {
+        var sim = new ScenarioBuilder().Ground(8).Hub(new Int3(20, 9, 20))
+            .FillBox(new Int3(8, 8, 12), new Int3(12, 8, 12), BlockId.Air)
+            .FillBox(new Int3(9, 7, 12), new Int3(12, 7, 12), BlockId.Air)
+            .Agent(new Int3(5, 9, 5)).Agent(new Int3(11, 7, 12)).Build();
+        sim.Tick();   // regions
+        var rim = sim.Agents.All.First();
+        var inside = sim.Agents.All.Last();
+        var step = new Int3(8, 7, 12);
+        Assert.True(DigStrand.StrandsOthers(sim, step, rim.Id));
+        Assert.False(DigStrand.StrandsOthers(sim, step, inside.Id));
+        // A wall block of the trench cuts nobody.
+        Assert.False(DigStrand.StrandsOthers(sim, new Int3(10, 7, 13), rim.Id));
+    }
 }

@@ -23,3 +23,6 @@
 - **DSG-09** (M4-T14, ADR-037) A dig is never taken or finished from a stand cell that the dig would cut off from
   the Great Hall's region. Such a dig waits; once no dig is in progress and no open dig has a safe stand cell in a living agent's region, each
   dig whose stand cells all strand is dropped and its mark turns `DigUnreachable`. No automatic stairs.
+  M7-T6 (ADR-059): a dig is also not taken or finished while it would cut any other living dwarf (its cell or the
+  cell it steps into) off from the hall. Such a dig waits (it is not given up for that), and an idle dwarf with
+  nothing to do in the pocket walks out towards the hall.

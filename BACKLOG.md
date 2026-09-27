@@ -214,7 +214,7 @@ building-lookup optimisation) need no task.
   - G3 answer 7: a recurring haul, delivery or pump job that is reposted N times (pick N, ADR) without ever
     succeeding is marked unreachable and stops reposting until the world changes near it (a walkability change
     or a new storage). The HUD shows a notice. Scenario test with an unreachable pump entrance.
-- [ ] **M7-T6** No dig strands any dwarf · specs: DSG-08, JOB-09 · deps: M6-GATE
+- [x] **M7-T6** No dig strands any dwarf · specs: DSG-08, JOB-09 · deps: M6-GATE
   - G3 answer 8: extend the strand rule (ADR-037) from the digger to every dwarf: a dig that would cut any dwarf's
     standing cell off from the Great Hall's region waits. Scenario test with a second dwarf working inside the pit.
     Watch the perf budget (one region check per candidate dig).
