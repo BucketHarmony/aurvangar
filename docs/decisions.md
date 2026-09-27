@@ -1698,3 +1698,27 @@ Consequences:
 - `OnlyReadyEntriesPostJobs_StatusesExplainTheRest`: the ledge cell beside a released entry on the post now reads
   `WaitSupport` (was `NoSupport`). The behaviour changed on purpose. The truly floating case is covered by the new
   `LeaningOnPlannedCells_Waits_TrulyFloating_StaysRed`.
+
+## ADR-072: The block tool's ghost shows cells beyond the free stock in amber (2026-09-27, M10-T2)
+Context: G5 issue 11. A Stone-wall drag with 0 stone stored looked valid; the shortfall only showed after the release,
+in the top bar (orange) and as `NoMaterial`. The task asks for the drag's cost against free stock (stock minus what
+released blocks will use), with cells beyond it amber.
+Decision:
+- **Free stock** (`FreeStock`, ViewCore): per item, `Storage` totals minus `Needed(Released)`, clamped at 0. For a
+  plan-mode drag it is also minus `Needed(Planned)`: planned blocks do not use stock yet, but VIEW-23 already calls
+  the Planned part short when the released plus planned need is over stock, so a plan drag is compared with what the
+  whole plan would leave. The tooltip says "free after the plan" then.
+- **Which cells are short:** the valid cells in paint order take the free units (cost per block each); every valid
+  cell after the stock runs out is short. Paint order is what the player sees growing, so the amber part is the tail
+  of the drag. Red (invalid) cells take no stock.
+- **Short is not invalid:** short cells are still sent on release. They wait as `NoMaterial` until stone comes in,
+  as before. They draw in amber (`designations.short`, `#ffd21f`) with a darker outline (`ShortCellStyle`), in the
+  ghost's normal depth-tested mesh, not the no-depth-test red mesh (ADR-069): amber is advice, not an error. Amber is
+  kept at least 0.3 (RGB distance) from red, the deconstruct orange and every palette block colour (tested).
+- **Tooltip:** a line after the count and cost: "40 stone free", or "Only 3 stone free: 2 blocks short (amber)", or
+  "No stone free: …".
+- **Cadence (CON-06):** `FreeStock.Of` is O(entries + buildings). GameRoot takes it with the top bar's plan line (every
+  10 frames) while the block tool is active, and the ghost cache also keys on the stock snapshot. Ghosts made without
+  stock (scripts, `Release`) have no shortage.
+Consequences: a released drag's ghost can show amber for up to 10 frames after the release changed the free stock;
+harmless. The paint screenshot's held stone drag (0 stone stored) is now amber, with red where it crosses the L.

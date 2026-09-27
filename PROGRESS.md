@@ -2997,3 +2997,35 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
   `artifacts/screens/m10t1_14000/monument.png`. The released tower shows as plain grey ghosts with no red outlined
   cells. G5 had 3 red cells at 11,000 and 1 at 14,000.
 - Next: M10-T2 (material shortage while dragging).
+
+## M10-T2 — Show material shortage while dragging (2026-09-27)
+- Done: G5 issue 11 (ADR-072).
+  - **Free stock** (`FreeStock`, ViewCore/Tools): per item, storage totals minus `Needed(Released)`, never below 0.
+    A plan-mode drag also subtracts `Needed(Planned)` (what the whole plan would leave, as VIEW-23's Planned part).
+  - **Ghost:** `BlockTool.GhostFor`/`Ghost` take an optional `FreeStock`. The valid cells in paint order take the
+    free units; the valid cells after the stock runs out are `Short`. Red cells take no stock. Short cells are still
+    sent on release (they wait as `NoMaterial`, as before). Without stock (scripts, `Release`) nothing is short.
+  - **Amber:** `ShortCellStyle`, an amber fill (`designations.short` = `#ffd21f` in palette.json) with a darker
+    outline, in the ghost's normal depth-tested mesh (red stays the no-depth-test mesh, ADR-069).
+  - **Tooltip:** a new line after the count and cost: "40 stone free", "Only 3 stone free: 2 blocks short (amber)",
+    "No stone free: 10 blocks short (amber)"; "free after the plan" in plan mode.
+  - **Cadence (CON-06):** GameRoot takes the free stock with the top bar's plan line (every 10 frames) while the block
+    tool is active; the ghost cache keys on the snapshot.
+  - Docs: view-ui.md VIEW-21.
+- Tests: new `BlockShortageTests` (6): free stock with released/planned entries and the zero clamp; a 5-cell drag
+  with 3 stone is 3 plain then 2 short, all still sent; zero stock, a red cell taking no stock, Polished stone's cost
+  of 2; plan mode against the stock after the plan; the ghost cache refreshes on a new stock snapshot; the mesh draws
+  short cells amber with an outline, none in the red mesh, and amber is at least 0.3 (RGB) from red, the deconstruct
+  orange and every construction block colour. Before the change they did not compile (no `FreeStock`,
+  `ShortCellStyle`, `GhostCell.Short`).
+  - check.sh: 624 passed, 0 skipped, 0 failed. 0 warnings.
+- sim-reviewer: not run (no Aurvangar.Sim change).
+- Golden: unchanged (view-only change). perf.sh not run: no water, path or sim change.
+- Screenshot (Forward+, seed 1, looked at): `artifacts/screens/m10t2/paint.png` (`SCRIPT=paint TICKS=1500`). The
+  held Stone-wall drag with 0 stone stored now shows 9 amber outlined cells and 1 red cell where it crosses the built
+  L. The label reads "Build Stone wall (10 blocks, 10 stone) / No stone free: 10 blocks short (amber) / Something solid
+  is there". A partly covered drag (palette then amber) is covered by the unit tests, not a screenshot.
+- Decisions: ADR-072.
+- Next: M10-T3 (vertical painting from a side face). The shortage uses paint order, so the vertical drag's cells are
+  short in the order it paints them; if M10-T3 reorders cells bottom-up for sending, the ghost still follows
+  `Cells` order.

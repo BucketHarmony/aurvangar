@@ -11,7 +11,8 @@ namespace Aurvangar.Client;
 
 /// <summary>Block construction in <see cref="GameRoot"/> (VIEW-21..23; M8-T5, single blocks since M9-T1): the block tool
 /// (K) that paints one block per cell with its ghost and plan mode (P); the Deconstruct tool's per-block marks; the
-/// Release tool (L) and "Release all"; plan ghosts; the plan's material line in the top bar. The rules are
+/// Release tool (L) and "Release all"; plan ghosts; the plan's material line in the top bar; amber ghost cells beyond
+/// the free stock (M10-T2). The rules are
 /// <see cref="BlockTool"/>, <see cref="DeconstructPaint"/>, <see cref="PaintDrag"/>, <see cref="PlanGhostMesher"/> and
 /// <see cref="TopBarModel.PlanText"/> (ViewCore); this file forwards input and enqueues the commands.</summary>
 public partial class GameRoot
@@ -29,6 +30,8 @@ public partial class GameRoot
     private object? _shownGhost;
     private IReadOnlyList<Int3> _deconMarked = System.Array.Empty<Int3>();
     private int _planTextFrame;
+    /// <summary>M10-T2: the free stock the block ghost is compared with, taken with the plan line (CON-06).</summary>
+    private FreeStock? _freeStock;
     private (Int3 Cell, long Tick, string? Text) _planHover = (new Int3(-1, -1, -1), -1, null);
 
     /// <summary>Plan entry ghosts (VIEW-22); recreated with the simulation.</summary>
@@ -124,7 +127,8 @@ public partial class GameRoot
     {
         _toolPreview.Visible = false;
         MovePaint();
-        BlockGhost = _blocks.Ghost(Sim, Hover);
+        _freeStock ??= FreeStock.Of(Sim);
+        BlockGhost = _blocks.Ghost(Sim, Hover, _freeStock);
         ShowBlockGhost(BlockGhost);
     }
 
@@ -197,6 +201,7 @@ public partial class GameRoot
         if (!now && ++_planTextFrame < PlanTextFrames) return;
         _planTextFrame = 0;
         _hud.TopBar.ShowPlan(TopBarModel.PlanText(Sim));
+        _freeStock = _tool.Tool == ToolKind.Blocks ? FreeStock.Of(Sim) : null;   // M10-T2: same cadence (CON-06)
     }
 
     /// <summary>M9-T3: the block tool ghost's box on screen (its 8 projected corners), which the mouse label keeps clear

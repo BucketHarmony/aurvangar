@@ -77,6 +77,12 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
     the mouse label (`LabelLayout.PlaceTooltip`). Red cells use `InvalidCellStyle` (M9-T3, ADR-069): a strong red
     fill with a dark outline, a little larger than the cell and drawn without a depth test, so one inside or behind a
     block shows. The mouse label keeps clear of the ghost's screen box.
+  - Material shortage while dragging (M10-T2, ADR-072): the ghost is compared with the free stock (`FreeStock`:
+    storage totals minus the Released entries' need; in plan mode also minus the Planned need, never below 0). The
+    valid cells in paint order take the free units; valid cells beyond them are amber with a darker outline
+    (`ShortCellStyle`, `designations.short`), depth-tested. They are short, not invalid, and are still sent. The mouse
+    label adds "40 stone free" or "Only 3 stone free: 2 blocks short (amber)" ("free after the plan" in plan mode). The
+    view takes the free stock with the VIEW-23 line, at most every 10 frames (CON-06).
   - P toggles plan mode. The tool label then shows "Plan", and the commands are sent with `Plan = true`.
   - Releasing the drag sends one `DesignateBuild(Single, c, c, 1, block, plan)` per valid cell, in support order
     (each cell after a neighbour below or beside it that is solid, planned or earlier in the order). With no valid

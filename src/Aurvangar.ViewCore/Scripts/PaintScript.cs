@@ -18,7 +18,8 @@ namespace Aurvangar.ViewCore.Scripts;
 /// 7 planned blocks, supported by course 1's entries.</item>
 /// </list>
 /// The harness then holds a Stone wall drag in progress (<see cref="LiveDrag"/>), a diagonal from (x0+11, z0+1)
-/// toward (x0+4, z0+4) on the ground layer: a face-connected staircase of cells, red where it crosses the built L.
+/// toward (x0+4, z0+4) on the ground layer: a face-connected staircase of cells, red where it crosses the built L and
+/// amber elsewhere while no stone is stored (M10-T2).
 /// The <c>paint</c> camera preset looks at the site.</summary>
 public static class PaintScript
 {

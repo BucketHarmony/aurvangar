@@ -23,7 +23,8 @@ public static class BlockGhostMesher
             : c with { W = Alpha };
     }
 
-    /// <summary>The valid cells.</summary>
+    /// <summary>The valid cells: in the palette colour, or amber (<see cref="ShortCellStyle"/>, M10-T2) where the free
+    /// stock does not cover them.</summary>
     public static MeshData Build(BlockGhost ghost, BlockColors blocks, EntityColors entities)
     {
         var mesh = new MeshData();
@@ -32,6 +33,7 @@ public static class BlockGhostMesher
         {
             if (!g.Ok) continue;
             var c = g.Cell;
+            if (g.Short) { ShortCellStyle.Add(mesh, c, Inflate, entities); continue; }
             MeshShapes.AddBox(mesh, new Vector3(c.X - Inflate, c.Y - Inflate, c.Z - Inflate),
                 new Vector3(c.X + 1 + Inflate, c.Y + 1 + Inflate, c.Z + 1 + Inflate), color);
         }

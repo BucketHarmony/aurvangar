@@ -311,7 +311,7 @@ Human answers are in PROGRESS.md under "G5 answers". Surface stone (G5 Q3) is de
     built reads as a waiting status (for example "waiting for support"), not red. Red is kept for cells that can
     never be supported by the plan.
   - Scenario test on the monument plan: no stair step is red at tick 11000. A truly floating plan cell is still red.
-- [ ] **M10-T2** Show material shortage while dragging · specs: VIEW-21..23 · deps: M9-GATE
+- [x] **M10-T2** Show material shortage while dragging · specs: VIEW-21..23 · deps: M9-GATE
   - G5 issue: with 0 stone stored, a held stone drag looks valid, and the shortage only shows after release.
   - While dragging, the tool ghost and the tooltip show the drag's cost against free stock (stock minus what
     released blocks will use). Cells beyond the stock are drawn amber (short, not invalid).

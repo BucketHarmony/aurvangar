@@ -26,6 +26,8 @@ public sealed class EntityColors
     /// <summary>Farm tile furrows (VIEW-11, `designations.farm`).</summary>
     public Vector4 Farm { get; }
     public Vector4 Unreachable { get; }
+    /// <summary>Block-tool cells the free stock does not cover (M10-T2, `designations.short`): amber.</summary>
+    public Vector4 Short { get; }
     /// <summary>Blueprint color of any building (VIEW-09, `buildings.blueprint`).</summary>
     public Vector4 Blueprint { get; }
 
@@ -40,6 +42,7 @@ public sealed class EntityColors
         Chop = Get(p.Designations, "chop");
         Farm = Get(p.Designations, "farm");
         Unreachable = Get(p.Designations, "unreachable");
+        Short = Get(p.Designations, "short");
         _buildings = p.Buildings;
         Blueprint = Get(p.Buildings, "blueprint");
         _items = new Vector4[content.Items.Count];
