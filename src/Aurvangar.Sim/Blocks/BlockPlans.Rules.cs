@@ -116,7 +116,7 @@ public sealed partial class BlockPlans
         var ok = JobGoals.BuildStandCells(sim, cell, strandFree: true, prefer: false);
         if (ok.Count == 0 || PlaceStrand.StrandsOthers(sim, cell, builder)) return BuildStatus.WouldStrand;
 
-        var (item, cost) = sim.Content.CostOf(e.Block);
+        var (item, cost) = sim.Content.CostOf(e.Block, e.Form.Shape);
         if (!scan.HasMaterial(item, cost, ok)) return BuildStatus.NoMaterial;
         stands = ok;
         return BuildStatus.Ready;

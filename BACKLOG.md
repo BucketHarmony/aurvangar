@@ -380,7 +380,7 @@ starting wagon answers "I dont know where to get stone from".
   - Terrain cave-ins are out of scope. Built blocks keep the CON support rule.
   - Save and hash any new state. Scenario tests: dig under a log pile and it falls; dig out under a warehouse
     and it collapses into piles; nothing is left floating (Grounding helper). Run perf.sh.
-- [ ] **M11-T10** Fine block shapes in the sim · specs: CON-* · deps: M11-T9
+- [x] **M11-T10** Fine block shapes in the sim · specs: CON-* · deps: M11-T9
   - G6 follow-up: "Can we set pixel size to variable? Can we have a .25 meter pixel?" The human chose fine block
     shapes on the 1 m grid, not a 0.25 m simulation grid.
   - Each built block cell stores a shape: at least Full, Slab (lower half), Stair (4 rotations) and Pillar. Put

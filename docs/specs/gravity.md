@@ -18,7 +18,8 @@ Terms:
 - **GRV-01** A pile **rests** when the cell below it is solid (any solid block: terrain, built block,
   BuildingSolid) or it is at `y = 0`. A building **stands** when at least one cell under its bottom layer is solid or
   is covered by another building (any state; a blueprint levee stacked on a blueprint levee stands, BLD-04). Partial
-  support is enough: a warehouse on one of its four floor cells stands.
+  support is enough: a warehouse on one of its four floor cells stands. A built block of any fine shape (slab, stair, pillar, CON-19) is a
+  solid cell like a full one (CON-21, ADR-080): piles rest on it and buildings stand on it.
 - **GRV-02** `Gravity.Tick` runs at ARCH-01 step 10b: after `AgentSystem.Tick` (step 10, where every dig and teardown
   happens) and before `WaterGrid.EndTick`, so the blocks a collapse removes are seen by water (WAT-13), the path grid
   and regions in the same tick. It changes nothing when everything rests and stands.

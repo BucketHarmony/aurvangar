@@ -20,7 +20,8 @@ public enum StepKind : byte { GoTo, Work, Dig, Chop, PickUp, PickUpFromStorage, 
 public enum GoalMode : byte { Exact, Reach, Building, Dig, Build }
 
 /// <summary>One step of a job. Plain data so it can be hashed and saved. <see cref="Target"/> is a building id (GoTo
-/// Building, Work on a building, storage steps), a plant id (Chop, HarvestBush) or a block id (Place, CON-12).</summary>
+/// Building, Work on a building, storage steps), a plant id (Chop, HarvestBush) or, for Place (CON-12), the block id in
+/// the low byte and the packed form (CON-19) in the next one, so a Full block's target is its block id.</summary>
 public readonly record struct JobStep(StepKind Kind, Int3 Cell, int Target, ItemId Item, int Count, int Ticks, GoalMode Goal)
 {
     public static JobStep GoTo(Int3 cell, GoalMode goal = GoalMode.Reach) => new(StepKind.GoTo, cell, 0, default, 0, 0, goal);
@@ -36,8 +37,15 @@ public readonly record struct JobStep(StepKind Kind, Int3 Cell, int Target, Item
     public static JobStep Drop(Int3 cell) => new(StepKind.Drop, cell, 0, default, 0, 0, default);
     public static JobStep PlantCrop(Int3 tile) => new(StepKind.Plant, tile, 0, default, 0, 0, default);
     public static JobStep HarvestCrop(Int3 tile) => new(StepKind.Harvest, tile, 0, default, 0, 0, default);
-    public static JobStep Place(Int3 cell, World.BlockId block) => new(StepKind.Place, cell, (int)block, default, 0, 0, default);
+    public static JobStep Place(Int3 cell, World.BlockId block, World.BlockForm form = default) =>
+        new(StepKind.Place, cell, (int)block | (form.Packed << 8), default, 0, 0, default);
     public static JobStep HarvestBush(PlantId bush) => new(StepKind.HarvestBush, default, bush.Value, default, 0, 0, default);
+
+    /// <summary>A Place step's block (CON-12).</summary>
+    public World.BlockId PlacedBlock => (World.BlockId)(Target & 0xFF);
+
+    /// <summary>A Place step's form (CON-19).</summary>
+    public World.BlockForm PlacedForm => World.BlockForm.FromPacked((byte)(Target >> 8));
 
     public void AddToHash(ref StateHasher h)
     {

@@ -7,7 +7,8 @@
   id), storage contents, item piles (sorted by cell index), designations, agents (sorted by id, alive only), job
   board (sorted by id, with reservations), JOB-12 give-up marks (sorted by source and id; format version 5, M7-T5),
   weather, id allocators, command log. M8-T2 appends a `BlockPlans` section after the give-up marks (format
-  version 6, CON-04).
+  version 6, CON-04). M11-T10 adds a `BlockForms` section right after the blocks, a form byte per plan entry and the
+  form in `DesignateBuild` commands (format version 7, CON-22).
 - **SAV-02** Load constructs a `Simulation` purely from the file plus `ContentDb`. No terrain generation runs on
   load.
 - **SAV-03** Round-trip rule: `Save(sim) → Load → StateHash()` equals the original `StateHash()`, and ticking

@@ -74,8 +74,17 @@ public static partial class BlockBuildSystem
     public static BlockId BlockOf(Job job)
     {
         foreach (var s in job.Steps)
-            if (s.Kind == StepKind.Place) return (BlockId)s.Target;
+            if (s.Kind == StepKind.Place) return s.PlacedBlock;
         return BlockId.Air;
+    }
+
+    /// <summary>CON-19: the shape a Build job places (all its cells have the same one, and so the same cost; their
+    /// rotations may differ).</summary>
+    public static BlockShape ShapeOf(Job job)
+    {
+        foreach (var s in job.Steps)
+            if (s.Kind == StepKind.Place) return s.PlacedForm.Shape;
+        return BlockShape.Full;
     }
 
     /// <summary>CON-12 re-check of every unclaimed Build job, ascending id. Cells already placed (their entry gone)
@@ -90,6 +99,7 @@ public static partial class BlockBuildSystem
             if (j.IsClaimed) continue;
             var scan = new BuildScan(sim, held: null, self: j);
             var block = BlockOf(j);
+            var shape = ShapeOf(j);
             var cells = new List<Int3>();
             bool bad = !sim.World.InBounds(j.Target) || sim.GiveUps.IsGivenUp(GiveUpSource.Build, sim.World.Index(j.Target));
             List<Int3>? seedStands = null;
@@ -97,7 +107,8 @@ public static partial class BlockBuildSystem
             {
                 if (bad) break;
                 if (s.Kind != StepKind.Place) continue;
-                if (sim.Plans.Get(s.Cell) is not { } e || e.State != PlanState.Released || e.Block != block)
+                if (sim.Plans.Get(s.Cell) is not { } e || e.State != PlanState.Released || e.Block != block
+                    || e.Form != s.PlacedForm)
                 {
                     if (s.Cell == j.Target) bad = true;
                     continue;   // placed, cancelled or repainted: not this job's any more
@@ -110,13 +121,13 @@ public static partial class BlockBuildSystem
                 }
             }
             if (bad || cells.Count == 0 || seedStands is null
-                || !Source(sim, scan, promised, block, j.Target, seedStands, cells.Count, out var src, out int take))
+                || !Source(sim, scan, promised, block, shape, j.Target, seedStands, cells.Count, out var src, out int take))
             {
                 JobRunner.Cancel(sim, j);
                 continue;
             }
             cells.RemoveRange(take, cells.Count - take);   // the seed is first: it always stays
-            var (item, cost) = sim.Content.CostOf(block);
+            var (item, cost) = sim.Content.CostOf(block, shape);
             var steps = Steps(sim, src, item, cost, block, cells);
             var res = new[] { Reservation.OutOfStorage(src, item, take * cost) };
             if (!j.Steps.SequenceEqual(steps) || !j.Reservations.SequenceEqual(res))
@@ -149,13 +160,13 @@ public static partial class BlockBuildSystem
             if (posts >= MaxPostsPerTick || unclaimed >= MaxUnclaimed) return;
             if (e.State != PlanState.Released || held.ContainsKey(world.Index(cell))) continue;
             if (BlockPlans.StatusOf(scan, cell, e, default, out var stands) != BuildStatus.Ready) continue;
-            var (item, cost) = sim.Content.CostOf(e.Block);
+            var (item, cost) = sim.Content.CostOf(e.Block, e.Form.Shape);
             var batch = new List<Int3> { cell };
             int max = Math.Max(ItemsCarried / cost, 1);
-            Join(sim, scan, cell, e.Block, stands!, max, batch);
+            Join(sim, scan, cell, e.Block, e.Form.Shape, stands!, max, batch);
             SortByCourse(batch);
             if (!FullEnough(batch.Count, max) && scan.HeldBelowWithin(cell, HoldRadius)) continue;
-            if (!Source(sim, scan, promised, e.Block, cell, stands!, batch.Count, out var src, out int take)) continue;
+            if (!Source(sim, scan, promised, e.Block, e.Form.Shape, cell, stands!, batch.Count, out var src, out int take)) continue;
             batch.RemoveRange(take, batch.Count - take);
             var job = sim.Jobs.Post(JobKind.Build, cell, Steps(sim, src, item, cost, e.Block, batch),
                 new[] { Reservation.OutOfStorage(src, item, take * cost) });
@@ -170,11 +181,11 @@ public static partial class BlockBuildSystem
 
     /// <summary>CON-12 batch (M9-T2 chain, ADR-068): up to <paramref name="max"/> cells in all. Members are taken in
     /// order (the seed first); around each, the box within <see cref="BatchRadius"/> is scanned in ascending
-    /// (dy, dz, dx) order for entries of the same block that are released, unheld, <c>Ready</c> and
+    /// (dy, dz, dx) order for entries of the same block and shape (CON-19) that are released, unheld, <c>Ready</c> and
     /// have a stand cell in a region shared with a seed stand cell; each joins at the end. So a batch follows a wall
     /// course instead of stopping at a box around the seed.</summary>
-    private static void Join(Simulation sim, BuildScan scan, Int3 seed, BlockId block, List<Int3> seedStands, int max,
-        List<Int3> batch)
+    private static void Join(Simulation sim, BuildScan scan, Int3 seed, BlockId block, BlockShape shape,
+        List<Int3> seedStands, int max, List<Int3> batch)
     {
         if (batch.Count >= max) return;
         var regions = new SortedSet<int>();
@@ -195,7 +206,7 @@ public static partial class BlockBuildSystem
                     {
                         var c = from + new Int3(dx, dy, dz);
                         if (!world.InBounds(c) || sim.Plans.Get(c) is not { } e || !tried.Add(world.Index(c))) continue;
-                        if (e.Block != block || e.State != PlanState.Released || scan.Held!.ContainsKey(world.Index(c))) continue;
+                        if (e.Block != block || e.Form.Shape != shape || e.State != PlanState.Released || scan.Held!.ContainsKey(world.Index(c))) continue;
                         if (BlockPlans.StatusOf(scan, c, e, default, out var stands) != BuildStatus.Ready) continue;
                         bool shared = false;
                         foreach (var s in stands!)
@@ -221,9 +232,9 @@ public static partial class BlockBuildSystem
     /// with the whole amount available; else the one with the most, for the whole cells it covers; else none.
     /// Available = unpromised stock minus what other unclaimed Build jobs will take.</summary>
     private static bool Source(Simulation sim, BuildScan scan, SortedDictionary<(int B, int Item), int> promised,
-        BlockId block, Int3 seed, List<Int3> seedStands, int cells, out BuildingId src, out int take)
+        BlockId block, BlockShape shape, Int3 seed, List<Int3> seedStands, int cells, out BuildingId src, out int take)
     {
-        var (item, cost) = sim.Content.CostOf(block);
+        var (item, cost) = sim.Content.CostOf(block, shape);
         src = default;
         take = 0;
         Building? nearFull = null, most = null;
@@ -245,7 +256,8 @@ public static partial class BlockBuildSystem
     private static void Promise(SortedDictionary<(int B, int Item), int> promised, BuildingId b, ItemId item, int n) =>
         promised[(b.Value, item.Value)] = (promised.TryGetValue((b.Value, item.Value), out var p) ? p : 0) + n;
 
-    /// <summary>CON-12 steps: fetch, then per cell GoTo(Build) -> Work(buildTicks) -> Place.</summary>
+    /// <summary>CON-12 steps: fetch, then per cell GoTo(Build) -> Work(buildTicks) -> Place. Each Place carries its
+    /// entry's form (CON-19); every cell has an entry when the steps are made.</summary>
     private static List<JobStep> Steps(Simulation sim, BuildingId src, ItemId item, int cost, BlockId block, List<Int3> cells)
     {
         int ticks = sim.Content.Block(block).BuildTicks;
@@ -257,7 +269,7 @@ public static partial class BlockBuildSystem
         {
             steps.Add(JobStep.GoTo(c, GoalMode.Build));
             steps.Add(JobStep.Work(c, ticks));
-            steps.Add(JobStep.Place(c, block));
+            steps.Add(JobStep.Place(c, block, sim.Plans.Get(c)?.Form ?? BlockForm.Full));
         }
         return steps;
     }
@@ -280,7 +292,7 @@ public static partial class BlockBuildSystem
         foreach (var j in cancel.Values) JobRunner.Cancel(sim, j);
     }
 
-    /// <summary>Cancels the Build job holding <paramref name="c"/>, if any (a repaint that changes the block).</summary>
+    /// <summary>Cancels the Build job holding <paramref name="c"/>, if any (a repaint that changes the block or form).</summary>
     internal static void CancelHolder(Simulation sim, Int3 c)
     {
         if (HeldCells(sim).TryGetValue(sim.World.Index(c), out var j)) JobRunner.Cancel(sim, j);

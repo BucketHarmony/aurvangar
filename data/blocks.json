@@ -20,5 +20,11 @@
       "label": "Wood beam",      "cost": { "log": 2 },   "buildTicks": 25 },
     { "id": 13, "name": "Slate",        "solid": true,  "diggable": true,  "hardness": 70, "drop": null,
       "label": "Slate tiles",    "cost": { "stone": 3 }, "buildTicks": 50 }
+  ],
+  "shapes": [
+    { "id": 0, "name": "Full",   "label": "Block",  "rotations": 1, "costPercent": 100 },
+    { "id": 1, "name": "Slab",   "label": "Slab",   "rotations": 1, "costPercent": 50 },
+    { "id": 2, "name": "Stair",  "label": "Stair",  "rotations": 4, "costPercent": 75 },
+    { "id": 3, "name": "Pillar", "label": "Pillar", "rotations": 1, "costPercent": 25 }
   ]
 }

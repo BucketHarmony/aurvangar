@@ -20,6 +20,7 @@ internal static class CommandCodec
             case Deconstruct c: w.Write(c.Building.Value); break;
             case DesignateBuild c:
                 w.Write((byte)c.Shape); w.Write(c.A); w.Write(c.B); w.Write(c.Height); w.Write((byte)c.Block); w.Write(c.Plan);
+                w.Write((byte)c.Form.Shape); w.Write(c.Form.Rotation);   // save v7 (M11-T10): raw, so a rejected form replays as rejected
                 break;
             case ReleasePlan c: w.Write(c.A); w.Write(c.B); break;
             default:
@@ -41,7 +42,8 @@ internal static class CommandCodec
             nameof(PlaceBuilding) => new PlaceBuilding(r.ReadString(), r.ReadInt3(), r.ReadInt32()),
             nameof(Deconstruct) => new Deconstruct(new Core.BuildingId(r.ReadInt32())),
             nameof(DesignateBuild) => new DesignateBuild(r.ReadEnum<Blocks.BuildShape>("build shape"), r.ReadInt3(), r.ReadInt3(),
-                r.ReadInt32(), (World.BlockId)r.ReadByte(), r.ReadBoolean()),
+                r.ReadInt32(), (World.BlockId)r.ReadByte(), r.ReadBoolean(),
+                new World.BlockForm((World.BlockShape)r.ReadByte(), r.ReadByte())),
             nameof(ReleasePlan) => new ReleasePlan(r.ReadInt3(), r.ReadInt3()),
             _ => throw new InvalidDataException($"Save file contains unknown command tag '{tag}'."),
         };

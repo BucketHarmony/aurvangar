@@ -7,8 +7,9 @@ namespace Aurvangar.Sim.Blocks;
 /// <summary>CON-04: whether dwarves build an entry. Never renumber: saved and hashed.</summary>
 public enum PlanState : byte { Planned = 1, Released = 2 }
 
-/// <summary>CON-04: one cell the player wants filled with a construction block.</summary>
-public readonly record struct PlanEntry(BlockId Block, PlanState State);
+/// <summary>CON-04: one cell the player wants filled with a construction block, in <paramref name="Form"/> (CON-19,
+/// M11-T10: shape and rotation; Full by default).</summary>
+public readonly record struct PlanEntry(BlockId Block, PlanState State, BlockForm Form = default);
 
 /// <summary>CON-08: why a cell may not get a plan entry (the first failing check), or Ok.</summary>
 public enum PlanResult : byte { Ok, OutOfWorld, Solid, Building, Plant, Farm, Unsupported }
@@ -64,7 +65,7 @@ public sealed partial class BlockPlans
         foreach (var e in _entries.Values)
         {
             if (state is { } s && e.State != s) continue;
-            var (item, cost) = _content.CostOf(e.Block);
+            var (item, cost) = _content.CostOf(e.Block, e.Form.Shape);
             if (cost <= 0) continue;
             sums[item.Value] = sums.GetValueOrDefault(item.Value) + cost;
         }
@@ -93,14 +94,15 @@ public sealed partial class BlockPlans
     /// <summary>SaveGame load.</summary>
     internal void Restore(int index, PlanEntry e) => _entries[index] = e;
 
-    /// <summary>Hashed only when there is an entry, so a game without plans hashes as before M8-T2.</summary>
+    /// <summary>Hashed only when there is an entry, so a game without plans hashes as before M8-T2. Each entry adds its
+    /// packed form (CON-19).</summary>
     public void AddToHash(ref StateHasher h)
     {
         if (_entries.Count == 0) return;
         h.Add(_entries.Count);
         foreach (var (i, e) in _entries)
         {
-            h.Add(i); h.Add((byte)e.Block); h.Add((byte)e.State);
+            h.Add(i); h.Add((byte)e.Block); h.Add((byte)e.State); h.Add(e.Form.Packed);
         }
     }
 }

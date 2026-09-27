@@ -10,13 +10,14 @@ namespace Aurvangar.Sim.Jobs;
 public static partial class JobRunner
 {
     /// <summary>CON-13 skipping: when the GoTo of a cell starts, the cell must still have a released entry of the job's
-    /// block whose status, ignoring the job's own hold, is Ready, Occupied or NoMaterial. Otherwise its GoTo, Work and
+    /// block and of the form of the cell's Place step (CON-19) whose status, ignoring the job's own hold, is Ready, Occupied or NoMaterial. Otherwise its GoTo, Work and
     /// Place steps are skipped (not a failure; the job may complete with nothing placed). True when skipped.</summary>
     private static bool SkipsCell(Simulation sim, Agent a, Job job, JobStep step)
     {
         var block = BlockBuildSystem.BlockOf(job);
+        var form = job.Steps[a.StepIndex + 2].PlacedForm;   // the cell's Place step
         bool keep = false;
-        if (sim.Plans.Get(step.Cell) is { State: PlanState.Released } e && e.Block == block)
+        if (sim.Plans.Get(step.Cell) is { State: PlanState.Released } e && e.Block == block && e.Form == form)
         {
             var status = BlockPlans.StatusOf(new BuildScan(sim, held: null, self: job), step.Cell, e, a.Id, out _);
             keep = status is BuildStatus.Ready or BuildStatus.Occupied or BuildStatus.NoMaterial;
@@ -32,7 +33,8 @@ public static partial class JobRunner
     private static bool PlacedAny(Simulation sim, Job job)
     {
         foreach (var s in job.Steps)
-            if (s.Kind == StepKind.Place && sim.World.GetBlock(s.Cell) == (BlockId)s.Target) return true;
+            if (s.Kind == StepKind.Place && sim.World.GetBlock(s.Cell) == s.PlacedBlock && sim.World.FormAt(s.Cell) == s.PlacedForm)
+                return true;
         return false;
     }
 
@@ -53,7 +55,7 @@ public static partial class JobRunner
     private static void PlaceStep(Simulation sim, Agent a, Job job, JobStep step)
     {
         if (PlaceStrandsAny(sim, a, step.Cell)) { StandDown(sim, a, job); return; }
-        var r = sim.Actions.PlaceBlock(a.Id, step.Cell, (BlockId)step.Target);
+        var r = sim.Actions.PlaceBlock(a.Id, step.Cell, step.PlacedBlock, step.PlacedForm);
         if (r == ActionResult.Blocked
             && (sim.Agents.AnyHolds(step.Cell, a.Id) || sim.Agents.AnyHolds(step.Cell + Int3.Down, a.Id)))
         {

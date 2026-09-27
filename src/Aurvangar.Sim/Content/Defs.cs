@@ -19,6 +19,16 @@ public sealed record BlockDef(
     public bool IsConstruction => Cost is not null;
 }
 
+/// <summary>CON-19 (M11-T10, ADR-080): a fine block shape from the <c>shapes</c> list of blocks.json. Ids and names
+/// match <see cref="World.BlockShape"/>. <see cref="Rotations"/> is 1 or 4. A shaped block costs
+/// <c>max(1, ceil(cost * CostPercent / 100))</c> of its block's cost item (<see cref="ContentDb.CostOf(World.BlockId, World.BlockShape)"/>).</summary>
+public sealed record ShapeDef(
+    [property: JsonPropertyName("id")] int NumericId,
+    string Name,
+    string Label,
+    int Rotations,
+    int CostPercent);
+
 /// <summary>An item type from items.json.</summary>
 public sealed record ItemDef(string Id, string Name, int Food, int Drink);
 

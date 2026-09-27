@@ -1932,3 +1932,41 @@ tick 6000 (ticks 0, 1200 and 3000 unchanged): in the survival script's two-level
 stone drops left on the upper layer now fall when the cell under them is dug (ticks 3904..4627). No building
 collapses in that run. The headless survival hash changes for the same reason (5/5 alive; one Flee need job fails at
 tick 8045 on the changed timeline, well after the last fall; need jobs are re-posted, ADR-031).
+
+## ADR-080: Fine block shapes are a form on a solid 1 m cell; cost scales by an integer percent (2026-09-27, M11-T10)
+Context: G6 follow-up: "Can we have a .25 meter pixel?" The human chose fine shapes on the 1 m grid (slab, stair,
+pillar) drawn at 0.25 m detail, not a 0.25 m sim grid (about 64 times the cells). The backlog asks for shapes in data,
+the shape and rotation in the build command, save and hash, and an ADR on how the sim treats them. Spec: CON-19..22.
+Decision:
+- **Every shape is one solid cell** for paths, water, support (CON-09/10), gravity (GRV-01) and buildings (BLD-02).
+  Solidity stays a property of the block byte, so none of the hot paths (water CA, path flags, regions, trials)
+  change or slow down. A Stair block is not a half-step for walking: dwarves already climb one level per step, so a
+  stair of Stair blocks is walked like a stair of full blocks. A slab is a full floor at the cell's top for the sim
+  and looks half-high; that mismatch is accepted for the POC (walking on the drawn slab top is a view concern, M11-T11).
+  The alternative (half-height floors, water over slabs, piles resting at half height) touches PTH, WAT and GRV and
+  was not asked for.
+- **Form = (shape, rotation)**, `BlockForm`, packed into one byte (`shape * 4 + rotation`, 0 = Full). Shapes and
+  their rotation counts are data (a `shapes` list in `blocks.json`, not a new file, so `ContentDb.Load` keeps its
+  signature). The enum is kept in step with the data like `BlockId`.
+- **Storage:** a sparse `SortedDictionary<cell index, packed>` in `VoxelWorld` for cells that are not Full, instead
+  of a second dense byte array. Only built blocks with a fine shape have one. Any `SetBlock` removes the cell's form,
+  so a dig, a collapse or a new block cannot leave a stale form, and the invariant "a form only on a built block" holds
+  through one write path. It is hashed only when not empty, so worlds without shapes hash as before and no golden
+  moves.
+- **Cost varies by shape**: `max(1, ceil(cost x costPercent / 100))` with Slab 50, Stair 75, Pillar 25. This is an
+  integer and never 0, so the 1-cost blocks cost 1 in every shape, and Slate and the 2-cost blocks get cheaper
+  slabs and pillars. The dig refund is the shaped cost, so the refund stays 100% (CON-17). Build ticks and hardness do
+  not change with the shape (the simplest choice).
+- **Batches** join only entries of the same block and shape (any rotation), so a job has one cost per cell and its
+  pickup is `cells x cost`. Each Place step carries its own form in `JobStep.Target` (block in the low byte, packed
+  form in the next). A Full step's target equals the old block id, so existing job hashes do not change.
+- **Command:** `DesignateBuild` gets an optional `Form` (default Full), so all existing callers and scripts keep
+  compiling unchanged. The codec writes the shape and rotation as two raw bytes, not the packed byte: a command with a
+  bad rotation must replay as rejected, and packing would mask it into a valid one. The command log lives only in the
+  save, which is version-gated (SAV-04), so the codec change comes with the bump to save v7 and needs no second
+  version field. New rejections `BadShape` and `BadRotation` come after `NotBuildable`. A repaint that changes only
+  the form cancels the Build job that holds the cell, as a block change does.
+- **Save v7:** a `BlockForms` section right after `Blocks`, a form byte per plan entry, and the command's form.
+Consequences: no golden or headless hash changes (no script paints shapes, and a Full form adds nothing to the hash).
+ViewCore still draws every built block full and prices the paint ghost and shortage with the Full cost; M11-T11 adds
+the mesher patterns, the shape picker and rotation, and switches those to `CostOf(block, shape)`.

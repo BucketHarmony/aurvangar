@@ -11,8 +11,9 @@ namespace Aurvangar.Sim.Save;
 public static partial class SaveGame
 {
     public const string Magic = "CSAV";
-    public const int FormatVersion = 6;   // 2: M5-T5 need retry ticks, ColonyLost; 3: M6-T1 moisture; 4: M6-T2 farms;
-                                          // 5: M7-T5 give-up marks; 6: M8-T2 block plan entries
+    public const int FormatVersion = 7;   // 2: M5-T5 need retry ticks, ColonyLost; 3: M6-T1 moisture; 4: M6-T2 farms;
+                                          // 5: M7-T5 give-up marks; 6: M8-T2 block plan entries;
+                                          // 7: M11-T10 block forms, plan entry forms, DesignateBuild form
 
     /// <summary>Largest world edge a save may declare (guards the allocation on corrupt input).</summary>
     private const int MaxWorldEdge = 1024;
@@ -32,6 +33,7 @@ public static partial class SaveGame
 
         w.Section(SaveSection.Blocks);
         w.WriteRle(sim.World.Blocks);
+        WriteBlockForms(w, sim);
 
         WriteWater(w, sim);
         WritePlants(w, sim);
@@ -111,6 +113,7 @@ public static partial class SaveGame
         r.ReadRle(sim.World.BlocksMutable, "blocks");
         foreach (var b in sim.World.Blocks)
             if (b >= content.Blocks.Count) throw new InvalidDataException($"Save file is corrupt: block id {b} is not defined.");
+        ReadBlockForms(r, sim, content);
 
         ReadWater(r, sim);
         ReadPlants(r, sim);

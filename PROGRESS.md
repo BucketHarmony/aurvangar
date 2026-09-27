@@ -3524,3 +3524,61 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Next: M11-T10 (fine block shapes). Built blocks still never fall (CON-09 support). If shapes add non-full blocks,
   decide whether a pile or a building rests on a slab or stair: `Gravity.Rests` and `Stands` use
   `World.IsSolid(below)`. `Support.Depends(sim, cell)` now also means "a building holds this floor".
+
+## M11-T10 — Fine block shapes in the sim (2026-09-27)
+- Done: G6 follow-up "Can we have a .25 meter pixel?" The human chose fine shapes on the 1 m grid (ADR-080,
+  CON-19..22).
+  - **Shapes in data:** a `shapes` list in `data/blocks.json`: Full, Slab, Stair (4 rotations), Pillar. Each has
+    `label`, `rotations` and `costPercent`. The `BlockShape` enum is kept in step with the data, and ContentDb
+    validates both ways.
+  - **Form:** `World/BlockForm.cs` holds `BlockForm(Shape, Rotation)`, packed as `shape*4+rot`.
+    - `VoxelWorld` keeps a sparse sorted map of the cells that are not Full (`FormAt`, `SetForm`, `Forms`).
+    - A `SetBlock` that changes the block resets the form.
+    - A Stair at rotation 0 climbs towards +Z, 1 towards +X, 2 towards -Z, 3 towards -X.
+  - **Cost** is `max(1, ceil(cost x pct/100))`, via `ContentDb.CostOf(block, shape)`. Slab is 50%, Stair 75%,
+    Pillar 25%, so Slate costs 3/2/3/1 and Beam or PolishedStone 2/1/2/1. The shaped cost is used by Needed,
+    NoMaterial, batch size and pickup, PlaceBlock and the CON-17 dig refund (still 100%).
+  - **Plan entries, jobs and the command:**
+    - `PlanEntry.Form`; `DesignateBuild(..., BlockForm Form = default)`, with new rejections `BadShape` and
+      `BadRotation`.
+    - A repaint that changes only the form cancels the holding job.
+    - A batch holds one block and one shape. Each Place step carries its form in `JobStep.Target`, with the block in
+      the low byte, so Full targets are unchanged.
+    - `WorldActions.PlaceBlock(..., form)`.
+  - **Save and hash:** `FormatVersion` 6 → 7. There is a new `BlockForms` section after Blocks, and plan entries and
+    the command log carry the form (the codec writes shape and rotation raw, so a bad form replays as rejected).
+    StateHash adds the forms only when some cell is not Full, and adds each plan entry's form byte.
+  - **Every shape is one solid cell** for paths, water, support, gravity and buildings (CON-21). Piles and buildings
+    rest on slabs and stairs; GRV-01 notes it.
+  - Docs: construction.md (CON-07, CON-12, CON-17 and the new CON-19..22), save-load.md (SAV-01), gravity.md (GRV-01).
+- Tests:
+  - New `BlockShapeTests` (8 tests with a 6-case theory): data, shaped costs, packing and validity, bad shape data,
+    world form reset and hash, plan entry form hash, command form and rejections, and save v7 round-trip with a
+    rejected and a pending command.
+  - New `Scenarios/BlockShapeScenarioTests` (4):
+    - Slate slabs, Slate stairs and Masonry pillars are built with their forms and shaped pickups (21 stone), then
+      dug for a full refund, with 0 forms left and 0 failures.
+    - A slab or pillar holds a pile and is walkable on top.
+    - A form-only repaint cancels the holder.
+    - Save and load mid-build continue identically.
+  - The tests were written with the implementation (new API, so they could not compile first). A mutation check (no
+    `SetForm` in PlaceBuilt) fails 3 of the 4 scenarios.
+  - `PlanEntries_SavedAndHashed` now expects version 7, an intended format change.
+  - check.sh: 690 passed, 0 skipped, 0 failed, 0 warnings.
+- Decisions: ADR-080.
+- Golden: unchanged. No script paints shapes, and a Full form adds nothing to the hash.
+- Headless (seed 1, 24,000 ticks): no commands `2d55f196360b3034`; `--script survival` `dd94bfaa6d6283b2`, 435 jobs,
+  1 failed. Both are unchanged from M11-T9.
+- Perf: perf.sh (serial, Release) 9 of 9 pass.
+- sim-reviewer: run (the Sim diff is about 250 lines). No required fixes.
+  - Applied: the "any SetBlock resets" wording (it is any write that changes the block) and a SAV-01 typo.
+  - Not done (optional): `SetForm` is public and checks only solidity, so a form on natural stone would not load.
+    Only `PlaceBuilt` and tests call it.
+- Screenshot: skipped. This is a sim-only task and no rendering code changed.
+- Next: M11-T11 (view).
+  - `World.FormAt(cell)` gives the shape to draw. Forms change with ChunkDirty (`SetForm` dirties chunks).
+  - The block tool sends `DesignateBuild` with `Form`.
+  - ViewCore still prices with `CostOf(block)` in `BlockTool.cs:166,250` (the ghost and shortage). Switch these to
+    `CostOf(block, shape)`.
+  - Rotations: 0 = +Z, 1 = +X, 2 = -Z, 3 = -X. A shape with 1 rotation must send rotation 0, or it is rejected
+    with `BadRotation`.

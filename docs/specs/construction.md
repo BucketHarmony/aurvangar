@@ -63,10 +63,12 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   `PlanState : byte { Planned = 1, Released = 2 }`.
   - Placing the block removes the entry (the `Place` step does it, CON-13).
   - At ARCH-01 step 8, any entry whose cell is solid is removed, whatever filled it (a future avatar, a building).
-  - Hashed after the give-up marks: count, then `index, block, state` in index order. The section is added only
+  - Hashed after the give-up marks: count, then `index, block, state, form` in index order (the packed form byte,
+    CON-19, since M11-T10). The section is added only
     when there is at least one entry, so a game without plans hashes as before and the seed-1 goldens do not move.
   - Saved in a new `BlockPlans` section after `GiveUps`, in index order. `SaveGame.FormatVersion` goes 5 -> 6 in
-    M8-T2. The state byte is saved from the start, so M8-T4 needs no second bump.
+    M8-T2. The state byte is saved from the start, so M8-T4 needs no second bump. Save v7 (M11-T10) adds the packed
+    form byte after the state.
 - **CON-05** Status of an entry (derived, never stored). `BlockPlans.StatusOf(sim, cell)` checks these in order;
   the first one that applies is the answer:
   1. `Planned`: the entry is not released.
@@ -106,7 +108,9 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 
 - **CON-07** Commands. All four are logged commands with `CommandCodec` entries; the tag is the type name, and
   `BuildShape` and `BlockId` are written as bytes.
-  - `DesignateBuild(BuildShape Shape, Int3 A, Int3 B, int Height, BlockId Block, bool Plan)`.
+  - `DesignateBuild(BuildShape Shape, Int3 A, Int3 B, int Height, BlockId Block, bool Plan, BlockForm Form = Full)`.
+    `Form` (M11-T10) is the fine shape and rotation every entry of the command takes (CON-19). It is logged as two raw
+    bytes (shape, rotation), so a rejected form replays as rejected.
     `BuildShape : byte { Single, Line, Wall, Floor, HollowBox, Stair }`. The cells come from
     `BuildShapes.Cells(shape, A, B, height)`, a pure static function in the sim that the view also uses. All shapes
     are axis-aligned. `A` is the anchor and `A.Y` is the base level; `B.Y` is ignored.
@@ -124,12 +128,14 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     - Rejections (`CommandRejected(reason)`, checked in this order):
       - `BadHeight`: Height is outside 1..32.
       - `NotBuildable`: Block is not a construction block.
+      - `BadShape`: `Form.Shape` is not in the shapes list (CON-19).
+      - `BadRotation`: `Form.Rotation` is not below the shape's `rotations`.
       - `TooLarge`: the shape has more than 4096 cells.
       - `OutOfWorld`: no cell is in the world.
     - Otherwise each cell is validated by CON-08. Valid cells get an entry in state `Planned` if `Plan` is true,
       else `Released`. Invalid cells are skipped. If no cell is valid, the command is rejected with `NothingToBuild`.
-    - A cell that already has an entry takes the new block and state (repainting). If the block changes, a Build
-      job holding the cell is cancelled (DSG-06 semantics).
+    - A cell that already has an entry takes the new block, form and state (repainting). If the block or the form
+      changes, a Build job holding the cell is cancelled (DSG-06 semantics).
     - Cells are listed in ascending `(y, index)` order.
 
     A door is a gap. The player either paints the walls around it, or paints a `HollowBox` and cancels the door
@@ -212,7 +218,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   - **Order**: released entries in ascending `(y, index)` order that are `Ready` and not held by a job.
   - **Batch**:
     - The seed is the first such entry. An entry whose JOB-12 mark is given up is never a seed.
-    - Up to `floor(10 / cost) - 1` more entries join. Each must be `Ready`, unheld and the same block type, within
+    - Up to `floor(10 / cost) - 1` more entries join (`cost` is the shaped cost, CON-20). Each must be `Ready`, unheld
+      and the same block type and shape (any rotation, CON-19), within
       Chebyshev distance 4 of a batch member, with a stand cell in a region shared with a stand cell of the seed.
       Members are taken in order, the seed first; around each, the box is scanned in ascending `(dy, dz, dx)` order
       and each new entry joins at the end (M9-T2, ADR-068: a batch follows a wall course instead of stopping at a box
@@ -314,8 +321,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 
 ## Deconstruction (CON-17..18)
 
-- **CON-17** Digging a built block takes its `hardness` in ticks. It drops the block's whole cost as one pile on the
-  dug cell: 1 stone for Masonry, 1 log for Planks, 2 stone for PolishedStone, 1 stone for Rubble, 2 logs for Beam
+- **CON-17** Digging a built block takes its `hardness` in ticks. It drops the block's whole cost (the shaped cost,
+  CON-20) as one pile on the dug cell. For a Full block: 1 stone for Masonry, 1 log for Planks, 2 stone for PolishedStone, 1 stone for Rubble, 2 logs for Beam
   and 3 stone for Slate. The refund is 100%, unlike BLD-09's
   50%: blocks are cheap, and redesigning a monument should not be punished. The cost is one item type of at most 10
   (CON-02), so it always fits one pile. Natural drops are unchanged.
@@ -325,6 +332,66 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
     support wait.
   - `DesignateDig` also marks built blocks (they are diggable). This command exists so a drag over a monument does
     not dig the ground under it.
+
+## Fine block shapes (CON-19..22)
+
+G6 follow-up: "Can we have a .25 meter pixel?" The human chose fine shapes on the 1 m grid, drawn at 0.25 m detail,
+rather than a 0.25 m sim grid (ADR-080). This task (M11-T10) is the sim; the mesher and tool are M11-T11.
+
+- **CON-19** Shapes and forms.
+  - `BlockShape : byte { Full = 0, Slab = 1, Stair = 2, Pillar = 3 }`. They are defined in data, in a `shapes` list in
+    `data/blocks.json`: `id`, `name` (the enum name), `label` (player text), `rotations` (1 or 4) and `costPercent`
+    (1..100). `ContentDb` checks that ids and names match the enum both ways, and that Full has 1 rotation and 100%.
+
+    | Id | Shape | Geometry (for the view, M11-T11) | Rotations | `costPercent` |
+    |---|---|---|---|---|
+    | 0 | Full | the whole cell | 1 | 100 |
+    | 1 | Slab | the lower half (y 0..0.5) | 1 | 50 |
+    | 2 | Stair | two steps: the whole low half, plus the upper half on the high side | 4 | 75 |
+    | 3 | Pillar | a 0.5 x 0.5 post in the middle of the cell, full height | 1 | 25 |
+
+  - A **form** is `BlockForm(BlockShape Shape, byte Rotation)`, default Full. Rotation counts quarter turns. A Stair
+    with rotation 0 climbs towards +Z (its high side is at +Z), 1 towards +X, 2 towards -Z, 3 towards -X. A shape
+    with one rotation takes only rotation 0. `Packed = shape * 4 + rotation` (0 for Full) is the byte that is saved and
+    hashed. `ContentDb.IsValidForm` checks a form against the data.
+  - **Where forms live:**
+    - the world stores the form of every built cell that is not Full, in a sparse map by cell index
+      (`VoxelWorld.FormAt` and `SetForm`);
+    - any `SetBlock` that changes the block resets the cell to Full: a dig, a collapse or a new block never leaves a stale form;
+    - `SetForm` needs a solid cell; it dirties the chunks for the view and records no cell change, because
+      solidity does not change;
+    - each plan entry has a form (`PlanEntry.Form`);
+    - each Place step of a Build job carries its cell's form. `JobStep.Target` holds the block in its low byte and the
+      packed form in the next one, so a Full step keeps its old value.
+- **CON-20** Cost. A construction block in shape `s` costs `max(1, ceil(cost x costPercent / 100))` of its one cost
+  item (`ContentDb.CostOf(block, shape)`); Full is the block's own cost. Every cost is an integer from 1 up to the
+  block's cost. Build ticks and hardness do not change with the shape.
+
+  | Block | Full | Slab | Stair | Pillar |
+  |---|---|---|---|---|
+  | Masonry, Planks, Rubble | 1 | 1 | 1 | 1 |
+  | PolishedStone, Beam | 2 | 1 | 2 | 1 |
+  | Slate | 3 | 2 | 3 | 1 |
+
+  The shaped cost is used by `Needed` (CON-06), the `NoMaterial` check (CON-05), the batch size and pickup
+  (CON-12), `PlaceBlock` (CON-13) and the dig refund (CON-17).
+- **CON-21** Every shape is one solid cell (ADR-080). Solidity comes from the block byte only, so a slab, stair or
+  pillar behaves exactly like a full block:
+  - for paths (PTH-01): it is a floor, and a dwarf still climbs one level per step, so a Stair block is a normal
+    step up;
+  - for water (WAT-12): it holds water and displaces it;
+  - for support (CON-09/10);
+  - for gravity (GRV: piles and buildings rest on it);
+  - for buildings (BLD-02).
+
+  The shape only changes the cost and what the view draws.
+- **CON-22** Save and hash.
+  - Save v7 has a `BlockForms` section right after `Blocks`: the count, then `index, packed form` for each cell
+    that is not Full, in ascending index. Load rejects a Full or undefined form, a form on a cell that is not a
+    built block, and cells out of order.
+  - Plan entries save their packed form, and `DesignateBuild` saves its form in the command log.
+  - `StateHash` adds the forms after the plan entries, as count then `index, packed`, and only when some cell is not
+    Full. So a game with no shapes hashes as before M11-T10, and the seed-1 goldens do not move.
 
 ## Budget
 
@@ -341,6 +408,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 | M8-T5 | VIEW-21..23 (`view-ui.md`); built blocks mesh with CON-01 palette colours |
 | M8-T6 | `MonumentScript` and CON-P1; the invariants of CON-09 and CON-14 over a whole session |
 | M9-T4 | CON-01 rows 11..13 (Rubble, Beam, Slate), their CON-17 refunds, and the `materials` screenshot script |
+| M11-T10 | CON-19..22: shapes in data, forms in the world, plan entries, Place steps and `DesignateBuild`; shaped cost; save v7 and hash |
+| M11-T11 | Drawing the shapes at 0.25 m detail; the shape picker and rotation in the block tool |
 
 ## Acceptance scenarios
 

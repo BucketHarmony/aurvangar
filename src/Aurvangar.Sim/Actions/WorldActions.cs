@@ -73,11 +73,12 @@ public sealed partial class WorldActions
         if (Blocks.Support.Depends(_sim, cell)) return ActionResult.Blocked;   // CON-10: never unground a built block
 
         var block = world.GetBlock(cell);
+        var shape = world.FormAt(cell).Shape;   // read before the write resets it (CON-19)
         world.SetBlock(cell, BlockId.Air);
         // A solid cell never holds a pile, so the drop always fits on the dug cell.
         if (def.IsConstruction)
         {
-            var (item, cost) = _sim.Content.CostOf(block);   // CON-17: the whole cost comes back as one pile
+            var (item, cost) = _sim.Content.CostOf(block, shape);   // CON-17: the whole (shaped) cost comes back as one pile
             _sim.Piles.Add(cell, item, cost);
         }
         else if (def.Drop is not null) _sim.Piles.Add(cell, _sim.Content.Item(def.Drop), 1);
@@ -102,8 +103,10 @@ public sealed partial class WorldActions
 
     /// <summary>Air → a natural block (a solid, diggable type). Blocked by an agent standing in or stepping into the
     /// cell or the cell below it (its headroom), a plant, or a pile. Materials are not consumed (ADR-027). A construction
-    /// block (CON-13) goes to <see cref="PlaceBuilt"/> instead, which takes its cost from the carried stack.</summary>
-    public ActionResult PlaceBlock(AgentId actor, Int3 cell, BlockId block)
+    /// block (CON-13) goes to <see cref="PlaceBuilt"/> instead, which takes its cost from the carried stack and sets
+    /// <paramref name="form"/> (CON-19). A natural block is always Full; any other form, or a form not in data, is
+    /// InvalidTarget.</summary>
+    public ActionResult PlaceBlock(AgentId actor, Int3 cell, BlockId block, BlockForm form = default)
     {
         var r = Actor(actor, out var a);
         if (r != ActionResult.Ok) return r;
@@ -113,7 +116,8 @@ public sealed partial class WorldActions
         if ((int)block >= _sim.Content.Blocks.Count) return ActionResult.InvalidTarget;
         var def = _sim.Content.Block(block);
         if (!def.Solid || !def.Diggable) return ActionResult.InvalidTarget;
-        if (def.IsConstruction) return PlaceBuilt(a, cell, block);   // CON-13 (M8-T2)
+        if (!_sim.Content.IsValidForm(form) || (!def.IsConstruction && !form.IsFull)) return ActionResult.InvalidTarget;
+        if (def.IsConstruction) return PlaceBuilt(a, cell, block, form);   // CON-13 (M8-T2), CON-19 (M11-T10)
         if (AgentHolds(cell) || AgentHolds(cell + Int3.Down) || _sim.Plants.IsOccupied(cell) || !_sim.Piles.At(cell).IsEmpty)
             return ActionResult.Blocked;
 

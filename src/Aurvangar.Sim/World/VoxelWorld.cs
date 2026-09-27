@@ -43,6 +43,9 @@ public sealed class VoxelWorld
     private readonly bool[] _chunkDirty;
     private readonly List<int> _dirtyChunks = new();
     private readonly List<int> _changedCells = new();
+    /// <summary>CON-19 (M11-T10): the form of every cell that is not Full, by cell index (packed). Sparse: only built
+    /// blocks with a fine shape have one. Iterated in index order (saved and hashed).</summary>
+    private readonly SortedDictionary<int, byte> _forms = new();
 
     /// <param name="solidTable">ContentDb.SolidTable (indexed by block byte).</param>
     public VoxelWorld(int sizeX, int sizeY, int sizeZ, bool[] solidTable)
@@ -103,6 +106,7 @@ public sealed class VoxelWorld
         int i = Index(c);
         if (_blocks[i] == (byte)b) return false;
         _blocks[i] = (byte)b;
+        if (_forms.Count != 0) _forms.Remove(i);   // CON-19: any write that changes the block makes the cell Full again
         _changedCells.Add(i);
         MarkDirtyAround(c);
         return true;
@@ -112,6 +116,45 @@ public sealed class VoxelWorld
     public void SetBlockRaw(int index, BlockId b) => _blocks[index] = (byte)b;
 
     public ReadOnlySpan<byte> Blocks => _blocks;
+
+    /// <summary>CON-19: the form of a cell (Full for every natural block, air and out of bounds).</summary>
+    public BlockForm FormAt(Int3 c) =>
+        _forms.Count != 0 && InBounds(c) && _forms.TryGetValue(Index(c), out var f) ? BlockForm.FromPacked(f) : BlockForm.Full;
+
+    /// <summary>CON-19: sets the form of a solid cell (after <see cref="SetBlock"/>; a block write resets it to Full).
+    /// Marks the chunks dirty for the view; solidity is unchanged, so no cell change is recorded. False when out of
+    /// bounds, not solid or unchanged.</summary>
+    public bool SetForm(Int3 c, BlockForm form)
+    {
+        if (!InBounds(c) || !IsSolid(c) || FormAt(c) == form) return false;
+        int i = Index(c);
+        if (form.IsFull) _forms.Remove(i);
+        else _forms[i] = form.Packed;
+        MarkDirtyAround(c);
+        return true;
+    }
+
+    /// <summary>CON-19: every cell that is not Full, ascending cell index.</summary>
+    public IEnumerable<(int Index, BlockForm Form)> Forms
+    {
+        get
+        {
+            foreach (var (i, f) in _forms) yield return (i, BlockForm.FromPacked(f));
+        }
+    }
+
+    public int FormCount => _forms.Count;
+
+    /// <summary>SaveGame load (after the blocks).</summary>
+    internal void RestoreForm(int index, BlockForm form) => _forms[index] = form.Packed;
+
+    /// <summary>CON-19: hashed only when some cell is not Full, so a world without shapes hashes as before M11-T10.</summary>
+    public void AddFormsToHash(ref StateHasher h)
+    {
+        if (_forms.Count == 0) return;
+        h.Add(_forms.Count);
+        foreach (var (i, f) in _forms) { h.Add(i); h.Add(f); }
+    }
 
     /// <summary>Mutable span for SaveGame load only.</summary>
     internal Span<byte> BlocksMutable => _blocks;

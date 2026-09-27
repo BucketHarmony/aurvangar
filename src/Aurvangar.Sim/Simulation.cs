@@ -140,6 +140,7 @@ public sealed class Simulation
         Jobs.AddToHash(ref h);
         GiveUps.AddToHash(ref h);
         Plans.AddToHash(ref h);                  // CON-04: only when not empty
+        World.AddFormsToHash(ref h);             // CON-19: only when some cell is not Full
         Agents.AddToHash(ref h);
         return h.Value;
     }

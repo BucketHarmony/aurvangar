@@ -9,6 +9,8 @@ namespace Aurvangar.Sim.Content;
 public sealed class ContentDb
 {
     public IReadOnlyList<BlockDef> Blocks { get; }
+    /// <summary>CON-19: the fine block shapes, indexed by <see cref="BlockShape"/>.</summary>
+    public IReadOnlyList<ShapeDef> Shapes { get; }
     public IReadOnlyList<ItemDef> Items { get; }          // index 0 is a sentinel "none"; ItemId.Value indexes this list
     public IReadOnlyList<BuildingDef> Buildings { get; }
     public PaletteDef Palette { get; }
@@ -25,9 +27,11 @@ public sealed class ContentDb
     private readonly Dictionary<string, ItemId> _itemsByKey;
     private readonly Dictionary<string, BuildingDef> _buildingsByKey;
 
-    private ContentDb(List<BlockDef> blocks, List<ItemDef> items, List<BuildingDef> buildings, PaletteDef palette)
+    private ContentDb(List<BlockDef> blocks, List<ShapeDef> shapes, List<ItemDef> items, List<BuildingDef> buildings,
+        PaletteDef palette)
     {
         Blocks = blocks;
+        Shapes = shapes;
         Items = items;
         Buildings = buildings;
         Palette = palette;
@@ -53,6 +57,19 @@ public sealed class ContentDb
 
     /// <summary>CON-01: the one cost item of a construction block and its count (default, 0 for any other block).</summary>
     public (ItemId Item, int Count) CostOf(BlockId id) => (_costItem[(int)id], _costCount[(int)id]);
+
+    /// <summary>CON-19 (M11-T10): the cost of a construction block built in <paramref name="shape"/>: the block's cost
+    /// item, and <c>max(1, ceil(count * costPercent / 100))</c> of it. Full is the block's own cost.</summary>
+    public (ItemId Item, int Count) CostOf(BlockId id, BlockShape shape)
+    {
+        var (item, n) = CostOf(id);
+        if (shape == BlockShape.Full || n == 0) return (item, n);
+        return (item, Math.Max(1, (n * Shapes[(int)shape].CostPercent + 99) / 100));
+    }
+
+    /// <summary>CON-19: the shape is defined and the rotation is below its rotation count.</summary>
+    public bool IsValidForm(BlockForm form) =>
+        (int)form.Shape < Shapes.Count && form.Rotation < Shapes[(int)form.Shape].Rotations;
 
     /// <summary>Player-facing name of a block: its label, else its enum name.</summary>
     public string LabelOf(BlockId id) => (int)id < Blocks.Count ? Blocks[(int)id].Label ?? Blocks[(int)id].Name : id.ToString();
@@ -85,8 +102,9 @@ public sealed class ContentDb
     public static ContentDb Load(string blocksJson, string itemsJson, string buildingsJson, string paletteJson)
     {
         var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, ReadCommentHandling = JsonCommentHandling.Skip };
-        var blocks = JsonSerializer.Deserialize<BlocksFile>(blocksJson, opts)?.Blocks
-                     ?? throw new InvalidDataException("blocks.json: empty");
+        var blocksFile = JsonSerializer.Deserialize<BlocksFile>(blocksJson, opts);
+        var blocks = blocksFile?.Blocks ?? throw new InvalidDataException("blocks.json: empty");
+        var shapes = blocksFile.Shapes ?? throw new InvalidDataException("blocks.json: no shapes list (CON-19)");
         var items = JsonSerializer.Deserialize<ItemsFile>(itemsJson, opts)?.Items
                     ?? throw new InvalidDataException("items.json: empty");
         var buildings = JsonSerializer.Deserialize<BuildingsFile>(buildingsJson, opts)?.Buildings
@@ -96,13 +114,36 @@ public sealed class ContentDb
 
         var itemList = new List<ItemDef> { new("", "(none)", 0, 0) };
         itemList.AddRange(items);
-        return new ContentDb(blocks.OrderBy(b => b.NumericId).ToList(), itemList, buildings, palette);
+        return new ContentDb(blocks.OrderBy(b => b.NumericId).ToList(), shapes.OrderBy(s => s.NumericId).ToList(), itemList,
+            buildings, palette);
     }
 
     private void Validate()
     {
         ValidateBlocks();
+        ValidateShapes();
         ValidateBuildings();
+    }
+
+    /// <summary>CON-19: the shapes match <see cref="BlockShape"/> by id and name, both ways; rotations are 1 or 4;
+    /// costPercent is 1..100; Full has one rotation and costs 100%.</summary>
+    private void ValidateShapes()
+    {
+        var values = Enum.GetValues<BlockShape>();
+        if (Shapes.Count != values.Length)
+            throw new InvalidDataException($"blocks.json: {Shapes.Count} shapes, the BlockShape enum has {values.Length}");
+        for (int i = 0; i < Shapes.Count; i++)
+        {
+            var s = Shapes[i];
+            string who = $"blocks.json: shape {s.NumericId} ('{s.Name}')";
+            if (s.NumericId != i || !string.Equals(s.Name, ((BlockShape)i).ToString(), StringComparison.Ordinal))
+                throw new InvalidDataException($"{who} does not match BlockShape {i} ({(BlockShape)i})");
+            if (s.Rotations is not (1 or 4)) throw new InvalidDataException($"{who} needs 1 or 4 rotations");
+            if (s.CostPercent is < 1 or > 100) throw new InvalidDataException($"{who} costPercent must be 1..100");
+            if (string.IsNullOrWhiteSpace(s.Label)) throw new InvalidDataException($"{who} needs a label");
+        }
+        if (Shapes[0].Rotations != 1 || Shapes[0].CostPercent != 100)
+            throw new InvalidDataException("blocks.json: shape Full must have 1 rotation and costPercent 100");
     }
 
     /// <summary>CON-02 and the M1-T1 checks. Each error names the file and the block.</summary>
@@ -214,7 +255,7 @@ public sealed class ContentDb
         return r.ReadToEnd();
     }
 
-    private sealed record BlocksFile(List<BlockDef> Blocks);
+    private sealed record BlocksFile(List<BlockDef> Blocks, List<ShapeDef>? Shapes);
     private sealed record ItemsFile(List<ItemDef> Items);
     private sealed record BuildingsFile(List<BuildingDef> Buildings);
 }
