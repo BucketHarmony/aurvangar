@@ -5,7 +5,7 @@ namespace Aurvangar.Client;
 
 /// <summary>Screenshot harness (VIEW-20), root of scenes/Screenshot.tscn with Main.tscn instanced as its "Main"
 /// child. Reads the user args (<see cref="ScreenshotArgs"/>), pauses the real-time loop, runs the sim for
-/// <c>--ticks</c> ticks without rendering waits (after enqueuing the optional <c>--script</c>), then for each preset (<see cref="ScreenshotPresets"/>) sets the
+/// <c>--ticks</c> ticks without rendering waits (with the optional <c>--script</c>; a timed one enqueues each command at its tick), then for each preset (<see cref="ScreenshotPresets"/>) sets the
 /// slice and camera, remeshes everything (agents, piles and designations included), waits for drawn frames, saves <c>&lt;out&gt;/&lt;preset&gt;.png</c> and
 /// finally quits. Exit code 0 on success, 1 on a failed save, 2 on bad arguments.</summary>
 public partial class ScreenshotRunner : Node
@@ -35,9 +35,8 @@ public partial class ScreenshotRunner : Node
         string outDir = System.IO.Path.GetFullPath(args.OutDir);
         System.IO.Directory.CreateDirectory(outDir);
 
-        foreach (var command in ScreenshotScripts.For(args.Script, root.Sim)) root.Sim.Enqueue(command);
         GD.Print($"screenshot: seed {args.Seed}, script {args.Script}, running {args.Ticks} ticks");
-        root.RunTicksNow(args.Ticks);
+        root.RunScriptNow(args.Script, args.Ticks);
         if (ScreenshotScripts.GhostPick(args.Script, root.Sim) is { } ghost)
         {
             root.PickOverride = ghost;          // M5-T6: show the build ghost and its tooltip in the shots

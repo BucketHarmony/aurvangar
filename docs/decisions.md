@@ -1296,3 +1296,31 @@ Decision:
 Consequences: seed-1 goldens and the survival headless hash are unchanged (no dwarf is ever inside a pocket when a
 cutting dig is taken there). A dig may lose its Work progress when another dwarf walks into its pocket before the Dig
 step; it stands down and is re-taken later.
+
+## ADR-060: Readable labels: the mouse label avoids billboards, building labels declutter; timed screenshot scripts (2026-09-27, M7-T7)
+Context: G3 found the harness's build-ghost tooltip over the pump's NO WATER billboard (build1600), and the survival
+session could not be screenshotted because the harness enqueued every script command before tick 1. Since M7-T2 the
+build-script pump stands on a wet site away from the hall, so build1600 no longer shows that overlap, but nothing
+prevented it.
+Decision:
+- The mouse label (build/deconstruct tooltips, pile counts, farm hints) is placed by `ViewCore.Hud.LabelLayout.PlaceTooltip`:
+  below-right of the point (as before) unless that covers a building billboard (name/progress label, progress bar,
+  NO WATER), then above-right, below-left, above-left, then just below or above each billboard in the way, nearest
+  to the default first, always on screen. With no clear spot it takes the least overlap. Pile count labels are not
+  obstacles (they are small and the pile label is what the mouse label shows when hovering a pile).
+- Billboard rectangles are computed on the Godot side from the Label3D's font size, its pixel offset and the
+  fixed-size scale `pixelSize * viewportHeight / (2 tan(fov/2))` (`LabelLayout.BillboardScale`, independent of
+  distance). Checked against rendered labels to within a few pixels.
+- Building labels that overlap each other on screen (e.g. the two breach levee sites) are lifted apart each frame
+  (`LabelLayout.Declutter`): the lowest label on screen stays, each later one moves up just above the one it hits.
+  The lift is a Label3D pixel offset; the progress bar stays on its building.
+- `--script survival` in the harness is timed: `ScreenshotScripts.Run` enqueues each `SurvivalScript` command just
+  before its tick (`SurvivalScript.EnqueueDue`), the same as the golden, scenario and headless runs, so a harness run
+  reaches the same state hash. Untimed scripts still enqueue everything before tick 1.
+- Two presets for the survival session (fixed seed-1 cells from `SurvivalScript`): `tunnel` (the hill tunnel and
+  breach, sliced at the tunnel's headroom y = 18, camera from the east) and `reservoir` (the reservoir trench and the
+  farm beside it, camera from the south over the river). Suggested ticks: 7700 flooded tunnel with the breach levee
+  sites, 8400 levees complete, 3000 the full reservoir, 14400 the drought (river empty, reservoir and tunnel still
+  hold water).
+Consequences: view-only; no sim change, no save or hash change. The harness runs survival shots in a few seconds
+(14,400 ticks). The headless tool's script list now comes straight from `ScreenshotScripts.Names`.

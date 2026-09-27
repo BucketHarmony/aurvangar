@@ -218,7 +218,7 @@ building-lookup optimisation) need no task.
   - G3 answer 8: extend the strand rule (ADR-037) from the digger to every dwarf: a dig that would cut any dwarf's
     standing cell off from the Great Hall's region waits. Scenario test with a second dwarf working inside the pit.
     Watch the perf budget (one region check per candidate dig).
-- [ ] **M7-T7** Readable labels and timed screenshot scripts · specs: VIEW-15 · deps: M7-T3
+- [x] **M7-T7** Readable labels and timed screenshot scripts · specs: VIEW-15 · deps: M7-T3
   - The harness ghost tooltip must not overlap a building billboard (build1600 shot). The screenshot harness can
     run timed scripts (SCRIPT=survival enqueues each command at its tick), so the flooded tunnel, the breach
     levees and the reservoir can be shot. Render and look.

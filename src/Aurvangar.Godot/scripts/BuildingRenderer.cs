@@ -1,4 +1,5 @@
 using Aurvangar.ViewCore.Entities;
+using Aurvangar.ViewCore.Hud;
 using Godot;
 
 namespace Aurvangar.Client;
@@ -57,6 +58,67 @@ public partial class BuildingRenderer : Node3D
             s.NoWater.Visible = v.NoWater;
             if (v.NoWater) s.NoWater.Position = anchor + new Vector3(0, 0.3f, 0);
         }
+        Declutter();
+    }
+
+    private readonly List<ScreenRect> _labelRects = new();
+    private readonly List<Label3D> _labelNodes = new();
+
+    /// <summary>Lifts overlapping name/progress labels apart on screen (M7-T7, <see cref="LabelLayout.Declutter"/>),
+    /// e.g. two adjacent levee sites. A lift is a Label3D pixel offset, so it holds at any zoom until the next frame.</summary>
+    private void Declutter()
+    {
+        _labelRects.Clear();
+        _labelNodes.Clear();
+        if (GetViewport().GetCamera3D() is not { } camera) return;
+        float scale = Scale(camera);
+        foreach (var s in _slots)
+        {
+            s.Label.Offset = Vector2.Zero;
+            if (!s.Root.Visible || LabelRect(s.Label, camera, scale) is not { } r) continue;
+            _labelRects.Add(r);
+            _labelNodes.Add(s.Label);
+        }
+        if (_labelRects.Count < 2) return;
+        var lifts = LabelLayout.Declutter(_labelRects);
+        for (int i = 0; i < lifts.Length; i++) _labelNodes[i].Offset = new Vector2(0, lifts[i] / scale);
+    }
+
+    private float Scale(Camera3D camera) =>
+        LabelLayout.BillboardScale(PileRenderer.LabelPixelSize, GetViewport().GetVisibleRect().Size.Y, camera.Fov);
+
+    /// <summary>Screen rectangles of the visible billboards (name/progress labels, progress bars, NO WATER icons), for
+    /// the mouse label to keep clear of (M7-T7, <see cref="LabelLayout.PlaceTooltip"/>).</summary>
+    public void CollectBillboardRects(Camera3D camera, List<ScreenRect> into)
+    {
+        float scale = Scale(camera);
+        foreach (var s in _slots)
+        {
+            if (!s.Root.Visible) continue;
+            if (LabelRect(s.Label, camera, scale) is { } label) into.Add(label);
+            if (LabelRect(s.NoWater, camera, scale) is { } noWater) into.Add(noWater);
+            if (s.Bar.Visible && !camera.IsPositionBehind(s.Bar.GlobalPosition))
+            {
+                var c = s.Bar.GlobalPosition;
+                var right = camera.GlobalBasis.X * (BarWidth / 2f);
+                var up = camera.GlobalBasis.Y * (BarHeight / 2f);
+                var a = camera.UnprojectPosition(c - right + up);
+                var b = camera.UnprojectPosition(c + right - up);
+                into.Add(new ScreenRect(Mathf.Min(a.X, b.X), Mathf.Min(a.Y, b.Y), Mathf.Abs(b.X - a.X), Mathf.Abs(b.Y - a.Y)));
+            }
+        }
+    }
+
+    /// <summary>A visible billboard label's screen rectangle (its pixel offset included), or null.</summary>
+    private static ScreenRect? LabelRect(Label3D label, Camera3D camera, float scale)
+    {
+        if (!label.Visible || label.Text.Length == 0 || camera.IsPositionBehind(label.GlobalPosition)) return null;
+        var font = label.Font ?? ThemeDB.FallbackFont;
+        var text = font.GetMultilineStringSize(label.Text, HorizontalAlignment.Center, -1, label.FontSize)
+            + new Vector2(label.OutlineSize, label.OutlineSize);
+        var anchor = camera.UnprojectPosition(label.GlobalPosition);
+        return LabelLayout.BillboardRect(new System.Numerics.Vector2(anchor.X, anchor.Y - label.Offset.Y * scale),
+            new System.Numerics.Vector2(text.X, text.Y), scale);
     }
 
     private static void ApplyColor(StandardMaterial3D m, BuildingVisual v)

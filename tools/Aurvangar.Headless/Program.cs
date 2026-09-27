@@ -24,7 +24,7 @@ PrintWorldStats(sim);
 // the harness does. ADR-045: "survival" is SurvivalScript, whose commands are enqueued at their ticks.
 Baseline? baseline = null;
 bool survival = opts.Script == "survival";
-var knownScripts = ScreenshotScripts.Names.Append("survival").ToList();
+var knownScripts = ScreenshotScripts.Names;
 if (opts.Script is not null && !knownScripts.Contains(opts.Script))
 {
     Console.Error.WriteLine($"unknown script '{opts.Script}' (known: {string.Join(",", knownScripts)})");

@@ -72,7 +72,9 @@ The legend lives in `ScenarioBuilder.Legend`. Unknown characters throw.
 
 `overview` (whole map, 45° pitch), `river` (hub-to-river close-up), `hub` (colony close-up), `slice` (slice at
 y=20 over the hill); these four are the default `SHOTS`. `farm` (close-up on the farm tiles, the hub when there are
-none; M6-T5) is available with `SHOTS=...,farm`. Output to `artifacts/screens/<preset>.png`. Human gates review them.
+none; M6-T5) is available with `SHOTS=...,farm`. For the survival session (M7-T7), `tunnel` (the hill tunnel and
+its breach, sliced at y=18, from the east) and `reservoir` (the levee reservoir at x=67 and the farm beside it, from
+the south over the river). Output to `artifacts/screens/<preset>.png`. Human gates review them.
 
 Shots render with Forward+ (`--rendering-method forward_plus` on the default Vulkan driver), the renderer the game
 plays in, so they show the same lighting and colors as play (ADR-035). There is no separate Compatibility render.
@@ -80,7 +82,12 @@ On Linux under `xvfb-run` this needs a Vulkan driver (e.g. Mesa lavapipe). Env o
 `SHOTS`, `OUT`, and `SCRIPT=digchop` (dig a pit and chop trees near the hub, so colonists are at work;
 `TICKS=400` shows the marks, 1200 shows the piles) or `SCRIPT=build` (chop plus a warehouse, a pump and a levee line
 near the hub; `TICKS=500` catches them mid-build, 1600 shows them complete, ADR-048) or `SCRIPT=farm` (a 5×5 field on
-the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the first mature ones and harvests).
+the nearest moist ground to the hub; `TICKS=4000` shows growing crops, 9000 the first mature ones and harvests) or
+`SCRIPT=survival` (the timed `SurvivalScript`, each command enqueued at its tick, M7-T7). Useful survival shots:
+`TICKS=7700 SHOTS=tunnel` (flooded tunnel, breach levee sites), `TICKS=8400 SHOTS=tunnel` (levees complete),
+`TICKS=3000 SHOTS=reservoir` (full reservoir), `TICKS=14400 SHOTS=reservoir,tunnel,river` (drought: the river is
+empty, the reservoir and the tunnel still hold water). The harness does not rebuild the C# assembly reliably:
+run `dotnet build src/Aurvangar.Godot` after code changes, before `screenshot.sh`.
 
 ## Scripted play
 

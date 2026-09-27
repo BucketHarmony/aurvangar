@@ -141,16 +141,20 @@ public partial class GameRoot : Node3D
         else _toolPreview.Visible = false;
     }
 
-    /// <summary>Runs ticks immediately (no real-time pacing) and routes their events (screenshot harness, VIEW-20).</summary>
-    public void RunTicksNow(int ticks)
+    /// <summary>Runs a screenshot script for <paramref name="ticks"/> ticks immediately (no real-time pacing), each
+    /// command at its tick for a timed script (<see cref="Aurvangar.ViewCore.Screenshots.ScreenshotScripts.Run"/>),
+    /// and routes the events (screenshot harness, VIEW-20, M7-T7).</summary>
+    public void RunScriptNow(string script, int ticks)
     {
-        for (int i = 0; i < ticks; i++)
+        Aurvangar.ViewCore.Screenshots.ScreenshotScripts.Run(script, Sim, ticks, () =>
         {
-            Sim.Tick();
             _frameEvents.AddRange(Sim.Events.Drain());
-        }
+            if (_frameEvents.Count >= RouteBatch) RouteEvents();   // long timed runs: keep the event list short
+        });
         RouteEvents();
     }
+
+    private const int RouteBatch = 4096;
 
     /// <summary>Remeshes every queued terrain and water chunk now, ignoring the per-frame budget, and refreshes
     /// plants, agents, piles, designations and the colonist panel.</summary>
@@ -224,8 +228,13 @@ public partial class GameRoot : Node3D
         if (label == null && Hover is { } h && PileMesher.AtPick(Sim, h, SliceY) is { } pile)
             label = PileMesher.Label(Content, pile.Stack);
         if (label == null && Hover is { } fh) label = CropMesher.Label(Sim, fh);
-        _hud.SetHoverLabel(label, LabelPoint());
+        _labelAvoid.Clear();
+        if (label != null && GetViewport().GetCamera3D() is { } camera) BuildingView.CollectBillboardRects(camera, _labelAvoid);
+        _hud.SetHoverLabel(label, LabelPoint(), _labelAvoid);
     }
+
+    /// <summary>Billboards the mouse label keeps clear of (M7-T7), refilled each frame.</summary>
+    private readonly List<ScreenRect> _labelAvoid = new();
 
     /// <summary>Where the mouse label goes: the mouse, or the override pick's cell on screen.</summary>
     private Vector2 LabelPoint()

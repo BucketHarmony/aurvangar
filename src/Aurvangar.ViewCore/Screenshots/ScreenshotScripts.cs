@@ -6,6 +6,7 @@ using Aurvangar.Sim.Core;
 using Aurvangar.Sim.Water;
 using Aurvangar.Sim.World;
 using Aurvangar.ViewCore.Picking;
+using Aurvangar.ViewCore.Scripts;
 
 namespace Aurvangar.ViewCore.Screenshots;
 
@@ -21,13 +22,16 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// from the hub (<see cref="FindSite"/>). The pump needs no water to be placed (ADR-040); on seed 1 the nearest site
 /// is a dry terrace step, so the shots also show its no-water icon. With <c>--ticks 500</c> the shots show buildings in several states; by
 /// tick 1600 all of them are complete (1200 before the M6-T3 berry picking, ADR-048).</item>
-/// <item><c>farm</c> (M6-T5): a <see cref="FarmSize"/>×<see cref="FarmSize"/> field (<see cref="FindFarm"/>) on the
+/// <item><c>farm</c> (M6-T5): a <see cref="FarmSize"/>ï¿½<see cref="FarmSize"/> field (<see cref="FindFarm"/>) on the
 /// nearest moist ground to the hub. <c>--ticks 4000</c> shows growing crops; by 9000 (before the day-5 drought) the
 /// first are mature and harvested. The <c>farm</c> camera preset looks at it.</item>
+/// <item><c>survival</c> (M7-T7): the timed <see cref="SurvivalScript"/> (seed 1); <see cref="Run"/> enqueues each
+/// command at its tick. <c>--ticks 7400</c> shows the flooded hill tunnel, 9000 its breach levees, 14400 the drought
+/// (the <c>tunnel</c> and <c>reservoir</c> presets).</item>
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -46,6 +50,7 @@ public static class ScreenshotScripts
         switch (name)
         {
             case "none":
+            case "survival":   // timed: its commands are enqueued at their ticks by Run
                 return Array.Empty<ICommand>();
             case "digchop":
             {
@@ -68,6 +73,25 @@ public static class ScreenshotScripts
                 return FindFarm(sim) is { } farm ? new ICommand[] { farm } : Array.Empty<ICommand>();
             default:
                 throw new ArgumentException($"unknown screenshot script '{name}' (known: {string.Join(",", Names)})");
+        }
+    }
+
+    /// <summary>True for a script whose commands have their own ticks (<c>survival</c>).</summary>
+    public static bool IsTimed(string name) => name == "survival";
+
+    /// <summary>Runs <paramref name="ticks"/> ticks of script <paramref name="name"/> the way the harness does: an
+    /// untimed script's commands (<see cref="For"/>) are enqueued before tick 1; a timed script's commands are enqueued
+    /// just before the tick that applies them (<see cref="SurvivalScript.EnqueueDue"/>). <paramref name="afterTick"/>
+    /// runs after every tick (the harness drains the sim's events there).</summary>
+    public static void Run(string name, Simulation sim, int ticks, Action? afterTick = null)
+    {
+        foreach (var command in For(name, sim)) sim.Enqueue(command);
+        bool timed = IsTimed(name);
+        for (int i = 0; i < ticks; i++)
+        {
+            if (timed) SurvivalScript.EnqueueDue(sim);
+            sim.Tick();
+            afterTick?.Invoke();
         }
     }
 

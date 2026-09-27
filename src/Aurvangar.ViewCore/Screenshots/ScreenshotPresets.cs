@@ -2,6 +2,7 @@ using System.Numerics;
 using Aurvangar.Sim;
 using Aurvangar.Sim.Core;
 using Aurvangar.ViewCore.Camera;
+using Aurvangar.ViewCore.Scripts;
 
 namespace Aurvangar.ViewCore.Screenshots;
 
@@ -22,15 +23,24 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// <item><c>hub</c>: colony close-up on the hub footprint center.</item>
 /// <item><c>slice</c>: slice at y=20 over the hill peak (the tallest column).</item>
 /// <item><c>farm</c> (M6-T5): close-up on the center of the farm tiles (the hub when there are none).</item>
+/// <item><c>tunnel</c> (M7-T7): the survival session's hill tunnel and breach (<see cref="SurvivalScript"/>, fixed
+/// seed-1 cells), sliced at the tunnel's headroom so the hill above it is cut away.</item>
+/// <item><c>reservoir</c> (M7-T7): the survival session's levee reservoir and the farm field beside it, with the river
+/// past its mouth.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "overview", "river", "hub", "slice", "farm" };
+    public static readonly IReadOnlyList<string> Names =
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
 
     public const int SliceLevel = 20;
+
+    /// <summary>Camera yaws of the survival presets (M7-T7), chosen by looking at the shots.</summary>
+    public const float TunnelYaw = 90f;
+    public const float ReservoirYaw = 0f;
 
     public static CameraShot For(string name, Simulation sim)
     {
@@ -59,6 +69,21 @@ public static class ScreenshotPresets
             }
             case "farm":
                 return new CameraShot(name, FarmFocus(sim) ?? HubFocus(sim), 45f, 50f, 14f, top);
+            case "tunnel":
+            {
+                var a = SurvivalScript.TunnelA;
+                var b = SurvivalScript.TunnelB;
+                int slice = Math.Min(b.Y, top);
+                var focus = new Vector3((a.X + b.X + 1) / 2f, a.Y, (a.Z + SurvivalScript.BreachA.Z + 1) / 2f);
+                return new CameraShot(name, focus, TunnelYaw, 55f, 18f, slice);
+            }
+            case "reservoir":
+            {
+                var r = SurvivalScript.ReservoirA;
+                var focus = new Vector3((SurvivalScript.Farm.X0 + r.X + 1) / 2f, r.Y + 1,
+                    (r.Z + SurvivalScript.ReservoirMouth.Z + 1) / 2f);
+                return new CameraShot(name, focus, ReservoirYaw, 60f, 20f, top);
+            }
             case "slice":
             {
                 var (px, pz) = PeakColumn(sim);

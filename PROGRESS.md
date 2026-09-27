@@ -2132,3 +2132,57 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Next: M7-T7 (readable labels, timed screenshot scripts). For M8: "no walling a dwarf in" can reuse
   `DigStrand.StrandsOthers`/`DigTrial.MayCut`, but a placed block removes a cell rather than a floor, so it needs a
   what-if view for placement. Deconstruction still protects only the worker (ADR-059).
+
+## M7-T7 — Readable labels and timed screenshot scripts (2026-09-27)
+
+- Done: the mouse label no longer covers building billboards, overlapping building labels are lifted apart, and the
+  screenshot harness can run the timed survival session.
+  - New `ViewCore/Hud/LabelLayout` (pure C#):
+    - `PlaceTooltip` puts the mouse label (ghost tooltip, pile counts, farm hints) below-right of the point. If that
+      covers a billboard it tries the other corners, then spots just above or below each billboard. The nearest clear
+      spot on screen wins; with none it takes the least overlap.
+    - `Declutter` lifts overlapping billboard labels so none overlap. The lowest label (the nearest) stays put.
+    - `BillboardScale` and `BillboardRect` give the screen size of a fixed-size Label3D.
+  - Godot:
+    - `BuildingView.CollectBillboardRects` projects each label, NO WATER icon and progress bar. `Hud.SetHoverLabel`
+      places the label with them.
+    - `BuildingRenderer.Refresh` ends with a declutter pass (Label3D.Offset).
+  - `ScreenshotScripts.Run` enqueues a timed script's commands at their ticks (`survival`, via `SurvivalScript.EnqueueDue`).
+    `GameRoot.RunScriptNow` uses it and routes events in batches.
+  - New presets:
+    - `tunnel`: the hill tunnel and breach, sliced at y=18, from the east.
+    - `reservoir`: the reservoir at x=67 and the farm.
+  - Headless `--script` takes the same names list.
+  - Docs updated: VIEW-14 and VIEW-20 (view-ui.md), testing.md "Screenshot presets", and the screenshot.sh header.
+- Tests:
+  - New `View/LabelLayoutTests` (11).
+  - New `View/TimedScreenshotTests` (5). The `survival` harness run gives the same command log ticks and hash as
+    `SurvivalScript.Run` over 1300 ticks, with no rejects. The survival presets frame the tunnel and the reservoir.
+  - check.sh: 555 passed, 0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-060.
+- sim-reviewer: not run (no Aurvangar.Sim change).
+- Golden: unchanged.
+- Headless `--seed 1 --script survival --ticks 24000`: hash `4caa8837b195f900` (unchanged), 5,303 ticks/s.
+- Perf: perf.sh 8/8 passed.
+
+  | Test | Measured |
+  |---|---|
+  | WAT-P1 | 1.29 ms (23,048 active); 0.85 ms at 128×128 |
+  | WAT-P2 | 699 active |
+  | ECO-16 | 0.879 ms |
+  | SIM-P1 | median 2.359 ms, p95 3.301 ms (one noisy full run: 4.18 ms) |
+  | PTH-P1 | p95 0.652 ms |
+  | PTH-P2 | warm 2.15 ms, cold 2.46 ms |
+  | MESH-P1 | 0.649 ms |
+- Screenshots (Forward+, `artifacts/screens/m7t7/`; run `dotnet build src/Aurvangar.Godot` first, because
+  `--build-solutions` did not rebuild the game dll):
+  - `build500`, `build1600`, `build150`: hub and river. Since M7-T2 moved the pump to a wet site, the build1600 ghost
+    tooltip no longer overlaps anything. Avoidance was checked with an injected obstacle (temporary code, removed).
+  - `survival3000/reservoir`: the reservoir full, beside the farm.
+  - `survival7700/tunnel`: the flooded tunnel. The two breach levee labels ("Building Levee 25%" and
+    "Levee: log 0/2") were drawn on top of each other and are now separated.
+  - `survival8400/tunnel` and `overview`: the breach levees complete.
+  - `survival14400/reservoir`, `river` and `tunnel`: the drought. The river bed is empty sand; the reservoir still holds
+    water and crops; the tunnel is still flooded.
+  - `survival7400/tunnel` is superseded (taken before the breach flooded).
+- Next: M8-T1 (construction spec and ADR). Save format stays at v5.

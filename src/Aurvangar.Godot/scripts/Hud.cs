@@ -1,3 +1,4 @@
+using Aurvangar.ViewCore.Hud;
 using Aurvangar.ViewCore.Tools;
 using Godot;
 
@@ -85,13 +86,22 @@ public partial class Hud : CanvasLayer
         _toastLeft = ToastSeconds;
     }
 
-    /// <summary>The label next to the mouse (pile counts); null hides it.</summary>
-    public void SetHoverLabel(string? text, Vector2 mouse)
+    /// <summary>The label next to the mouse (pile counts, tool tooltips); null hides it. It goes where it covers none
+    /// of the <paramref name="avoid"/> billboards and stays on screen (M7-T7, <see cref="LabelLayout.PlaceTooltip"/>).</summary>
+    public void SetHoverLabel(string? text, Vector2 mouse, IReadOnlyList<ScreenRect> avoid)
     {
         _hoverLabel.Visible = text != null;
         if (text == null) return;
-        if (_hoverLabel.Text != text) _hoverLabel.Text = text;
-        _hoverLabel.Position = mouse + new Vector2(16, 12);
+        if (_hoverLabel.Text != text)
+        {
+            _hoverLabel.Text = text;
+            _hoverLabel.ResetSize();
+        }
+        var size = _hoverLabel.GetCombinedMinimumSize();
+        var view = GetViewport().GetVisibleRect().Size;
+        var p = LabelLayout.PlaceTooltip(new System.Numerics.Vector2(mouse.X, mouse.Y),
+            new System.Numerics.Vector2(size.X, size.Y), avoid, new System.Numerics.Vector2(view.X, view.Y));
+        _hoverLabel.Position = new Vector2(p.X, p.Y);
     }
 
     private void AddTool(HBoxContainer bar, ToolKind kind, string text)

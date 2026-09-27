@@ -55,7 +55,9 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
   `DesignateDig(box)`.
 - **VIEW-14** Build tool: ghost follows the cursor snapped to the grid; R rotates; ghost is green when the sim's
   `BuildingSystem.CanPlace(def, origin, rot)` returns Ok, red otherwise with the reason in a tooltip. Click sends
-  `PlaceBuilding`. Shift keeps the tool active (levee lines by dragging).
+  `PlaceBuilding`. Shift keeps the tool active (levee lines by dragging). The mouse label (this tooltip, pile counts,
+  farm hints) never covers a building billboard and stays on screen; building labels that overlap each other are
+  lifted apart (M7-T7, ADR-060).
 
 ## HUD
 
@@ -73,4 +75,5 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 - **VIEW-20** `scenes/Screenshot.tscn` + `ScreenshotRunner.cs`: reads command-line user args
   (`-- --seed 1 --ticks 1200 --shots overview,river,hub --out artifacts/screens`), runs the sim without
   rendering waits, positions the camera at named presets, renders, saves PNGs, quits. Used by
-  `scripts/screenshot.sh`.
+  `scripts/screenshot.sh`. An optional `--script` makes colonists work in the shots; `survival` is timed (each command
+  enqueued at its tick, M7-T7), with the `tunnel` and `reservoir` presets for its hill tunnel and levee reservoir.

@@ -5,7 +5,9 @@
 # Env overrides: SEED (1), TICKS (1200), SHOTS (overview,river,hub,slice), OUT (artifacts/screens),
 # SCRIPT (none; digchop = dig a pit and chop trees near the hub so colonists are at work in the shots;
 # build = chop plus a warehouse, a pump and a levee line near the hub, use TICKS=500 to catch them mid-build, TICKS=1600 to see them complete;
-# farm = a 5x5 field on moist ground near the hub, TICKS=4000 for growing crops, 9000 for mature ones; add ",farm" to SHOTS for its close-up).
+# farm = a 5x5 field on moist ground near the hub, TICKS=4000 for growing crops, 9000 for mature ones; add ",farm" to SHOTS for its close-up;
+# survival = the timed SurvivalScript (commands at their ticks): TICKS=7700 SHOTS=tunnel flooded tunnel, 14400 SHOTS=reservoir,tunnel drought).
+# Run `dotnet build src/Aurvangar.Godot` first after code changes (--build-solutions may not rebuild).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
