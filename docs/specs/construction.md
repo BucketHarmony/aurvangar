@@ -16,16 +16,22 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 
 ## Block types (CON-01..03)
 
-- **CON-01** Three construction block types, added to `data/blocks.json` and to the `BlockId` enum with the same
-  names (M8-T2):
+- **CON-01** Six construction block types, added to `data/blocks.json` and to the `BlockId` enum with the same
+  names (8..10 in M8-T2, 11..13 in M9-T4, ADR-070):
 
   | Id | Name (enum) | `label` (player text) | `cost` | `buildTicks` | `hardness` (dig ticks) | Palette colour |
   |---|---|---|---|---|---|---|
   | 8 | `Masonry` | Stone wall | `{ "stone": 1 }` | 20 | 40 | `#a39e94` |
   | 9 | `Planks` | Wood planks | `{ "log": 1 }` | 15 | 20 | `#b98a52` |
   | 10 | `PolishedStone` | Polished stone | `{ "stone": 2 }` | 40 | 60 | `#d8d2c4` |
+  | 11 | `Rubble` | Rough stone | `{ "stone": 1 }` | 10 | 30 | `#5a4e40` |
+  | 12 | `Beam` | Wood beam | `{ "log": 2 }` | 25 | 30 | `#94452b` |
+  | 13 | `Slate` | Slate tiles | `{ "stone": 3 }` | 50 | 70 | `#4f5f78` |
 
-  All three are `solid: true`, `diggable: true`, `drop: null` (CON-17 refunds the cost instead). `BlockDef` gets
+  Each construction block has its own palette colour, different from every other block's (M9-T4). They use only
+  the existing items (stone, log): each material is a trade of cost against build and dig time.
+
+  All of them are `solid: true`, `diggable: true`, `drop: null` (CON-17 refunds the cost instead). `BlockDef` gets
   three optional fields: `Label` (string, default null), `Cost` (`Dictionary<string,int>`, default null) and
   `BuildTicks` (int, default 0). A block is a construction block if and only if `Cost` is not null.
   `ContentDb.IsConstruction(BlockId)` answers this from a `bool[256]` table, the same way `SolidTable` works.
@@ -41,7 +47,7 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
   - Every block except Air has a `palette.blocks` colour.
 
   `ContentDbTests` asserts `Blocks.Count == 8`. M8-T2 changes that to 11 (the block table changed; record it in
-  PROGRESS.md).
+  PROGRESS.md), and M9-T4 to 14.
 - **CON-03** A built block behaves like terrain everywhere outside this spec:
   - It is solid for water and paths.
   - Buildings may stand on it (BLD-02).
@@ -297,7 +303,8 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 ## Deconstruction (CON-17..18)
 
 - **CON-17** Digging a built block takes its `hardness` in ticks. It drops the block's whole cost as one pile on the
-  dug cell: 1 stone for Masonry, 1 log for Planks, 2 stone for PolishedStone. The refund is 100%, unlike BLD-09's
+  dug cell: 1 stone for Masonry, 1 log for Planks, 2 stone for PolishedStone, 1 stone for Rubble, 2 logs for Beam
+  and 3 stone for Slate. The refund is 100%, unlike BLD-09's
   50%: blocks are cheap, and redesigning a monument should not be punished. The cost is one item type of at most 10
   (CON-02), so it always fits one pile. Natural drops are unchanged.
 - **CON-18** `DesignateDeconstructBlocks(A, B)` sets Dig marks (DSG-01) on built blocks in the box, and only on them.
@@ -321,6 +328,7 @@ floors (PTH-01), hold water (WAT-12) and count as ground for buildings (BLD-02).
 | M8-T4 | CON-06, CON-07 `ReleasePlan`, `Plan = true` entries and the `Planned` status end to end |
 | M8-T5 | VIEW-21..23 (`view-ui.md`); built blocks mesh with CON-01 palette colours |
 | M8-T6 | `MonumentScript` and CON-P1; the invariants of CON-09 and CON-14 over a whole session |
+| M9-T4 | CON-01 rows 11..13 (Rubble, Beam, Slate), their CON-17 refunds, and the `materials` screenshot script |
 
 ## Acceptance scenarios
 

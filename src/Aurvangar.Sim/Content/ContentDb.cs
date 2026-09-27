@@ -48,7 +48,7 @@ public sealed class ContentDb
         }
     }
 
-    /// <summary>CON-01: true for a construction block (Masonry, Planks, PolishedStone).</summary>
+    /// <summary>CON-01: true for a construction block (a block with a cost in blocks.json).</summary>
     public bool IsConstruction(BlockId id) => ConstructionTable[(int)id];
 
     /// <summary>CON-01: the one cost item of a construction block and its count (default, 0 for any other block).</summary>

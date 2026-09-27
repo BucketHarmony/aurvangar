@@ -17,6 +17,10 @@ public enum BlockId : byte
     Masonry = 8,
     Planks = 9,
     PolishedStone = 10,
+    /// <summary>M9-T4 construction blocks (CON-01).</summary>
+    Rubble = 11,
+    Beam = 12,
+    Slate = 13,
 }
 
 /// <summary>Dense voxel storage with chunk dirty tracking. Spec: docs/specs/world.md (WLD-01..07).</summary>

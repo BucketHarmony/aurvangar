@@ -9,7 +9,10 @@
     "BuildingSolid": "#9a8f7a",
     "Masonry": "#a39e94",
     "Planks": "#b98a52",
-    "PolishedStone": "#d8d2c4"
+    "PolishedStone": "#d8d2c4",
+    "Rubble": "#5a4e40",
+    "Beam": "#94452b",
+    "Slate": "#4f5f78"
   },
   "cutFaceDarken": 0.55,
   "water": { "shallow": "#5aa9d6", "deep": "#1f4f7a", "alpha": 0.72 },

@@ -13,15 +13,21 @@ public class BlockContentTests
     public void ConstructionBlocks_LoadWithCostLabelAndColour()
     {
         var db = TestContent.Db;
-        Assert.Equal(11, db.Blocks.Count);
+        Assert.Equal(14, db.Blocks.Count);   // M9-T4: construction blocks 11..13
         Assert.Equal(8, (int)BlockId.Masonry);
         Assert.Equal(9, (int)BlockId.Planks);
         Assert.Equal(10, (int)BlockId.PolishedStone);
+        Assert.Equal(11, (int)BlockId.Rubble);
+        Assert.Equal(12, (int)BlockId.Beam);
+        Assert.Equal(13, (int)BlockId.Slate);
         var expected = new (BlockId Id, string Label, string Item, int Cost, int Ticks, int Hardness)[]
         {
             (BlockId.Masonry, "Stone wall", "stone", 1, 20, 40),
             (BlockId.Planks, "Wood planks", "log", 1, 15, 20),
             (BlockId.PolishedStone, "Polished stone", "stone", 2, 40, 60),
+            (BlockId.Rubble, "Rough stone", "stone", 1, 10, 30),
+            (BlockId.Beam, "Wood beam", "log", 2, 25, 30),
+            (BlockId.Slate, "Slate tiles", "stone", 3, 50, 70),
         };
         foreach (var e in expected)
         {
@@ -37,7 +43,18 @@ public class BlockContentTests
             Assert.True(db.Palette.Blocks.ContainsKey(e.Id.ToString()), $"no palette colour for {e.Id}");
         }
         foreach (var id in Enum.GetValues<BlockId>())
-            Assert.Equal(id is BlockId.Masonry or BlockId.Planks or BlockId.PolishedStone, db.IsConstruction(id));
+            Assert.Equal(expected.Any(e => e.Id == id), db.IsConstruction(id));
+    }
+
+    [Fact]
+    public void ConstructionBlocks_HaveDistinctPaletteColours()
+    {
+        // M9-T4: every construction block reads as its own material, apart from each other and from terrain.
+        var db = TestContent.Db;
+        var colours = Enum.GetValues<BlockId>().Where(id => id != BlockId.Air)
+            .Select(id => (id, hex: db.Palette.Blocks[id.ToString()].ToLowerInvariant())).ToList();
+        foreach (var (id, hex) in colours.Where(c => db.IsConstruction(c.id)))
+            Assert.True(colours.Count(c => c.hex == hex) == 1, $"{id} shares colour {hex}");
     }
 
     [Fact]
@@ -62,9 +79,9 @@ public class BlockContentTests
             ("buildTicks without cost",
                 blocks.Replace("\"hardness\": 60, \"drop\": \"stone\"", "\"hardness\": 60, \"drop\": \"stone\", \"buildTicks\": 5"), palette, "2"),
             ("no palette colour", blocks, palette.Replace("\"Masonry\": \"#a39e94\",", ""), "8"),
-            ("json id with no BlockId value", blocks.Replace("\"buildTicks\": 40 }",
-                "\"buildTicks\": 40 },\n    { \"id\": 11, \"name\": \"Glass\", \"solid\": true, \"diggable\": true, \"hardness\": 10, \"drop\": null }"),
-                palette, "11"),
+            ("json id with no BlockId value", blocks.Replace("\"buildTicks\": 50 }",
+                "\"buildTicks\": 50 },\n    { \"id\": 99, \"name\": \"Glass\", \"solid\": true, \"diggable\": true, \"hardness\": 10, \"drop\": null }"),
+                palette, "99"),
         };
         foreach (var c in cases)
         {

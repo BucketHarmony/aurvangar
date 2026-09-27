@@ -13,6 +13,12 @@
     { "id": 9, "name": "Planks",        "solid": true,  "diggable": true,  "hardness": 20, "drop": null,
       "label": "Wood planks",    "cost": { "log": 1 },   "buildTicks": 15 },
     { "id": 10, "name": "PolishedStone", "solid": true, "diggable": true,  "hardness": 60, "drop": null,
-      "label": "Polished stone", "cost": { "stone": 2 }, "buildTicks": 40 }
+      "label": "Polished stone", "cost": { "stone": 2 }, "buildTicks": 40 },
+    { "id": 11, "name": "Rubble",       "solid": true,  "diggable": true,  "hardness": 30, "drop": null,
+      "label": "Rough stone",    "cost": { "stone": 1 }, "buildTicks": 10 },
+    { "id": 12, "name": "Beam",         "solid": true,  "diggable": true,  "hardness": 30, "drop": null,
+      "label": "Wood beam",      "cost": { "log": 2 },   "buildTicks": 25 },
+    { "id": 13, "name": "Slate",        "solid": true,  "diggable": true,  "hardness": 70, "drop": null,
+      "label": "Slate tiles",    "cost": { "stone": 3 }, "buildTicks": 50 }
   ]
 }

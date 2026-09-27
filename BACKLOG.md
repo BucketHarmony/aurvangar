@@ -291,7 +291,7 @@ Human answers are in PROGRESS.md under "G4 answers". Right-drag orbit stays as i
   - A long plan line must not overlap the toolbar ("Day 7" was drawn over "Cancel (Z)"): wrap it or move it.
   - Red invalid-cell ghosts must be readable at monument camera distance: stronger colour or an outline.
   - Keep the layout logic in ViewCore with tests. Render screenshots and look at them.
-- [ ] **M9-T4** More building materials · specs: CON-* · deps: M9-T1
+- [x] **M9-T4** More building materials · specs: CON-* · deps: M9-T1
   - Add at least three more buildable block types in data/*.json, each with a cost and a palette colour. For
     example: rough stone or rubble from stone, a dirt or clay block, a wood beam. Add new items only if a block
     needs them.

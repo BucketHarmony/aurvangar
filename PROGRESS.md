@@ -2728,3 +2728,50 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Next: M9-T4 (more materials). New blocks appear in the Blocks menu on their own. The G5 gate can use the three
   shots above. Build note: `dotnet build src/Aurvangar.Godot` hung once in the background with node reuse;
   `-nodeReuse:false` fixed it.
+
+## M9-T4 — More building materials (2026-09-27)
+- Done: G4 asked for more materials. There are three new construction blocks, all data-driven (ADR-070):
+
+  | Id | Block | Label | Cost | Build ticks | Dig ticks | Colour |
+  |---|---|---|---|---|---|---|
+  | 11 | `Rubble` | Rough stone | 1 stone | 10 | 30 | `#5a4e40` |
+  | 12 | `Beam` | Wood beam | 2 logs | 25 | 30 | `#94452b` |
+  | 13 | `Slate` | Slate tiles | 3 stone | 50 | 70 | `#4f5f78` |
+
+  - They were added to `data/blocks.json`, `palette.json` and the `BlockId` enum. No new items: a dirt or clay
+    block would need a dirt item, and Dirt has no drop.
+  - The Blocks menu (`BlockTool.Blocks`, all `IsConstruction` blocks in id order) now lists six blocks. No view code
+    changed.
+  - New screenshot script and preset `materials` (`MaterialsScript`): a 2x2 released sample of each construction
+    block in menu order, with a planned course on top. The pit is dug 7 deep, because grass and 4 dirt layers cover
+    the stone. `run-headless.sh --script materials` works too.
+  - Docs: construction.md (CON-01 rows, CON-17 refunds, the task map), docs/testing.md and the screenshot.sh help.
+- Tests:
+  - New `Scenarios/BlockMaterialScenarioTests.NewMaterials_BuildForTheirCost_AndRefundItWhenDug`: each new block
+    is built from hub stock. The stock falls by exactly the cost (stone 20 -> 16, log 20 -> 18), and each Work step
+    is its buildTicks. Deconstructing takes the hardness in dig ticks, drops the whole cost as one pile, and storage
+    returns to 20 / 20.
+  - New `BlockContentTests.ConstructionBlocks_HaveDistinctPaletteColours`.
+  - New `View/MaterialsScriptTests`: the script is accepted on seed 1, has one sample per block in menu order, and
+    the preset finds the row.
+  - Updated for the new block table: `BlockContentTests` (14 blocks and the new rows), `ContentDbTests` (count 14),
+    and `BlockPaintTests` (the menu lists six). The bad-data case "json id with no BlockId value" now uses id 99,
+    because id 11 is Rubble (ADR-070).
+  - The new tests did not compile before the enum values existed.
+  - check.sh: 616 passed, 0 skipped, 0 failed. 0 warnings.
+- Decisions: ADR-070.
+- sim-reviewer: not run (the Aurvangar.Sim change is 4 enum lines and a comment).
+- Golden: unchanged. Block ids are saved as bytes, and no golden session uses the new ids. Headless
+  `--script materials --ticks 12000`: hash `98a885fcaf9bad76`, all six samples built, 62 stone left, 5 of 5 alive.
+- Perf: n/a (content only; no water, path or tick change). perf.sh was not run.
+- Screenshots (Forward+, seed 1, looked at):
+  - `artifacts/screens/m9t4_mat12/materials.png` (`SCRIPT=materials TICKS=12000 SHOTS=materials`): six built
+    samples left to right: Stone wall (light grey), Wood planks (tan), Polished stone (near white), Rough stone
+    (dark grey-brown), Wood beam (red-brown) and Slate tiles (blue-grey), with faint plan ghosts on top.
+  - The first render (`m9t4_mat`, TICKS=4000, 2-deep pit) had no stone: only the planks and beam were built. So the
+    pit is now deeper.
+  - Rubble's first colour `#6f665a` read close to Masonry, so it was darkened.
+  - `artifacts/screens/m9t4_paint/paint.png`: the paint shot is unchanged.
+- Next: M9-GATE (HUMAN-GATE G5). For "the new materials" use `SCRIPT=materials TICKS=12000 SHOTS=materials`. The
+  other two shots are `SCRIPT=paint` and `SCRIPT=monument`. Seed 1 runs out of stored water around day 5 in the
+  materials run (a drought with no pump); the dwarves are alive at 12000.

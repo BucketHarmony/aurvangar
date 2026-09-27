@@ -29,13 +29,14 @@ public sealed record CameraShot(string Name, Vector3 Focus, float Yaw, float Pit
 /// past its mouth.</item>
 /// <item><c>blocks</c> (M8-T5): the <see cref="BlocksScript"/> site (walls, planned box, tool ghost) and the top bar's
 /// plan line; the hub when there is no site.</item>
+/// <item><c>materials</c> (M9-T4): the <see cref="MaterialsScript"/> row, one sample of every construction block.</item>
 /// <item><c>paint</c> (M9-T1): the <see cref="PaintScript"/> site (single blocks painted along drags, a drag held).</item>
 /// <item><c>monument</c> (M8-T6): the <see cref="MonumentScript"/> tower and courtyard, with the hill quarry behind.</item>
 /// </list></summary>
 public static class ScreenshotPresets
 {
     public static readonly IReadOnlyList<string> Names =
-        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint" };
+        new[] { "overview", "river", "hub", "slice", "farm", "tunnel", "reservoir", "blocks", "monument", "paint", "materials" };
 
     /// <summary>The shots taken when <c>--shots</c> is not given (the gate set; <c>farm</c> is opt-in, M6-T5).</summary>
     public static readonly IReadOnlyList<string> DefaultShots = new[] { "overview", "river", "hub", "slice" };
@@ -47,6 +48,7 @@ public static class ScreenshotPresets
     public const float ReservoirYaw = 0f;
     public const float BlocksYaw = 30f;
     public const float MonumentYaw = 30f;
+    public const float MaterialsYaw = 0f;
 
     public static CameraShot For(string name, Simulation sim)
     {
@@ -101,6 +103,13 @@ public static class ScreenshotPresets
                 if (PaintScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
                 var focus = new Vector3(s.X + BlocksScript.SiteW / 2f, s.Y + 1, s.Z + BlocksScript.SiteD / 2f);
                 return new CameraShot(name, focus, BlocksYaw, 50f, 12f, top);
+            }
+            case "materials":
+            {
+                if (MaterialsScript.Site(sim) is not { } s) return new CameraShot(name, HubFocus(sim), 45f, 50f, 26f, top);
+                int n = MaterialsScript.Blocks(sim).Count * MaterialsScript.SampleW;
+                var focus = new Vector3(s.X + n / 2f, s.Y + 2, s.Z + MaterialsScript.RowDz + 0.5f);
+                return new CameraShot(name, focus, MaterialsYaw, 35f, 12f, top);
             }
             case "monument":
             {

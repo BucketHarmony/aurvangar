@@ -1657,3 +1657,21 @@ Consequences:
 - A red tool cell shows through hills and walls in front of it. That is wanted for the cursor's own ghost, where
   the player is looking.
 - The mouse label can sit further from the cursor during a long drag (below or beside the whole drag).
+
+## ADR-070: Three more construction blocks from the existing items (2026-09-27, M9-T4)
+Context: G4 asked for more building materials. The backlog suggested rubble, a dirt or clay block and a wood beam,
+and said to add items only if a block needs them. Dirt has no drop item (`blocks.json` Dirt `drop: null`), so a
+dirt or clay block would need a new item, a new drop and a hauling path for it.
+Decision:
+- **Blocks 11..13** in `data/blocks.json`, the `BlockId` enum and `palette.json` (CON-01):
+  - `Rubble` "Rough stone": 1 stone, builds in 10 ticks, digs in 30. The cheap, fast stone block.
+  - `Beam` "Wood beam": 2 logs, 25 build ticks, 30 dig ticks. A dark red timber.
+  - `Slate` "Slate tiles": 3 stone, 50 build ticks, 70 dig ticks. The expensive blue-grey stone.
+  No new items: each material trades cost against build and dig time. A clay block waits for a clay item.
+- **Colours** differ from every other block colour (a test checks it). Rubble was first `#6f665a` and read as the
+  same grey as Masonry under daylight in the `materials` shot; it is now the darker `#5a4e40`.
+- **Screenshot script `materials`** (`MaterialsScript`): a 2x2 released sample of every construction block in
+  Blocks-menu order with a planned course on top. It digs the `digchop` pit 5 layers deeper, because grass and 4
+  dirt layers cover the stone near the hub (a 2-deep pit gives about 6 stone). All six are built by tick 12000.
+- **Test data:** `BlockContentTests`' "json id with no BlockId value" case added id 11 after the last block. Id 11
+  is now Rubble, so the case adds id 99 after Slate instead. The case still checks the same rule.

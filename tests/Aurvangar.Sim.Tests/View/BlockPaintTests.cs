@@ -39,7 +39,7 @@ public class BlockPaintTests
     {
         var sim = World();
         var tool = new BlockTool(TestContent.Db);
-        Assert.Equal(new[] { BlockId.Masonry, BlockId.Planks, BlockId.PolishedStone }, tool.Blocks);
+        Assert.Equal(new[] { BlockId.Masonry, BlockId.Planks, BlockId.PolishedStone, BlockId.Rubble, BlockId.Beam, BlockId.Slate }, tool.Blocks);
 
         // A click on the ground's top face: one block in the cell above it. The tool stays active (no drag left).
         tool.Press(Top(5, 5));

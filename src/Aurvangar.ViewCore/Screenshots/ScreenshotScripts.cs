@@ -40,7 +40,7 @@ namespace Aurvangar.ViewCore.Screenshots;
 /// </list></summary>
 public static class ScreenshotScripts
 {
-    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint" };
+    public static readonly IReadOnlyList<string> Names = new[] { "none", "digchop", "build", "farm", "survival", "blocks", "monument", "paint", "materials" };
 
     public const int BuildGap = 4;
     public const int LeveeCount = 3;
@@ -67,6 +67,8 @@ public static class ScreenshotScripts
                 return new ICommand[] { PitDig(sim), ChopNearHub(sim) };
             case "blocks":
                 return BlocksScript.Commands(sim);
+            case "materials":
+                return MaterialsScript.Commands(sim);
             case "build":
                 return BuildScript(sim);
             case "farm":
