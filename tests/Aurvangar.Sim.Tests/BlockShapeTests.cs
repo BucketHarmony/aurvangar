@@ -179,7 +179,7 @@ public class BlockShapeTests
     [Fact]
     public void Save_V7_KeepsFormsEntriesAndCommands()
     {
-        Assert.Equal(8, SaveGame.FormatVersion);   // 7 in M11-T10; 8 since M11-T4 (workshop orders), forms unchanged
+        Assert.Equal(9, SaveGame.FormatVersion);   // 7 in M11-T10; 8 since M11-T4 (workshop orders); 9 since M11-T5 (trader), forms unchanged
         var sim = new ScenarioBuilder().Ground(8).Agent(new Int3(3, 9, 3)).Build();
         var built = new Int3(6, 9, 6);
         sim.World.SetBlock(built, BlockId.Beam);

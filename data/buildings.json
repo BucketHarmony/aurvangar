@@ -121,6 +121,32 @@
           { "id": "cutstone", "name": "Cut stone", "input": { "stone": 1 }, "output": { "cutstone": 1 }, "workTicks": 50 }
         ]
       }
+    },
+    {
+      "id": "trader",
+      "name": "Trade wagon",
+      "footprint": [2, 2, 3],
+      "entrance": [0, 0, -1],
+      "cost": {},
+      "buildTicks": 0,
+      "placement": "ground",
+      "storage": { "capacity": 0, "perItemCapacity": 0, "accepts": ["log", "stone", "cutstone"], "receives": false },
+      "workers": 0,
+      "producer": null,
+      "setsBlocks": true,
+      "prebuiltOnly": true,
+      "stackable": false,
+      "trader": {
+        "firstArrival": 3000,
+        "interval": 7200,
+        "stay": 1800,
+        "offers": [
+          { "give": { "log": 10 }, "get": { "stone": 10 }, "lots": 4 },
+          { "give": { "potato": 10 }, "get": { "stone": 12 }, "lots": 2 },
+          { "give": { "stone": 10 }, "get": { "log": 10 }, "lots": 3 },
+          { "give": { "log": 10 }, "get": { "cutstone": 6 }, "lots": 2 }
+        ]
+      }
     }
   ]
 }

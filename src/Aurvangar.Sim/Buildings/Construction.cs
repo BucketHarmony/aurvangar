@@ -183,7 +183,7 @@ public static partial class Construction
         return list;
     }
 
-    private static void ClearGroundMarks(Simulation sim, Building b)
+    internal static void ClearGroundMarks(Simulation sim, Building b)
     {
         var ground = new List<Int3>();
         foreach (var c in BuildingShape.BottomLayer(b.Def, b.Origin, b.Rotation))

@@ -124,6 +124,7 @@ public sealed partial class ContentDb
         ValidateBlocks();
         ValidateShapes();
         ValidateWorkshops();   // CRF-04 first, so a workshop error names the workshop
+        ValidateTraders();     // CRF-15, likewise for the trader and its offers
         ValidateBuildings();
     }
 

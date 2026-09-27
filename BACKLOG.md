@@ -414,7 +414,7 @@ starting wagon answers "I dont know where to get stone from".
   - Sawmill and Stonecutter in data. Commands with CommandCodec entries set workshop orders. Craft jobs fetch the
     inputs, work and output a pile or haul it to storage. Refined items exist, and block costs move to them per
     the spec. Saved (bump FormatVersion) and hashed. Scenario tests.
-- [ ] **M11-T5** Trade wagon · specs: CRF-15..21, CRF-22 (v9), CRF-24 · deps: M11-T4
+- [x] **M11-T5** Trade wagon · specs: CRF-15..21, CRF-22 (v9), CRF-24 · deps: M11-T4
   - Trade wagons arrive on schedule with data-defined offers. A command accepts an offer. Dwarves haul the goods
     and the wagon leaves on time. Saved and hashed. Scenario test: stone can be bought with logs.
 - [ ] **M11-T6** Godot: workshop orders and trade panel · specs: VIEW-28..30, CRF-13, CRF-18 · deps: M11-T5

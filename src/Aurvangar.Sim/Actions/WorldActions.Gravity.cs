@@ -113,7 +113,7 @@ public sealed partial class WorldActions
     }
 
     /// <summary>GRV-07 step 1: cancels every job with a step on the building (go to, work on, take from, deliver to,
-    /// consume from) or a storage reservation on it. Ascending job id.</summary>
+    /// consume from, pay, CRF-21) or a storage reservation on it. Ascending job id.</summary>
     private void CancelJobsNaming(BuildingId id)
     {
         List<Job>? cancel = null;
@@ -129,7 +129,7 @@ public sealed partial class WorldActions
             foreach (var s in j.Steps)
             {
                 if (s.Target != id.Value) continue;
-                if (s.Kind is StepKind.PickUpFromStorage or StepKind.DeliverTo or StepKind.Consume) return true;
+                if (s.Kind is StepKind.PickUpFromStorage or StepKind.DeliverTo or StepKind.Consume or StepKind.Pay) return true;
                 if (s.Kind is StepKind.GoTo or StepKind.Work && s.Goal == GoalMode.Building) return true;
             }
             return false;

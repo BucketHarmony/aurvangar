@@ -22,6 +22,15 @@ public sealed record SeasonChanged(Aurvangar.Sim.Water.Season Season) : SimEvent
 /// <summary>CRF-11 (M11-T4): a Make order reached its count and was removed.</summary>
 public sealed record WorkshopOrderDone(BuildingId Building, int Recipe) : SimEvent;
 
+/// <summary>CRF-17 (M11-T5): the trade wagon arrived beside the Great Hall.</summary>
+public sealed record TraderArrived(BuildingId Building) : SimEvent;
+
+/// <summary>CRF-21 (M11-T5): the trade wagon left.</summary>
+public sealed record TraderLeft(BuildingId Building) : SimEvent;
+
+/// <summary>CRF-17 (M11-T5): a visit was skipped because no site beside the hall was free.</summary>
+public sealed record TraderNoRoom : SimEvent;
+
 /// <summary>Per-tick event buffer. The view drains it after each tick.</summary>
 public sealed class EventBus
 {

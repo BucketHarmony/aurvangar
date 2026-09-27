@@ -13,7 +13,7 @@ public class ContentDbTests
         var db = TestContent.Db;
         Assert.Equal(14, db.Blocks.Count);   // M8-T2: construction blocks 8..10 (CON-01); M9-T4: 11..13
         Assert.Equal(7, db.Items.Count - 1);   // M11-T4: planks and cutstone
-        Assert.Equal(7, db.Buildings.Count);   // M11-T2: the wagon; M11-T4: sawmill and stonecutter
+        Assert.Equal(8, db.Buildings.Count);   // M11-T2: the wagon; M11-T4: sawmill and stonecutter; M11-T5: trader
         Assert.NotEmpty(db.Palette.Blocks);
     }
 

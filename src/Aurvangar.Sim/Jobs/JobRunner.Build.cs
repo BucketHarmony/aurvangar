@@ -39,11 +39,12 @@ public static partial class JobRunner
     }
 
     /// <summary>CON-13 re-goal (ADR-062): a Build GoTo whose move failed because its goal cell stopped being walkable
-    /// (typically another builder's block went into it) starts its step again: the next tick re-checks the cell and
-    /// picks fresh stand cells. Anything else fails as usual. True when restarted.</summary>
+    /// (typically another builder's block went into it) starts its step again; since ADR-084 a Dig GoTo too (another
+    /// digger dug out the goal's floor): the next tick re-checks the cell and picks fresh stand
+    /// cells. Anything else fails as usual. True when restarted.</summary>
     private static bool RestartsBuildGoTo(Simulation sim, Agent a, JobStep step, Int3? goal)
     {
-        if (step.Goal != GoalMode.Build || goal is not { } g || sim.PathGrid.IsWalkable(g)) return false;
+        if (step.Goal is not (GoalMode.Build or GoalMode.Dig) || goal is not { } g || sim.PathGrid.IsWalkable(g)) return false;
         AgentMovement.Halt(a);
         a.StepProgress = 0;
         return true;

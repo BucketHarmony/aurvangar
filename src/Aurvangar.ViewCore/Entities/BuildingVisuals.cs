@@ -33,7 +33,7 @@ public static class BuildingVisuals
     public const float LabelLift = 0.35f;
 
     /// <summary>M11-T2: building types drawn with wheels (the starting wagon).</summary>
-    public static readonly IReadOnlySet<string> WheeledIds = new HashSet<string>(StringComparer.Ordinal) { "wagon" };
+    public static readonly IReadOnlySet<string> WheeledIds = new HashSet<string>(StringComparer.Ordinal) { "wagon", "trader" };
 
     public static BuildingLook LookOf(Building b) => b.State switch
     {

@@ -33,6 +33,7 @@
     "levee": "#8f8a70",
     "sawmill": "#b07a3c",
     "stonecutter": "#8a8f96",
+    "trader": "#6a5a8c",
     "blueprint": "#7fd0ff"
   },
   "agents": { "idle": "#b0b0b0", "working": "#f0f0f0", "dead": "#c03030", "trapped": "#f0c020" },

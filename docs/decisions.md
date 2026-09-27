@@ -2087,3 +2087,36 @@ Decision:
 Consequences: test worlds that build refined blocks stock planks or cut stone directly; `ScenarioBuilder` takes an
 optional `ContentDb` for test-only workshop data. The screenshot scripts fit the wagon's 20 planks and 20 cut stone
 (the materials row uses all 20 cut stone).
+
+## ADR-084: Trade wagon: job shapes, free stock, site clearing, save layout, Dig re-goal (2026-09-27, M11-T5)
+Context: M11-T5 builds CRF-15..22 and the trader events. A few points in the spec were loose, and a long scenario test
+showed a pit dig race once the trader changed the dwarves' timing.
+Decision:
+- **Job shapes.** Pay: `GoToBuilding(source) → PickUpFromStorage(source, item, n) → GoTo(stand cell, Exact) →
+  Pay(trader, deal)`, reserving `StorageOut(source)`. Unload: `GoToBuilding(trader) → PickUpFromStorage(trader) →
+  GoToBuilding(storage) → DeliverTo`, reserving `StorageOut(trader)` and `StorageIn(storage)` (GoToBuilding as in
+  ADR-083). Both are `JobKind.Trade`, priority 35; a pay job is the one whose last step is `Pay`. `Pay` checks the
+  agent is on `Construction.StandCell(trader)` (the entrance on flat ground), as the craft check does (ADR-083).
+- **Upkeep.** `Traders.Tick` (step 7, after `Workshops.Tick`) cancels Trade jobs of a gone trader or deal and
+  re-plans unclaimed ones in place each tick, BLD-06 style; surplus ones are withdrawn. Pay loads: per deal, owed minus
+  paid minus claimed pay counts, in loads of `CarryCapacity`; source = nearest complete non-trader storage with a
+  whole load (Manhattan to the trader entrance, then lower id), else the one with the most, carrying what it has.
+  Unloads: the trader's unreserved stock, lowest item id first, to the JOB-10 storage, bounded by its room.
+- **Free stock.** CRF-18 "unpaid units of earlier deals" means owed units not paid and not yet taken by a claimed pay
+  job: a claimed job's units are already reserved or carried, so they are out of the storage sum.
+- **Site clearing.** Arrival uses the BLD-15 search (`WorldFactory.PlaceBesideHall`). The site may hold loose piles or
+  dwarves; like a new building site it clears dig marks on its floor, moves piles in its footprint to its entrance
+  (cancelling their pick-ups) and moves dwarves there too, rather than refusing the site. No hall means no site.
+- **Departure.** Spec steps 1-4 in order; dwarves on the footprint are moved to a safe stand after it turns to Air.
+- **Preemption withdraws** a Trade job, as for Craft and Unload (ADR-083).
+- **Save v9.** The `Traders` section holds the trader building id (0 when none), then while a trader is here the lots
+  left per offer and the deals. Load refuses a trader id that is not the trade wagon, an offer count that differs
+  from the content, lots or payments out of range, `granted != paid / give`, and a trade wagon with no visit.
+- **Dig re-goal.** The ADR-062 GoTo re-goal now covers Dig goals too: when a dig GoTo's goal cell stops being
+  walkable (another digger dug its floor out), the step restarts and picks fresh stand cells instead of failing.
+  The M4 tree-floor pit test hit this race (and a follow-on DSG-08 wait) once the trader's visit shifted the dwarves'
+  drink trips; with the re-goal it runs with no failed job again.
+- **Test updates.** Tests pinning `FormatVersion` 8 now expect 9 and building counts 7 now expect 8 (the data grew).
+Consequences: goldens change after tick 3000 (the first arrival runs in the tick after the 3000 hash); the 6000 line
+is regenerated. The trader appears in every test world with a hall that runs past tick 3000. A trader is sent away on
+any tick outside its visit window, not only the exact leave tick. `BuildingVisuals.WheeledIds` includes the trader.

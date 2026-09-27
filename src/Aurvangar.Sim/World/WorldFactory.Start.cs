@@ -22,15 +22,16 @@ public static partial class WorldFactory
         foreach (var def in sim.Content.Buildings)
         {
             if (def.StartStock is null || def.Id == hall.Def.Id) continue;
-            if (!TryPlaceStart(sim, hall, def))
+            if (PlaceBesideHall(sim, hall, def) is null)
                 throw new InvalidOperationException($"WorldFactory: no site for the {def.Name} beside the {hall.Def.Name}");
         }
     }
 
     /// <summary>Tries the candidate sites nearest first (<see cref="StartCandidates"/>). A site must pass the placement
     /// rules (BLD-02, bar prebuilt-only), be dry, and have its entrance reachable from the hall's; once placed, the hall's
-    /// entrance must still reach it, else it is taken back and the next site is tried.</summary>
-    private static bool TryPlaceStart(Simulation sim, Building hall, BuildingDef def)
+    /// entrance must still reach it, else it is taken back and the next site is tried. Returns the placed building, or
+    /// null when no site fits. Also used for the trade wagon's arrival (CRF-17, M11-T5).</summary>
+    internal static Building? PlaceBesideHall(Simulation sim, Building hall, BuildingDef def)
     {
         var reach = Reach(sim, hall.EntranceCell);
         foreach (var (origin, rot) in StartCandidates(hall, def))
@@ -41,11 +42,11 @@ public static partial class WorldFactory
             if (BuildingShape.Footprint(def, origin, rot).Any(c => sim.Water.GetLevel(c) > 0)) continue;
 
             var b = sim.Buildings.PlacePrebuilt(def, origin, rot);
-            if (Reach(sim, hall.EntranceCell)[sim.World.Index(entrance)]) return true;
+            if (Reach(sim, hall.EntranceCell)[sim.World.Index(entrance)]) return b;
             foreach (var c in b.FootprintCells()) sim.World.SetBlock(c, BlockId.Air);
             sim.Buildings.Remove(b);
         }
-        return false;
+        return null;
     }
 
     /// <summary>Origins and rotations around the hall, nearest first: by footprint gap (<see cref="MinStartGap"/>..

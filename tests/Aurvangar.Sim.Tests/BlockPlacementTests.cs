@@ -145,7 +145,7 @@ public class BlockPlacementTests
     [Fact]
     public void PlanEntries_SavedAndHashed()
     {
-        Assert.Equal(8, SaveGame.FormatVersion);   // 6 in M8-T2; 7 since M11-T10 (block forms); 8 since M11-T4 (orders)
+        Assert.Equal(9, SaveGame.FormatVersion);   // 6 in M8-T2; 7 since M11-T10 (block forms); 8 since M11-T4 (orders); 9 since M11-T5 (trader)
         Simulation Fresh() => new ScenarioBuilder().Ground(8).Agent(new Int3(3, 9, 3)).Build();
         var empty = Fresh();
         var baseHash = empty.StateHash();

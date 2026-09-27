@@ -46,6 +46,8 @@ public sealed class Simulation
     public GiveUpMarks GiveUps { get; } = new();
     /// <summary>CON-04 block plan entries (M8-T2). Saved and hashed.</summary>
     public BlockPlans Plans { get; }
+    /// <summary>CRF-17..22 trader visit (M11-T5). Saved (v9) and hashed while a trader is here.</summary>
+    public TraderVisit Trader { get; } = new();
     public DesignationMap Designations { get; }
     public WorldActions Actions { get; }
     public SimClock Clock { get; } = new();
@@ -141,6 +143,7 @@ public sealed class Simulation
         GiveUps.AddToHash(ref h);
         Plans.AddToHash(ref h);                  // CON-04: only when not empty
         World.AddFormsToHash(ref h);             // CON-19: only when some cell is not Full
+        Trader.AddToHash(ref h);                 // CRF-22: only while a trader is here
         Agents.AddToHash(ref h);
         return h.Value;
     }

@@ -111,7 +111,8 @@ public static partial class JobRunner
     }
 
     /// <summary>JOB-07 preemption: returns the agent's job to the board (a need job, which belongs to this agent
-    /// alone, and a Craft or Unload job, re-planned by Workshops.Tick, are removed instead) without counting a failure; the agent stops, drops its stack and goes idle.
+    /// alone, and a Craft, Unload or Trade job, re-planned by Workshops.Tick or Traders.Tick, are removed instead)
+    /// without counting a failure; the agent stops, drops its stack and goes idle.
     /// No-op when the agent has no job.</summary>
     public static void ReleaseCurrent(Simulation sim, Agent a)
     {
@@ -218,6 +219,7 @@ public static partial class JobRunner
                 break;
             case StepKind.DeliverTo: r = act.DeliverTo(a.Id, new BuildingId(step.Target)); break;
             case StepKind.Craft: r = act.Craft(a.Id, new BuildingId(step.Target), step.Count); break;   // CRF-11
+            case StepKind.Pay: r = act.Pay(a.Id, new BuildingId(step.Target), step.Count); break;   // CRF-19
             case StepKind.Consume: ConsumeStep(sim, a, job, step); return;
             case StepKind.Place: PlaceStep(sim, a, job, step); return;
             case StepKind.Drop: r = act.Drop(a.Id, step.Cell); break;
@@ -347,13 +349,13 @@ public static partial class JobRunner
         job.RetryAfterTick = sim.Clock.Tick + Job.RetryCooldown;
     }
 
-    /// <summary>ADR-083: a preempted Craft or Unload job is withdrawn like a need job. Its pick-up is spent, and a Flee
-    /// preempts during the agents step (after Workshops.Tick), so a stale copy could be claimed by another agent in the
-    /// same tick; Workshops.Tick posts a fresh plan next tick.</summary>
+    /// <summary>ADR-083: a preempted Craft or Unload job (ADR-084: and a Trade job) is withdrawn like a need job. Its
+    /// pick-up is spent, and a Flee preempts during the agents step (after Workshops.Tick), so a stale copy could be
+    /// claimed by another agent in the same tick; Workshops.Tick (Traders.Tick) posts a fresh plan next tick.</summary>
     private static void Release(Simulation sim, Agent a, Job job)
     {
         Unclaim(sim, a, job);
-        if (job.IsNeed || job.Kind is JobKind.Craft or JobKind.Unload) sim.Jobs.Remove(job);
+        if (job.IsNeed || job.Kind is JobKind.Craft or JobKind.Unload or JobKind.Trade) sim.Jobs.Remove(job);
     }
 
     /// <summary>Returns the job to the board unclaimed with its reservations released; the agent stops, drops what it

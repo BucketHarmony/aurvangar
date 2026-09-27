@@ -33,6 +33,7 @@
 | Build (M8-T2) | 25 | BlockBuildSystem (CON-12) | GoTo(storage) → PickUpFromStorage → (GoTo(stand) → Work(buildTicks) → Place) per cell |
 | Craft (M11-T4) | 30 | Workshops (CRF-10) | GoToBuilding(source) → PickUpFromStorage → GoTo(stand, Exact) → (WorkOn(workTicks) → Craft) per cycle |
 | Unload (M11-T4) | 30 | Workshops (CRF-12) | GoToBuilding(workshop) → PickUpFromStorage(workshop) → GoToBuilding(storage) → DeliverTo |
+| Trade (M11-T5) | 35 | Traders (CRF-19/20) | pay: GoToBuilding(source) → PickUpFromStorage → GoTo(entrance, Exact) → Pay; unload: GoToBuilding(trader) → PickUpFromStorage(trader) → GoToBuilding(storage) → DeliverTo |
 
   Exception: the pump buffer's Haul (BLD-14) is posted at the OperatePump priority, 40 (ADR-066).
 
@@ -45,7 +46,8 @@
 - **JOB-07** Need jobs (Drink, Eat, Flee) are generated per-agent when the need threshold is crossed and are
   claimed immediately by that agent, preempting any current non-need job. A preempted job is released back to
   the board with its reservations released and any carried item dropped on the agent's cell (becomes a pile).
-  A preempted Craft or Unload job is removed instead; its workshop posts a fresh plan next tick (ADR-083).
+  A preempted Craft, Unload or Trade job is removed instead; its workshop or the trader posts a fresh plan next tick
+  (ADR-083, ADR-084).
 - **JOB-08** Every step that touches the world calls `WorldActions`. If an action returns non-Ok, the job fails:
   reservations released, job returned to the board with a `retryAfterTick = now + 50` cooldown. After 5 failures
   a job is cancelled and its designation is marked `Unreachable` (view shows it in red); a recurring job's source

@@ -226,7 +226,10 @@ the map, and more than one trader definition.
     with a footprint gap of 2..4 whose entrance the hall's entrance reaches. It writes BuildingSolid like
     `PlacePrebuilt`.
   - **Visit state:** each offer's remaining lots reset to `lots`, and the deal list starts empty.
-  - **No site:** the visit is skipped, `TraderNoRoom` is emitted, and the next visit tries again.
+  - **No site:** the visit is skipped, `TraderNoRoom` is emitted, and the next visit tries again. No hall counts as
+    no site.
+  - **Site clearing (ADR-084):** like a new site (BLD-07), the arrival clears dig marks on the trader's floor, moves
+    loose piles in its footprint to its entrance (their pick-ups are cancelled), and moves dwarves in it there too.
   - **Events:** `TraderArrived(building)` on arrival.
   - **Anchored:** the trader is anchored like the Great Hall. It never collapses, its floor is never dug (GRV-06), and
     `Deconstruct` on it is rejected with `PrebuiltOnly`.
@@ -239,12 +242,14 @@ the map, and more than one trader definition.
   - `NotEnough`, when `Lots × give` is more than the **free stock** of the give item.
 
   The free stock is `Stored − StorageOut reservations` summed over complete storage buildings other than the trader,
-  minus the unpaid units of earlier deals for that item.
+  minus the unpaid units of earlier deals for that item. "Unpaid" means owed and not yet taken by a claimed Trade job:
+  units a claimed job has reserved or carries are already out of the storage sum (ADR-084).
 - **CRF-19** Payment: dwarves load the give items onto the trader.
   - **Posting:** `Traders.Tick` keeps **Trade** jobs (new kind, priority **35**, below the pump) for every deal in
     order. Each deal has `open = lots × give − paid − carried by claimed jobs of that deal` units still to post. They
     go out in `ceil(open / CarryCapacity)` jobs, BLD-06 style. The source is the nearest complete storage with the
-    stock unreserved, not the trader.
+    stock unreserved, not the trader. If no storage has a whole load, the one with the most unreserved stock gives
+    what it has (ties to the lower id), as ADR-041 does for Deliver jobs.
   - **Steps:** `GoToBuilding(source) → PickUpFromStorage(source, item, n) → GoTo(trader entrance, Exact) →
     Pay(trader, deal)`.
   - **`WorldActions.Pay`** is a new StepKind. It checks that the trader is here, the agent is on its entrance and it
@@ -254,7 +259,8 @@ the map, and more than one trader definition.
   - **Bought goods:** they are the colony's at once. The trader's storage is a normal source (BLD-16), counts in
     `Storage.Totals` and in `Stock`, and a Build or Deliver job may take from it directly.
 - **CRF-20** Unloading: `Traders.Tick` keeps **Trade** jobs that carry the trader's unreserved `Stored` to storage.
-  - **Steps:** `GoTo(trader entrance) → PickUpFromStorage(trader, item, n) → GoToBuilding(storage) → DeliverTo(storage)`.
+  - **Steps:** `GoToBuilding(trader) → PickUpFromStorage(trader, item, n) → GoToBuilding(storage) → DeliverTo(storage)`
+    (GoToBuilding, as for workshop unloads, ADR-083/084).
   - **Load:** at most `CarryCapacity` per job, lowest item id first.
   - **Storage:** chosen as for JOB-10.
   - **Count:** as many jobs as there are chunks.

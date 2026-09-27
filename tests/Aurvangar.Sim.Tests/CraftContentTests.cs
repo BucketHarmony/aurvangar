@@ -72,7 +72,7 @@ public class CraftContentTests
     public void Workshops_LoadWithRecipes()
     {
         var db = TestContent.Db;
-        Assert.Equal(7, db.Buildings.Count);
+        Assert.Equal(8, db.Buildings.Count);   // M11-T5: the trader
         foreach (var id in new[] { "sawmill", "stonecutter" })
         {
             var b = db.Building(id);

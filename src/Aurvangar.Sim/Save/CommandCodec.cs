@@ -26,6 +26,7 @@ internal static class CommandCodec
             case SetWorkshopOrder c:   // save v8 (M11-T4): the mode byte raw, so a bad mode replays as rejected
                 w.Write(c.Workshop.Value); w.Write(c.Recipe); w.Write((byte)c.Mode); w.Write(c.Count);
                 break;
+            case AcceptOffer c: w.Write(c.Offer); w.Write(c.Lots); break;   // save v9 (M11-T5)
             default:
                 throw new NotSupportedException(
                     $"SaveGame: command '{command.Tag}' ({command.GetType().Name}) has no save codec; add it to CommandCodec.");
@@ -50,6 +51,7 @@ internal static class CommandCodec
             nameof(ReleasePlan) => new ReleasePlan(r.ReadInt3(), r.ReadInt3()),
             nameof(SetWorkshopOrder) => new SetWorkshopOrder(new Core.BuildingId(r.ReadInt32()), r.ReadInt32(),
                 (Buildings.OrderMode)r.ReadByte(), r.ReadInt32()),
+            nameof(AcceptOffer) => new AcceptOffer(r.ReadInt32(), r.ReadInt32()),
             _ => throw new InvalidDataException($"Save file contains unknown command tag '{tag}'."),
         };
     }

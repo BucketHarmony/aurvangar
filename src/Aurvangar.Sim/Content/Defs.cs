@@ -38,7 +38,8 @@ public sealed record ItemDef(string Id, string Name, int Food, int Drink);
 /// (the levee, M11-T1, ADR-076): its builders stand on any standable cell in reach of the footprint.
 /// <see cref="StartStock"/> (M11-T2, ADR-077): a building with it is part of the starting colony (the hub and the
 /// wagon, BLD-15) and holds these items at world creation. <see cref="RemovableWhenEmpty"/>: a prebuilt-only building
-/// that may still be torn down once it holds nothing (the wagon, BLD-17).</summary>
+/// that may still be torn down once it holds nothing (the wagon, BLD-17). <see cref="Workshop"/> (CRF-03) and
+/// <see cref="Trader"/> (CRF-15, the trade wagon) are optional blocks.</summary>
 public sealed record BuildingDef(
     string Id,
     string Name,
@@ -55,7 +56,8 @@ public sealed record BuildingDef(
     bool Stackable = false,
     Dictionary<string, int>? StartStock = null,
     bool RemovableWhenEmpty = false,
-    WorkshopDef? Workshop = null)
+    WorkshopDef? Workshop = null,
+    TraderDef? Trader = null)
 {
     /// <summary>False for a building with no entrance in data (the levee, ADR-076).</summary>
     public bool HasEntrance => Entrance is not null;
@@ -78,6 +80,14 @@ public sealed record WorkshopDef(int OutputBuffer, int HaulAt, RecipeDef[] Recip
 /// Ids are unique over all workshops.</summary>
 public sealed record RecipeDef(string Id, string Name, Dictionary<string, int> Input, Dictionary<string, int> Output,
     int WorkTicks);
+
+/// <summary>CRF-15/16 (M11-T5, ADR-082): the trader block of the trade wagon. Visit v arrives at
+/// <c>FirstArrival + v × Interval</c> and leaves <see cref="Stay"/> ticks later. Offers are indexed by position.</summary>
+public sealed record TraderDef(int FirstArrival, int Interval, int Stay, OfferDef[] Offers);
+
+/// <summary>CRF-15: a fixed-rate swap. For each lot the colony gives <see cref="Give"/> (one item) and gets
+/// <see cref="Get"/> (one other item), up to <see cref="Lots"/> lots per visit.</summary>
+public sealed record OfferDef(Dictionary<string, int> Give, Dictionary<string, int> Get, int Lots);
 
 /// <summary>Colors for the view. Hex strings "#rrggbb".</summary>
 public sealed record PaletteDef(

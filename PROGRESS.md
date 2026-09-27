@@ -3725,3 +3725,40 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Next: M11-T5 (Trade wagon). FormatVersion goes to 9 with the trader visit section. The trader schedule starts
   affecting state around tick 3000, so expect golden changes from there. Traders run in step 7 after Workshops.
   Workshop jobs use JobKind Craft/Unload at priority 30. `Economy.Stock` is the colony stock to reuse for offers.
+
+## M11-T5 — Trade wagon (2026-09-27)
+- Done: "trader" building (Trade wagon, prebuilt-only, anchored, `receives: false`) with a `trader` block (first
+  arrival 3000, every 7200, stay 1800, 4 fixed offers) and ContentDb validation. `Traders.Tick` (step 7 after
+  Workshops) runs the schedule: it arrives beside the hall with the BLD-15 search (`WorldFactory.PlaceBesideHall`),
+  or skips with `TraderNoRoom`, and leaves on time with refunds and dropped goods (`WorldActions.TraderArrive`/
+  `TraderDepart`). `AcceptOffer` command (NoTrader, BadOffer, BadLots, OfferExhausted, NotEnough) with a codec entry.
+  Trade jobs (new kind, priority 35) pay deals with the new `Pay` step and unload bought goods. Visit state
+  (`Simulation.Trader`) is hashed only while a trader is here and saved in a v9 `Traders` section. Events
+  TraderArrived, TraderLeft and TraderNoRoom. The view draws the trader with wheels (palette `#6a5a8c`).
+- Review: sim-reviewer REQUIRED fixes applied: the save holds the trader id (0 when none), matching CRF-22, and load
+  refuses a trade wagon with no visit. Also applied: a trader leaves on any tick outside its visit window, KeepJobs
+  returns early with no trader and no Trade jobs, and the ADR golden note is corrected. Not done (optional):
+  `BuildingPlaced` on arrival; a failure count for the Build/Dig re-goal; dropping a Pay leftover; arrival cost
+  (full-world reach BFS each visit) on large maps.
+- Tests: 7 M11-T5 placeholders replaced by `Scenarios/TradeScenarioTests.cs` (7 facts plus a 6-case bad-data
+  theory). Mutation check: with `Traders.Tick` disabled, 6 of the 7 scenario tests fail. Version and count pins were
+  updated (FormatVersion 9 in 3 tests, 8 buildings in 2). check.sh: 756 passed, 6 skipped (M11-T6..T7), 0 failed.
+- Decisions: ADR-084:
+  - job shapes and upkeep, the free-stock meaning, and arrival clearing of piles and dwarves;
+  - the save layout and its load checks;
+  - the Dig GoTo re-goal: the M4 tree-floor pit test failed 2 jobs, a goal cell whose floor another digger removed
+    plus a follow-on DSG-08 wait, once the trader shifted drink-trip timing. It is fixed in the sim, not the test.
+
+  crafting.md CRF-17..20 and jobs-agents.md (job table, JOB-07) are updated.
+- Golden: regenerated. The first trader arrival runs in the tick after the 3000 hash, so only the 6000 line changes:
+  6000 7cf8a3c06081a550. The 0, 1200 and 3000 lines are unchanged.
+- Perf: perf.sh green (10 passed, 1 skipped). Headless runs, seed 1 × 24000:
+  - no commands: hash 56328afce88dfdba, colony lost at 15,009 as before, ~4900 ticks/s;
+  - survival script: hash 3a0eff48474200ff, 5 of 5 alive, 435 jobs done, 1 failed, ~3500 ticks/s.
+- Screens: `hub` at TICKS=3200 shows the purple trade wagon beside the hall and the starting wagon.
+- M11-T4 carryover: the Craft retry cooldown and the torn-down-workshop guard were not done. They are still optional.
+- Next: M11-T6 (Godot trade panel):
+  - `Traders.NextArrival`, `LeavesAt` and `VisitAt` feed the HUD;
+  - `sim.Trader` holds LotsLeft and Deals (Paid and Granted per deal), and `Traders.FreeStock` gives the NotEnough
+    preview;
+  - send `AcceptOffer(offer, lots)`, and listen for TraderArrived, TraderLeft and TraderNoRoom.

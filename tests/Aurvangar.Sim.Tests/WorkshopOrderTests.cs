@@ -199,7 +199,7 @@ public class WorkshopOrderTests
     [Fact]
     public void WorkshopOrders_SavedAndHashed_FormatVersion8()
     {
-        Assert.Equal(8, SaveGame.FormatVersion);
+        Assert.Equal(9, SaveGame.FormatVersion);   // 8 in M11-T4; 9 since M11-T5 (trader), orders unchanged
         var sim = MillWorld(logs: 5);
         var mill = Mill(sim);
         var hub = sim.Buildings.All.Single(b => b.Def.Id == "hub");

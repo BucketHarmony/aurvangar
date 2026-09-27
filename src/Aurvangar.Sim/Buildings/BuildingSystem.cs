@@ -93,6 +93,7 @@ public sealed partial class BuildingSystem
         Construction.Tick(sim);   // M5-T2: BLD-06 delivers, BLD-08 construct, BLD-09 deconstruct jobs
         Pumps.Tick(sim);          // M5-T4: BLD-13 NoWater and OperatePump jobs, BLD-14 buffer hauls
         Workshops.Tick(sim);      // M11-T4: CRF-10 Craft jobs, CRF-12 Unload jobs
+        Traders.Tick(sim);        // M11-T5: CRF-16/17/21 visits, CRF-19/20 Trade jobs
         _totals.Clear();
         foreach (var b in _buildings.Values)
         {

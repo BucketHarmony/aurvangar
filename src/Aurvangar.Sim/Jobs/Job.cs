@@ -13,13 +13,17 @@ public enum JobKind : byte
     /// <summary>CRF-12 (M11-T4): carry a workshop's output to storage. Its own kind, so <see cref="Buildings.Pumps.IsBufferHaul"/>
     /// never takes it for a pump haul.</summary>
     Unload,
+    /// <summary>CRF-19/20 (M11-T5): carry payment onto the trade wagon (ends in a Pay step), or its bought goods to storage.</summary>
+    Trade,
 }
 
 /// <summary>What one job step does. GoTo moves; Work spends ticks; the rest are one <see cref="Actions.WorldActions"/>
 /// call each (JOB-08).</summary>
 public enum StepKind : byte { GoTo, Work, Dig, Chop, PickUp, PickUpFromStorage, DeliverTo, Consume, Drop, Plant, Harvest, HarvestBush, Place,
     /// <summary>CRF-11 (M11-T4): one craft cycle at a workshop.</summary>
-    Craft }
+    Craft,
+    /// <summary>CRF-19 (M11-T5): pay carried items into a trade deal.</summary>
+    Pay }
 
 /// <summary>Where a GoTo step may end: on the cell itself, anywhere the cell is in reach (ARCH-07), anywhere a
 /// building's footprint is in reach, (JOB-09) in reach of a dig target but never on top of it, or (CON-11) a build stand
@@ -48,6 +52,8 @@ public readonly record struct JobStep(StepKind Kind, Int3 Cell, int Target, Item
         new(StepKind.Place, cell, (int)block | (form.Packed << 8), default, 0, 0, default);
     /// <summary>CRF-11: <see cref="Target"/> is the workshop, <see cref="Count"/> the recipe index.</summary>
     public static JobStep Craft(BuildingId workshop, int recipe) => new(StepKind.Craft, default, workshop.Value, default, recipe, 0, default);
+    /// <summary>CRF-19: <see cref="Target"/> is the trader, <see cref="Count"/> the deal index.</summary>
+    public static JobStep Pay(BuildingId trader, int deal) => new(StepKind.Pay, default, trader.Value, default, deal, 0, default);
     public static JobStep HarvestBush(PlantId bush) => new(StepKind.HarvestBush, default, bush.Value, default, 0, 0, default);
 
     /// <summary>A Place step's block (CON-12).</summary>
@@ -117,6 +123,7 @@ public sealed class Job
         JobKind.Construct => 45,
         JobKind.OperatePump => 40,
         JobKind.Harvest => 35,
+        JobKind.Trade => 35,     // CRF-19
         JobKind.Plant => 30,
         JobKind.Craft => 30,     // CRF-10
         JobKind.Unload => 30,    // CRF-12
