@@ -1702,3 +1702,168 @@ During the drought the whole river drains: 15,125 water units stay in the world,
   harvest by day 10); berries fall 69 → 39 while 105 potatoes sit untouched to day 10; region rebuilds are ~77% of
   tick time while the river drains (SIM-P1 2.46 ms of 8).
 - Next: M6-GATE (HUMAN-GATE G3: POC review).
+
+## M6-GATE — HUMAN-GATE G3: POC review (2026-09-26)
+
+**Status: waiting for human review. The gate box in BACKLOG.md is NOT checked; check it after review.**
+All M0-M6 tasks are checked. The backlog has nothing after this gate. No code changed for this report.
+
+### Verdict in one paragraph
+All ten steps of the definition-of-done session (docs/00-overview.md) have evidence on seed 1 (M6-T8 checklist,
+above). The scripted survival session ends with all 5 dwarves alive at day 10 and 0 failed jobs. It is
+deterministic (same hash on every run, and after a save/load mid-flood). Every perf budget passes with at least
+3x headroom. The weak points are balance and scripting, not correctness. The survival pump sits on the open river,
+so it is dry for the whole drought. Every drought kills every crop. Seed 1 needs a hand-dug notch before a pump can
+reach water. The scripted session has no levee reservoir (that part of DoD 8 is shown by a synthetic scenario).
+The POC has not yet been played hands-on end to end by a human.
+
+### Build and test results (this run, HEAD = M6-T8 `1f011bf`)
+- `./scripts/check.sh`: **OK**. 513 passed, 0 skipped, 0 failed (non-Perf, Debug). Godot csproj 0 warnings.
+- `./scripts/perf.sh`: **OK**. 8 of 8 passed (Release). SAV-05 (save size) runs in check.sh and passed.
+
+| ID | What | Budget | Measured | Use |
+|---|---|---|---|---|
+| WAT-P1 | water step, 192×128 sustained (≥ 23,048 active) | ≤ 4 ms | median 1.29 ms, p95 1.34 | 32% |
+| WAT-P1 | water step, 128×128 (15,494 active) | ≤ 4 ms | median 0.86 ms, p95 0.92 | 22% |
+| WAT-P2 | seed-1 settled river, active cells at tick 1200 | ≤ 3,000 | 699 (step median 0.031 ms) | 23% |
+| PTH-P1 | A*, 200 paths of 90..110 cells | p95 ≤ 1.5 ms | median 0.246, p95 0.626, max 0.796 ms | 42% |
+| PTH-P2 | region rebuild, seed 1 | ≤ 25 ms | warm 2.10 ms, cold 2.39 ms | 10% |
+| ECO-16 | moisture recompute | ≤ 3 ms | median 0.875 ms | 29% |
+| MESH-P1 | chunk (3,0,2), 581 quads | ≤ 6 ms | median 0.639 ms, p95 0.724 | 11% |
+| SIM-P1 | full tick, survival script, ticks 12,000-12,499 (drought) | median ≤ 8 ms | median 2.344, p95 2.539, max 3.46 ms | 29% |
+| SAV-05 | save at day 5 | ≤ 3 MB | 31,781 bytes (M6-T7) | 1% |
+
+Nothing is within 20% of its limit. SIM-P1 breakdown: region rebuilds 905 ms of the 500 ticks (407 rebuilds, ~77%
+of the tick), water 61 ms. Everything else is under 0.1 ms per tick.
+
+### Headless runs (this run)
+- `./scripts/run-headless.sh --seed 1 --script survival --ticks 24000`: hash **`7344b913cc2909c9`** (same as
+  M6-T6/T7/T8), 3,543 ticks/s, tick median 0.071 ms, p95 1.17 ms. **5/5 alive at day 10**. 406 jobs done,
+  **0 failed**. 43 of 43 cells dug, 23 of 23 trees felled. 0 items on the ground. 35 crops harvested (105 potatoes)
+  and 41 withered. The pump was dry on 5,004 ticks (4,712 in the drought, 292 during the refill). 568 path searches,
+  978 region rebuilds, 0 trapped. Stored at day 10: log 76, stone 22, berries 39, potato 105, water 110.
+  The per-day table is in the M6-T8 entry and did not change.
+- `./scripts/run-headless.sh --seed 1 --ticks 24000` (no commands): the colony is lost at tick 15,009 (day 6).
+  0 of 5 alive, hash `6cef6aa7d84e85dd`, 5,871 ticks/s. DoD 9: without a pump the colony dies of thirst in the
+  first drought.
+
+### Screenshots (Godot 4.6.2 .NET, Forward+, seed 1; rendered for this gate and looked at)
+All shots are under `artifacts/screens/g3/`.
+- `default/{overview,river,hub,slice}.png` (1,200 ticks, no commands). The overview shows the whole map: the
+  river runs from the west edge to the east edge, with the hill and trees, and the Great Hall is a small brown box
+  by the river. The top bar reads "Day 1 · Wet season, 5 days left · Log 30 · Berries 68 · Water 30". The slice
+  shot cuts at a z-level and shows stone lenses in the dirt (gray) and the river channel in section.
+- `digchop1200/hub.png`. The pit east of the hall is dug (brown floor). Orange chop rings sit on the marked trees,
+  "4" log piles lie around the hall, and all 5 dwarves are "Felling a tree".
+- `build1600/{hub,river,overview,slice}.png`. The build script's warehouse and pump are next to the hall, and the
+  dwarves are "Hauling log" (Log 56). **The build-script pump shows a red "NO WATER" billboard and the top bar
+  shows "Pump has no water".** This script picks the nearest valid site, and on seed 1 no valid site has water
+  (ADR-044). The harness also shows a fixed red warehouse ghost on the hall roof ("Needs solid ground under it").
+  **Its tooltip overlaps the NO WATER billboard**, so both are hard to read (a view nit).
+- `farm4000/farm.png` (day 2): a 5×5 field on two terrain levels near the bank, with young green crops in every
+  tile and berry bushes with red berries.
+- `farm9000/farm.png` (day 4): the harvest is done (Potato 75, Berries 77). All 5 dwarves are "Planting" on bare
+  furrows, and the first new sprouts are up.
+- `farm13200/{farm,overview}.png` (day 6): the top bar reads "Drought, 2 days left" in orange, and a toast says
+  "Drought: the springs stop for 2 days and the river drains". **The river bed is empty sand across the whole
+  map.** The crops are straw colored. The farm script has no pump, so "Water 0 · No water" is shown in red and the
+  drink bars are low. That is expected for this script, and it is DoD 9 on the way.
+- No shot of the survival session itself (tunnel flood, breach levees). The screenshot harness cannot run
+  `SCRIPT=survival` because it enqueues every command at tick 1. That session is covered by tests and the headless
+  stats.
+
+### What works
+- **World and water**: seeded 128×128×64 terrain with a hill and a river. The fixed-point water CA holds the
+  river's volume for 10 days, floods what is dug, drains in a drought and refills after it. Levees wall a breach.
+- **Colonists**: A* with regions, jobs with reservations and a failure cooldown, digging (pits keep a way out:
+  G2 rule, ADR-037), chopping, hauling to the nearest storage, fleeing from deep water, eating and drinking, and
+  death with a Colony-lost screen.
+- **Buildings**: blueprint → deliver → construct → complete, cancel and deconstruct, warehouse overflow, pump with
+  NoWater, stackable levees.
+- **Farming and weather**: a moisture map, potatoes grow only on moist tiles, dry crops wither, bushes regrow and
+  are harvested below a food target, and a 5-day wet / 2-day drought cycle.
+- **Save/load and determinism**: identical hash after a save/load mid-flood and mid-drought, and golden hashes
+  at 0/1200/3000/6000.
+- **View**: greedy-meshed chunks, slicing, a water surface, tools (dig, chop, farm, build with ghost and reasons,
+  deconstruct, cancel), a HUD with the season, alerts and the colonist panel, and a screenshot harness.
+
+### What is weak (with evidence)
+1. **Seed-1 pump needs a dug notch** (ADR-044). The banks step up one level per cell, so any pump whose intake
+   is over water has its entrance inside the next bank step (`EntranceBlocked`). 0 of 1,921 valid pump sites are
+   wet. A player must dig one cell first, and the script does (tick 0 notch at (40,18,79)). A new player will not
+   discover this.
+2. **Pump placement allows any drop-off** (ADR-040). BLD-03 only asks that the intake cells be non-solid, so a
+   pump may stand on a dry ledge and just flag NoWater (see `build1600/hub.png`). The ghost is green there.
+3. **The survival pump is dry for the whole drought**. It draws from the open river: NoWater on 4,712 drought
+   ticks plus 292 during the refill. The colony lives on stored water (110 → 90). DoD 8's reservoir pump is
+   proven only by the synthetic `ReservoirScenarioTests` (ADR-053), not in the seed-1 session.
+4. **Every drought withers every crop**. The river drains fully, so every farm tile dries out. The run has 41
+   withers and no second harvest by day 10 (the first harvest of 35 tiles gave 105 potatoes before day 5).
+   Farming currently survives only if the first crop is in before day 5.
+5. **Dwarves eat berries while potatoes sit unused**. Food choice is the lowest item id with stock, so berries
+   come before potatoes (`NeedsSystem.PickItem`). Berries fall 69 → 39 while 105 potatoes are untouched through
+   day 10. This is harmless now, but bush harvest only runs while food in storage is below 60, and potatoes count
+   toward that target.
+6. **Unreachable recurring jobs fail 5 times and are reposted forever** (ADR-030). Only digs and chops get an
+   "unreachable" mark. A haul or delivery job that can never succeed keeps cycling with a fresh failure count.
+   There were 0 failures in the survival run, so this has not been seen in play.
+7. **The strand rule protects only the digger** (ADR-037). Other dwarves in a pit stay connected through the
+   digger's side in practice, but nothing guarantees it.
+8. **Region rebuilds are ~77% of tick time while the river drains or refills** (SIM-P1 2.34 ms of 8). Each
+   water depth crossing changes walkability, so the tick does a full flood fill (~2.2 ms). This is fine at 5
+   dwarves on 128²; incremental regions are the lever if maps or colonies grow.
+9. **`BuildingAt` and overlap checks scan all buildings** (ADR-040). This is fine for a few dozen buildings.
+10. **View nits**: the harness's ghost tooltip overlaps a building's billboard (`build1600`). The survival
+    session cannot be screenshotted. Dwarves are plain white capsules (no name or job marker in the world).
+11. **Not played by hand**. Every DoD step is proven by scripts and tests; the Godot build has had no full
+    hands-on session since G1's follow-up.
+
+### ADRs made during the build (53)
+- Scaffold: 001 prefab construction / indirect control, 002 Godot 4.6 .NET + Godot-free sim, 003 data embedded in
+  Sim, 004 integer state + fixed-point water, 005 thirst + pump in MVP, 006 `Aurvangar.Client` namespace, 007 Godot
+  project outside the sln, 008 name and theme.
+- M1-M3 (world, water, view): 009 river channel geometry, 010 water active set, 011 spread/film rules, 012 basin
+  source, 013 water consumes world changes twice per tick, 014 pre-settle, 015 radix sort water step, 016 slice
+  "cut" faces, 017 water mesher sides + depth tint, 018 view loop in ViewCore, 019 camera/picking, 020 screenshot
+  presets, 021 river springs hold volume, 022 ambient light, 035 Forward+ screenshots.
+- M4 (colonists): 023 PathGrid flag cache, 024 A* rules, 025 regions, 026 path following, 027 WorldActions and
+  piles, 028 job board, 029 designations, 030 hauling, 031 flee/trapped, 032 save format v1, 033 Godot tools,
+  034 PTH perf measurement, 036 headless scripts, 037 no-strand digs (G2), 038 tree-floor digs (G2), 039 pile
+  markers (G2).
+- M5 (buildings, needs): 040 placement validation, 041 construction flow, 042 pump, 043 needs, 044 build tools and
+  HUD, 045 SurvivalScript + pump notch.
+- M6 (farming, weather, integration): 046 moisture map, 047 farm tiles, 048 bush harvest, 049 weather, 050 farm
+  view, 051 survival script, 052 perf harness + packed A* key, 053 DoD evidence.
+
+### Questions for the human
+1. **POC go/no-go.** Do you accept the POC as done on this evidence (DoD 1-10, all tests green, all budgets
+   green)? I recommend a short hands-on session in the Godot build first (weak point 11), to judge the feel,
+   which scripts cannot.
+2. **Pump placement (ADR-040)**: keep "a pump may stand at any drop-off and flags NoWater", or require water at
+   the intake when placing it? The second would make the ghost red on dry ledges, but a player could then not
+   pre-place a pump by a reservoir they have not flooded yet.
+3. **Pump notch on seed 1 (ADR-044)**: options are (a) keep it and teach it (a ghost reason such as "Entrance
+   blocked: dig the bank step"), (b) let the pump use a stand cell one level up (like stacked levees), or (c) terrace
+   the generated banks so some sites work out of the box. I recommend (b).
+4. **Drought and farms**: every drought withers every crop. Is that the intended pressure, or should moisture
+   also come from player-held water (reservoirs, flooded tunnels), so a planned colony can farm through a drought?
+   I recommend the latter; it makes DoD 8's reservoir matter for food as well as drink.
+5. **Survival script reservoir**: should the seed-1 survival session build a real levee reservoir for its pump
+   (DoD 8 in the session itself, not only the synthetic scenario)? This would regenerate the goldens.
+6. **Food choice**: eat the most plentiful food first, or the one that spoils (berries), or keep lowest-id?
+   Potatoes currently sit unused.
+7. **Unreachable jobs (ADR-030)**: add a give-up mark after N reposts, with a HUD notice, for haul and deliver
+   jobs? Or leave it until it shows up in play?
+8. **Strand rule scope (ADR-037)**: extend it to every dwarf, or keep digger-only?
+9. **Performance**: region rebuilds dominate drought ticks (77%). Do incremental regions now, or only when maps
+   or colony sizes grow? `BuildingAt` indexing: same question. I recommend deferring both.
+10. **Next milestone priorities.** My recommendation, in order:
+    - **M7 — Playability pass** (small, before any new system): pump-site fix (Q3), drought farming via reservoir
+      moisture (Q4), food choice (Q6), give-up marks for unreachable jobs (Q7), label overlap, the screenshot
+      harness running timed scripts (survival), and a hands-on DoD session report.
+    - **M8 — Scale and robustness**: incremental region updates, a building spatial index, a larger map (e.g.
+      256²) with its perf budgets, save-format versioning.
+    - After that, the long-term direction (science, exploration, diplomacy) per docs/00-overview.md needs a
+      milestone plan from you. No backlog task adds those systems until then.
+
+Next after approval: whatever tasks the answers add. The backlog is otherwise empty.
