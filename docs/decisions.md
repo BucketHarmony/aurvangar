@@ -1220,3 +1220,49 @@ Test fix: `FarmScenarioTests.Harvest_StorageFull_DropsPile` fills the hub with 1
 during the 7,200-tick growth and now ate 2 of them (100 potatoes beat 30 berries), so the hub was no longer full. The
 helper now also tops berries up to the cap (a 100/100 tie eats berries), which restores the test's premise; the
 assertions are unchanged.
+
+## ADR-058: Give-up marks: 3 strikes per recurring job source, region checks, reset nearby or on a new storage (2026-09-26, M7-T5)
+Context: G3 answer 7 / M7-T5 asks for a give-up mark: a recurring haul, delivery or pump job that is "reposted N times"
+without ever succeeding is marked unreachable. It stops reposting until the world changes near it (a walkability
+change or a new storage), and the HUD shows a notice. ADR-030 left jobs cancelled at five failures to be reposted
+forever. The task does not say what N is, what counts as a repost, or what "near" means. It also misses one case: a
+job the PTH-13 region filter keeps from every agent is never claimed. It never fails, so it is never reposted. That
+is the usual way a job can never succeed (the task's own scenario is an unreachable pump entrance).
+Decision:
+- Sources (`GiveUpSource`): a construction site's deliveries (building id), a pump's OperatePump job (pump id), a
+  pump's buffer haul (pump id) and a loose pile's haul (flat cell index). Other jobs (digs and chops already have
+  JOB-08 designation marks; farm, need and construction-work jobs) are not tracked.
+- A strike is either (a) a JOB-08 cancellation at the fifth failure, which is the "repost", or (b) a check every
+  50 ticks (the retry cooldown) that finds the source's open job reachable from no living agent's region. Case (b) is
+  one strike per source per check and runs no A*. N = 3 strikes: 15 failures, or about 100 ticks of being
+  unreachable (checks at ticks 0, 50 and 100).
+- A given-up source's poster withdraws its open jobs and posts none. A claimed job runs to its end.
+- A mark is removed (strikes and all) when:
+  - a job of the source completes;
+  - a walkability change lands within Chebyshev distance 8 of the mark's cell. The mark's cell is the job target at
+    the last strike. A walkability change is a block change, a plant occupancy change, a construction-site change, or
+    a deep/shallow crossing in a standable cell. `PathGrid.WalkChanges` records these; it is cleared every tick;
+  - a storage building is completed (every mark goes);
+  - the source is gone;
+  - (sim-reviewer) a mark whose last strike came from the region check is removed when its cell is back in a living
+    agent's region. A given-up source posts no job to check, so without this rule a far-away reconnection (a flood
+    draining 20 cells away) would leave it given up for good.
+- Strikes stop at 3. A job claimed before the give-up may still fail later.
+- `SaveGame.AfterLoad` and `WorldFactory` clear `WalkChanges`. Restoring plants and construction sites fills the
+  list, and it must not reset marks: the sim-reviewer found this save/load hash split.
+- Format version 5 means v4 saves no longer load (SAV-04, no migration).
+- `JobGiveUp.Tick` runs in ARCH-01 step 11, right after the region rebuild, so checks see this tick's regions.
+- The HUD alert "Unreachable: Water Pump, log pile x2" is built in ViewCore (`TopBarModel.GiveUpText`). The Godot top
+  bar already shows every alert, so the Godot code is unchanged.
+- The marks are sim state: saved (new `GiveUps` section, format version 5) and hashed. They are hashed only when there
+  is at least one mark, so a game that never strikes hashes as before. The seed-1 goldens and the survival session
+  hash are unchanged.
+Consequences:
+- Water-depth changes count as walkability changes, so a pump on a fluctuating bank may be reset and given up again
+  every ~100 ticks while the water moves. Its notice then flickers.
+- The reset is local: opening a far-away passage that would connect the regions does not reset a mark. A storage
+  completion, or any change within 8 cells, does.
+- A partly delivered site that is given up keeps what it has.
+- A source whose own cell is reachable but whose other leg is not (a pile haul to a storage in another region) is
+  recovered by the region check and struck again. Its notice can come and go about every 200 ticks. This is cheap
+  (no A*, no failures) and accepted.

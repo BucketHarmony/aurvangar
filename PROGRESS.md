@@ -2020,3 +2020,68 @@ Next after approval: whatever tasks the answers add. The backlog is otherwise em
 - Perf: perf.sh 8/8 passed.
 - Screenshots: none (no rendering or Godot change).
 - Next: M7-T5 (give-up mark for jobs that never succeed).
+
+## M7-T5 — Give-up mark for jobs that can never succeed (2026-09-26)
+- Done: new JOB-12 give-up marks (`Jobs/GiveUpMarks.cs` state, `Jobs/JobGiveUp.cs` system).
+  - Sources: site deliveries, pump OperatePump, pump buffer haul, pile haul.
+  - A strike is a JOB-08 cancellation at the fifth failure, or a 50-tick check that finds the source's open job out of
+    every living agent's region (such a job is never claimed, so it never failed or reposted before).
+  - At 3 strikes the source is given up. Its poster (`Pumps`, `Construction.KeepDelivers`, `HaulSystem`) withdraws
+    its open jobs and posts none.
+  - A mark goes when a job of the source completes, a walkability change lands within 8 cells, a storage completes
+    (all marks), or the source is gone. `PathGrid.WalkChanges` records the changes; it is cleared each tick.
+  - `JobGiveUp.Tick` runs in step 11 after the region rebuild.
+  - HUD: `TopBarModel.GiveUpText` adds "Unreachable: Water Pump, log pile x2" to the alerts. The Godot top bar already
+    shows all alerts, so there is no Godot change.
+  - Save format v4 -> v5 (new `GiveUps` section). Marks are hashed when any exist.
+  - Specs: JOB-12 added (and JOB-08 points to it); VIEW-15 and SAV-01 updated. The task cites JOB-09, but the
+    relevant rule is JOB-08 (retry and cancel).
+- Tests: new `Scenarios/GiveUpScenarioTests` (5). They failed to compile before the feature existed.
+  - `UnreachablePumpEntrance_GivesUp_ShowsNotice_UntilBridgedNearby`: a trench cuts the pump off from the dwarves.
+    - The pump is given up at tick 101 with 0 failed jobs, and the alert shows.
+    - No OperatePump job is posted for 600 ticks.
+    - A far block change does not reset the mark.
+    - Bridging the trench 7 cells from the stand cell resets it, and water reaches the hub.
+  - `GivenUpMark_IsSavedAndHashed`: save and load keep the hash equal, the mark is in the hash, and 300 more ticks
+    match.
+  - `UnreachablePile_HaulGivenUp`: a pile in the trench gets no haul and the alert names it; the mark goes with the
+    pile.
+  - `RepeatedlyFailingDelivery_GivenUp_NewStorageResets`: the test takes the hub's logs whenever a delivery is
+    claimed.
+    - After 3 cancellations the site is given up (15-19 failures; the site's second load fails in between).
+    - No deliveries are posted for 500 ticks.
+    - A second warehouse completing resets the mark, and the site gets built.
+  - `Success_ClearsStrikes`.
+  - `UnreachableMark_RecoversWhenReconnectedFarAway`: a bridge 20 cells away does not reset the mark directly, but
+    the next region check drops it, and water reaches the hub.
+  - check.sh: 535 passed, 0 skipped, 0 failed; Godot csproj 0 warnings.
+- Decisions: ADR-058.
+- sim-reviewer found three things, all fixed:
+  - A save/load hash split. On load, restoring plants and sites filled `WalkChanges`, which reset nearby marks on the
+    first tick. `AfterLoad` and `WorldFactory` now clear it. The save test now has a bush beside the pump; I checked
+    that it fails without the fix.
+  - Given-up unreachable sources never recovered from a far-away reconnection. The region check now drops them.
+  - Strikes were not capped; they now stop at 3.
+- Golden: unchanged (no marks arise in the seed-1 session; an empty mark set adds nothing to the hash).
+- Headless `--seed 1 --script survival --ticks 24000`:
+  - Hash `4caa8837b195f900` (unchanged), 5,169 ticks/s. 5/5 alive.
+  - Jobs: 441 completed, 0 failed.
+- Perf: perf.sh 8/8 passed.
+
+  | Test | Measured |
+  |---|---|
+  | WAT-P1 | 1.27 ms (23,048 active); 0.85 ms at 128×128 |
+  | WAT-P2 | 699 active |
+  | ECO-16 | 0.857 ms |
+  | SIM-P1 | median 2.348 ms, p95 2.511 ms |
+  | PTH-P1 | p95 0.612 ms |
+  | PTH-P2 | warm 2.06-4.28 ms, cold 3.66-6.53 ms |
+  | MESH-P1 | 0.642 ms |
+
+  PTH-P2 varies run to run on the same build (2.06 then 4.18 ms warm). The pre-change tree measured 2.10 ms. The
+  rebuild path is untouched, and the SIM-P1 region phase is the same as before (906 vs 899 ms over 409 rebuilds).
+- Screenshots: none. No rendering or Godot code changed; the notice goes through the existing alert label.
+- Next: M7-T6 (the strand rule protects every dwarf). Also:
+  - `PathGrid.WalkChanges` is a per-tick list of the cells whose walkability changed. Reuse it for anything that
+    needs "the world changed near X".
+  - A new recurring job type must be added to `JobGiveUp.SourceOf` and must check `sim.GiveUps` in its poster.

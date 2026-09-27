@@ -251,4 +251,28 @@ public static partial class SaveGame
             sim.Jobs.Restore(job);
         }
     }
+
+    private static void WriteGiveUps(BinaryWriter w, Simulation sim)
+    {
+        w.Section(SaveSection.GiveUps);
+        w.WriteCount(sim.GiveUps.Count);
+        foreach (var m in sim.GiveUps.All)
+        {
+            w.Write((byte)m.Source); w.Write(m.Id); w.Write(m.Cell); w.Write(m.Strikes); w.Write(m.Unreachable);
+        }
+    }
+
+    private static void ReadGiveUps(BinaryReader r, Simulation sim)
+    {
+        r.ExpectSection(SaveSection.GiveUps);
+        int n = r.ReadCount(int.MaxValue, "give-up mark");
+        for (int k = 0; k < n; k++)
+        {
+            var m = new GiveUpMark { Source = r.ReadEnum<GiveUpSource>("give-up source"), Id = r.ReadInt32(), Cell = r.ReadInt3() };
+            m.Strikes = r.ReadInt32();
+            m.Unreachable = r.ReadBoolean();
+            if (m.Strikes <= 0 || m.Strikes > GiveUpMarks.StrikeLimit) throw new InvalidDataException($"Save file is corrupt: give-up strikes {m.Strikes}.");
+            sim.GiveUps.Restore(m);
+        }
+    }
 }

@@ -71,11 +71,25 @@ public sealed class PathGrid
         }
         else
         {
-            for (int k = (int)(_worldSeen - logBase); k < changes.Count; k++) InvalidateAround(changes[k]);
+            for (int k = (int)(_worldSeen - logBase); k < changes.Count; k++)
+            {
+                InvalidateAround(changes[k]);
+                _walkChanges.Add(changes[k]);
+            }
             WalkabilityVersion++;
         }
         _worldSeen = total;
     }
+
+    /// <summary>JOB-12 (ADR-058): cells whose walkability may have changed since <see cref="ClearWalkChanges"/> (block
+    /// changes, plant occupancy, construction sites, deep crossings in standable cells), in change order. Consumed and
+    /// cleared at the end of every tick by <see cref="Jobs.JobGiveUp"/>, so it is empty between ticks (not state).
+    /// <see cref="InvalidateAll"/> records nothing: a load or a raw write is not a change near anything.</summary>
+    public IReadOnlyList<int> WalkChanges => _walkChanges;
+
+    private readonly List<int> _walkChanges = new();
+
+    public void ClearWalkChanges() => _walkChanges.Clear();
 
     /// <summary>Drop every cached flag. For writers that bypass the change log (SetBlockRaw, save load).</summary>
     public void InvalidateAll()
@@ -167,6 +181,7 @@ public sealed class PathGrid
         int i = _world.Index(c);
         if (site ? !_sites.Add(i) : !_sites.Remove(i)) return;
         InvalidateAround(i);
+        _walkChanges.Add(i);
         WalkabilityVersion++;
     }
 
@@ -180,12 +195,17 @@ public sealed class PathGrid
         if (deepChanged) DeepVersion++;
         // Only a standable cell's walkability depends on its depth; deep crossings elsewhere (mid-column, no floor)
         // change nothing a move reads (ADR-025).
-        if (deepChanged && StandableAt(_world.CellOf(index), index)) WalkabilityVersion++;
+        if (deepChanged && StandableAt(_world.CellOf(index), index))
+        {
+            _walkChanges.Add(index);
+            WalkabilityVersion++;
+        }
     }
 
     private void OnOccupancyChanged(int index)
     {
         InvalidateAround(index);
+        _walkChanges.Add(index);
         WalkabilityVersion++;
     }
 

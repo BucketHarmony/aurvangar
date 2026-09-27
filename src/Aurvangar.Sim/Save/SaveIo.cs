@@ -8,7 +8,7 @@ namespace Aurvangar.Sim.Save;
 internal enum SaveSection
 {
     Header = 1, Blocks, Water, WaterStats, Plants, Buildings, Storage, Piles, Designations, Agents, Jobs, Ids,
-    Commands, End, Moisture, Farms,
+    Commands, End, Moisture, Farms, GiveUps,
 }
 
 /// <summary>Binary helpers shared by the save sections.</summary>

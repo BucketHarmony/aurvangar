@@ -21,6 +21,7 @@ public static class WorldFactory
         SpawnColonists(sim, hall.EntranceCell);
         StartingStock(sim, hall);
         sim.World.ClearChangeLog();
+        sim.PathGrid.ClearWalkChanges();   // worldgen is not a JOB-12 walkability change
         sim.World.MarkAllDirty();
         sim.Events.Drain();   // the initial world (hub, colonists) is read by the view directly, not announced (ADR-026)
         return sim;

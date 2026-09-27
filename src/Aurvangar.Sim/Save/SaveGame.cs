@@ -11,7 +11,8 @@ namespace Aurvangar.Sim.Save;
 public static partial class SaveGame
 {
     public const string Magic = "CSAV";
-    public const int FormatVersion = 4;   // 2: M5-T5 need retry ticks, ColonyLost; 3: M6-T1 moisture; 4: M6-T2 farms
+    public const int FormatVersion = 5;   // 2: M5-T5 need retry ticks, ColonyLost; 3: M6-T1 moisture; 4: M6-T2 farms;
+                                          // 5: M7-T5 give-up marks
 
     /// <summary>Largest world edge a save may declare (guards the allocation on corrupt input).</summary>
     private const int MaxWorldEdge = 1024;
@@ -43,6 +44,7 @@ public static partial class SaveGame
         WriteDesignations(w, sim);
         WriteAgents(w, sim);
         WriteJobs(w, sim);
+        WriteGiveUps(w, sim);
 
         w.Section(SaveSection.Ids);
         w.Write(sim.Plants.Ids.Next); w.Write(sim.Buildings.Ids.Next); w.Write(sim.Agents.Ids.Next); w.Write(sim.Jobs.Ids.Next);
@@ -122,6 +124,7 @@ public static partial class SaveGame
         ReadDesignations(r, sim);
         ReadAgents(r, sim, content);
         ReadJobs(r, sim, content);
+        ReadGiveUps(r, sim);
 
         r.ExpectSection(SaveSection.Ids);
         sim.Plants.Ids.Next = r.ReadInt32(); sim.Buildings.Ids.Next = r.ReadInt32();
@@ -151,6 +154,7 @@ public static partial class SaveGame
         sim.World.MarkAllDirty();
         sim.PathGrid.InvalidateAll();
         sim.Buildings.AfterLoad();   // M5-T2: construction sites block paths (PTH-02)
+        sim.PathGrid.ClearWalkChanges();   // restoring plants and sites is not a change near a JOB-12 mark
         if (regionsBuilt) sim.Regions.RebuildIfDirty();
         sim.Jobs.RebuildReservations();
         sim.Events.Drain();   // the loaded world is read by the view directly, like a new world (ADR-026)

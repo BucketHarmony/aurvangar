@@ -39,6 +39,8 @@ public sealed class Simulation
     public BuildingSystem Buildings { get; }
     public ItemPiles Piles { get; }
     public JobBoard Jobs { get; }
+    /// <summary>JOB-12 give-up marks for recurring jobs that never succeed (M7-T5). Saved and hashed.</summary>
+    public GiveUpMarks GiveUps { get; } = new();
     public DesignationMap Designations { get; }
     public WorldActions Actions { get; }
     public SimClock Clock { get; } = new();
@@ -97,6 +99,7 @@ public sealed class Simulation
         Profiler?.Begin(TickPhase.Regions);
         if (Regions.RebuildIfDirty()) Counters.RegionRebuilds++;   // 11
         Profiler?.End(TickPhase.Regions);
+        JobGiveUp.Tick(this);                    // 11 JOB-12: resets, then unreachable strikes on the new regions
         Counters.PathSearches = Pathfinder.Searches;
         foreach (var ci in World.TakeDirtyChunks()) Events.Emit(new ChunkDirty(ci));
         World.ClearChangeLog();
@@ -124,6 +127,7 @@ public sealed class Simulation
         Piles.AddToHash(ref h);
         Designations.AddToHash(ref h);
         Jobs.AddToHash(ref h);
+        GiveUps.AddToHash(ref h);
         Agents.AddToHash(ref h);
         return h.Value;
     }

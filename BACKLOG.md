@@ -210,7 +210,7 @@ building-lookup optimisation) need no task.
 - [x] **M7-T4** Dwarves eat the most plentiful food first · specs: ECO-04 · deps: M6-GATE
   - G3 answer 6: pick the food item with the most units in reachable storage (ties by item id). Test: with
     berries and potatoes stored, potatoes are eaten while they outnumber berries.
-- [ ] **M7-T5** Give-up mark for jobs that can never succeed · specs: JOB-09, VIEW-15 · deps: M6-GATE
+- [x] **M7-T5** Give-up mark for jobs that can never succeed · specs: JOB-09, VIEW-15 (added: JOB-12) · deps: M6-GATE
   - G3 answer 7: a recurring haul, delivery or pump job that is reposted N times (pick N, ADR) without ever
     succeeding is marked unreachable and stops reposting until the world changes near it (a walkability change
     or a new storage). The HUD shows a notice. Scenario test with an unreachable pump entrance.

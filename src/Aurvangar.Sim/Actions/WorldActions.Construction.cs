@@ -69,6 +69,7 @@ public sealed partial class WorldActions
         b.State = BuildingState.Complete;
         b.Delivered.Clear();
         if (b.Def.Producer is not null) b.Progress = 0;   // from now on Progress counts the production cycle (BLD-13)
+        if (b.Def.Storage is not null) _sim.GiveUps.Clear();   // JOB-12: a new storage may be what was missing
         _sim.Events.Emit(new BuildingCompleted(b.Id));
     }
 

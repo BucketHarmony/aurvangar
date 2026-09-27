@@ -76,7 +76,8 @@ public static class Pumps
     /// withdrawn otherwise; a claimed one ends by <see cref="WorkDone"/>.</summary>
     private static void KeepOperate(Simulation sim, Building b, ProducerDef p, Job? job)
     {
-        bool want = !b.NoWater && WorldActions.StoredCount(b, sim.Content.Item(p.Output)) < p.Buffer;
+        bool want = !b.NoWater && WorldActions.StoredCount(b, sim.Content.Item(p.Output)) < p.Buffer
+            && !sim.GiveUps.IsGivenUp(GiveUpSource.Pump, b.Id.Value);   // JOB-12
         var stand = Construction.StandCell(sim, b);   // the entrance, or the cell above it on a stepped bank (ADR-055)
         if (job is not null && !job.IsClaimed && (!want || job.Steps[0].Cell != stand))
         {
@@ -97,7 +98,8 @@ public static class Pumps
         if (job is { IsClaimed: true }) return;
         var item = sim.Content.Item(p.Output);
         int stock = sim.Jobs.StorageStock(b, item);
-        Building? to = stock >= p.HaulAt ? Destination(sim, b, item) : null;
+        bool givenUp = sim.GiveUps.IsGivenUp(GiveUpSource.PumpHaul, b.Id.Value);   // JOB-12
+        Building? to = stock >= p.HaulAt && !givenUp ? Destination(sim, b, item) : null;
         if (to is null)
         {
             if (job is not null) JobRunner.Cancel(sim, job);

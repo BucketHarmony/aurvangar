@@ -284,6 +284,7 @@ public static class JobRunner
         sim.Jobs.ReleaseReservations(job);
         job.ClaimedBy = default;
         sim.Jobs.Remove(job);
+        JobGiveUp.OnCompleted(sim, job);   // JOB-12: the source succeeded
         if (job.Kind == JobKind.Dig && sim.Designations.Get(job.Target) == DesignationMark.Dig)
             sim.Designations.Set(job.Target, DesignationMark.None);   // DSG-07
         sim.Counters.JobsCompleted++;
@@ -291,7 +292,7 @@ public static class JobRunner
     }
 
     /// <summary>JOB-08: release, count the failure, and either return the job with a cooldown or, at the fifth
-    /// failure, cancel it and mark its designation unreachable.</summary>
+    /// failure, cancel it and mark its designation unreachable (or strike its recurring source, JOB-12).</summary>
     private static void Fail(Simulation sim, Agent a, Job job)
     {
         sim.Counters.JobsFailed++;
@@ -308,6 +309,7 @@ public static class JobRunner
             if (job.Kind == JobKind.Dig) sim.Designations.MarkUnreachable(job.Target);
             else if (job.Kind == JobKind.Chop && sim.Plants.Get(DesignationSystem.ChopTree(job)) is { } tree)
                 tree.ChopUnreachable = true;
+            else JobGiveUp.OnCancelled(sim, job);   // JOB-12: a recurring job is reposted; count a strike
         }
         else job.RetryAfterTick = sim.Clock.Tick + Job.RetryCooldown;
     }

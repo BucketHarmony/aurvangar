@@ -44,7 +44,7 @@ public static partial class Construction
             {
                 case BuildingState.Blueprint:
                 case BuildingState.UnderConstruction:
-                    bool waits = WaitsForBelow(sim, b);
+                    bool waits = WaitsForBelow(sim, b) || sim.GiveUps.IsGivenUp(GiveUpSource.Site, b.Id.Value);   // JOB-12
                     foreach (var (item, _) in Cost(sim, b.Def)) KeepDelivers(sim, b, item, jobs, waits);
                     if (b.State == BuildingState.UnderConstruction && FullyDelivered(sim, b))
                         KeepOne(sim, b, jobs, JobKind.Construct, b.Def.BuildTicks);

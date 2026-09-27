@@ -20,7 +20,7 @@ public static class HaulSystem
         foreach (var job in sim.Jobs.All)
         {
             if (!IsPileHaul(job)) continue;
-            if (!job.IsClaimed && !Replan(sim, job)) { (withdraw ??= new()).Add(job); continue; }
+            if (!job.IsClaimed && (GivenUp(sim, job.Target) || !Replan(sim, job))) { (withdraw ??= new()).Add(job); continue; }
             covered.Add(world.Index(job.Target));
         }
         if (withdraw is not null)
@@ -30,13 +30,17 @@ public static class HaulSystem
         List<(Int3 Cell, ItemId Item, int Count, Building To)>? post = null;
         foreach (var (cell, stack) in sim.Piles.All)
         {
-            if (covered.Contains(world.Index(cell))) continue;
+            if (covered.Contains(world.Index(cell)) || GivenUp(sim, cell)) continue;
             if (Plan(sim, cell, stack, out var to, out int n)) (post ??= new()).Add((cell, stack.Item, n, to));
         }
         if (post is null) return;
         foreach (var (cell, item, n, to) in post)
             sim.Jobs.Post(JobKind.Haul, cell, Steps(cell, item, n, to.Id), Reservations(cell, item, n, to.Id));
     }
+
+    /// <summary>JOB-12: the pile's haul has been given up.</summary>
+    private static bool GivenUp(Simulation sim, Int3 pile) =>
+        sim.GiveUps.Count > 0 && sim.GiveUps.IsGivenUp(GiveUpSource.Pile, sim.World.Index(pile));
 
     /// <summary>A Haul job posted by this system: its target is the pile cell and its steps have the fixed shape.</summary>
     public static bool IsPileHaul(Job job) =>

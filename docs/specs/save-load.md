@@ -5,7 +5,8 @@
   water stats, plants, moisture flags (saved and hashed: they reflect the water at the last 50-tick recompute, ADR-046),
   farm tiles, buildings (sorted by
   id), storage contents, item piles (sorted by cell index), designations, agents (sorted by id, alive only), job
-  board (sorted by id, with reservations), weather, id allocators, command log.
+  board (sorted by id, with reservations), JOB-12 give-up marks (sorted by source and id; format version 5, M7-T5),
+  weather, id allocators, command log.
 - **SAV-02** Load constructs a `Simulation` purely from the file plus `ContentDb`. No terrain generation runs on
   load.
 - **SAV-03** Round-trip rule: `Save(sim) → Load → StateHash()` equals the original `StateHash()`, and ticking

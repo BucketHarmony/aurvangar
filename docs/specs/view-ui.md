@@ -60,7 +60,8 @@ All of this lives in `src/Aurvangar.Godot`. It reads sim state and sends command
 ## HUD
 
 - **VIEW-15** Top bar: day, season + days left ("Wet season, 4 days left", orange in a drought, toast on change;
-  ADR-050), speed, totals for log/stone/berries/potato/water.
+  ADR-050), speed, totals for log/stone/berries/potato/water. Alerts: no food, no water, pump has no water, and
+  "Unreachable: Water Pump, log pile x2" naming every JOB-12 given-up job source (M7-T5).
 - **VIEW-16** Colonist panel (left): name, hunger/thirst/health bars, current job label. Click centers camera.
 - **VIEW-17** F3 debug overlay: FPS, sim ms per tick (avg over 60), water active cells, water step ms,
   path searches/s, region rebuild ms, open jobs by kind.
